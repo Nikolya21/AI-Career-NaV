@@ -1,4 +1,4 @@
-package org.example.aicareernav1.entity;
+package org.example.aicareernav1.entity.userEntity;
 
 import jakarta.persistence.*;
 import lombok.Data;
