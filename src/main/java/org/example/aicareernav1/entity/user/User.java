@@ -1,4 +1,4 @@
-package org.example.aicareernav1.model.user;
+package org.example.aicareernav1.entity.user;
 
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -18,7 +18,6 @@ public class User {
   private String passwordHash;
   private String vacancyNow; // - delete
   private Long roadmapsId; //
-  private List<>
   private Instant createdAt;
   private Instant updatedAt;
 

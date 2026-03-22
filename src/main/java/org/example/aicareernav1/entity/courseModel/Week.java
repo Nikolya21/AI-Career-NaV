@@ -1,4 +1,4 @@
-package org.example.aicareernav1.model.courseModel;
+package org.example.aicareernav1.entity.courseModel;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

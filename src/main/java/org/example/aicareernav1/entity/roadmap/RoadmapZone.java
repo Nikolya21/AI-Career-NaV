@@ -1,6 +1,6 @@
-package org.example.aicareernav1.model.roadmap;
+package org.example.aicareernav1.entity.roadmap;
 
-import org.example.aicareernav1.model.courseModel.Week;
+import org.example.aicareernav1.entity.courseModel.Week;
 import lombok.*;
 
 import java.time.Instant;

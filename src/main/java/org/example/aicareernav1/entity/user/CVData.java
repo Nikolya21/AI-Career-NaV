@@ -1,4 +1,4 @@
-package org.example.aicareernav1.model.user;
+package org.example.aicareernav1.entity.user;
 
 import java.io.File;
 import java.time.Instant;

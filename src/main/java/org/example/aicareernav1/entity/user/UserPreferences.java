@@ -1,4 +1,4 @@
-package org.example.aicareernav1.model.user;
+package org.example.aicareernav1.entity.user;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,4 +1,4 @@
-package org.example.aicareernav1.model.vacancy;
+package org.example.aicareernav1.entity.vacancy;
 
 import java.util.List;
 import lombok.AllArgsConstructor;
