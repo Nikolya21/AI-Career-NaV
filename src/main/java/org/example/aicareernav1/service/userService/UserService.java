@@ -1,4 +1,4 @@
-package org.example.aicareernav1.service.testService;
+package org.example.aicareernav1.service.userService;
 
 import lombok.RequiredArgsConstructor;
 import org.example.aicareernav1.entity.userEntity.UserEntity;

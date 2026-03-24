@@ -25,17 +25,12 @@ public class QuizController {
   private final UserRepository userRepository;
 
   @PostMapping("/generate-Test/{userId}")
-  public ResponseEntity<String> generateAndSave(@PathVariable Long userId) throws JsonProcessingException {
+  public ResponseEntity<List<QuestionDto>> generateAndSave(@PathVariable Long userId) throws JsonProcessingException {
     String email = userRepository.findById(userId).map(UserEntity::getEmail)
       .orElseThrow(() -> new RuntimeException("User not found"));
     String prompt = testPrompt.buildOpenTestPrompt(email);
     String gigaChatResponse = gigaChatService.sendMessage(prompt);
-    quizService.processAndSave(userId, gigaChatResponse);
-    return ResponseEntity.ok("Тест успешно сгенерирован и сохранен в Redis для пользователя " + userId);
-  }
-
-  @GetMapping("/questions/{userId}")
-  public ResponseEntity<List<QuestionDto>> getQuestions(@PathVariable Long userId) {
-    return ResponseEntity.ok(quizService.getQuestions(userId));
+    List<QuestionDto> questions = quizService.processAndSave(userId, gigaChatResponse);
+    return ResponseEntity.ok(questions);
   }
 }

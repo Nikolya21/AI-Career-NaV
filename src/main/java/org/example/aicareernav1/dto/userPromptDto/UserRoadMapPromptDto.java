@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserPromptDto {
-  private long markTest;
-  private String llmNetworkView;
-  private String wishes;
+public class UserRoadMapPromptDto {
+  private String testResult;
+  private String jobRequirements;
+  private String adaptationCourse;
 }

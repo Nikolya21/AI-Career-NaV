@@ -17,11 +17,12 @@ import java.util.List;
 public class QuizService {
   private final ObjectMapper objectMapper;
   private final RedisTemplate<String, Object> redisTemplate;
-  public void processAndSave(Long userId, String gigaChatResponse) throws JsonProcessingException {
+  public List<QuestionDto> processAndSave(Long userId, String gigaChatResponse) throws JsonProcessingException {
     String cleanJson = extractJson(gigaChatResponse);
     List<QuestionDto> questions = objectMapper.readValue(cleanJson,
       new TypeReference<List<QuestionDto>>() {});
     saveQuestions(userId, questions);
+    return questions;
   }
 
   public void saveQuestions(Long userId, List<QuestionDto> questions) {
@@ -31,8 +32,11 @@ public class QuizService {
 
   public List<QuestionDto> getQuestions(Long userId) {
     String key = "user_quiz:" + userId;
-    return (List<QuestionDto>) redisTemplate.opsForValue().get(key);
+    Object data = redisTemplate.opsForValue().get(key);
+    if (data == null) return null;
+    return objectMapper.convertValue(data, new TypeReference<List<QuestionDto>>() {});
   }
+
 
   private String extractJson(String response) {
     if (response.contains("```")) {

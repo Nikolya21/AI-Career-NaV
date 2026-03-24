@@ -1,7 +1,7 @@
 package org.example.aicareernav1.service.promptService;
 
 import lombok.RequiredArgsConstructor;
-import org.example.aicareernav1.service.testService.UserService;
+import org.example.aicareernav1.service.userService.UserService;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -32,9 +32,6 @@ public class TestPrompt {
               {
                 "number": 1,
                 "question": "Текст вопроса",
-                "complexity": "Senior",
-                "keyConcepts": ["Concept1", "Concept2"],
-                "referenceAnswer": "Краткий эталон"
               }
             ]
 
