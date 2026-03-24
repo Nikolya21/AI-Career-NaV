@@ -13,9 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "user_wishes")
 public class UserWishes {
-
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
