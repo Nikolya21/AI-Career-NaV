@@ -8,4 +8,6 @@ public class WeekDto {
   private String field_1;
   private String field_2;
   private String field_3;
+  private String field_4;
+  private String field_5;
 }

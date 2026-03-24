@@ -37,6 +37,8 @@ public class RoadMapService {
           .field1(week.getField_1())
           .field2(week.getField_2())
           .field3(week.getField_3())
+          .field4(week.getField_4())
+          .field5(week.getField_5())
           .build())
         .toList();
       roadmapRepository.saveAll(entities);

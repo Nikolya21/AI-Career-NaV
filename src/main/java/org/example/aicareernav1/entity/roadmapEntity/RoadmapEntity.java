@@ -33,4 +33,10 @@ public class RoadmapEntity {
 
   @Column(name = "field_3")
   private String field3;
+
+  @Column(name = "field_4")
+  private String field4;
+
+  @Column(name = "field_5")
+  private String field5;
 }
