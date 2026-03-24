@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS aicareer.cv_data (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL,
+    information TEXT,
+    uploaded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cv_data_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

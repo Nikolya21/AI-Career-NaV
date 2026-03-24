@@ -31,6 +31,25 @@
     <java.version>17</java.version>
   </properties>
   <dependencies>
+    <!-- Для работы валидацией -->
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+      <version>4.0.0-M1</version>
+    </dependency>
+    <!-- Для работы с PDF (Apache PDFBox) -->
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>3.0.7</version>
+    </dependency>
+
+    <!-- Для работы с Word (Apache POI) -->
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>5.5.1</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
