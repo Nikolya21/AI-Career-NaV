@@ -22,7 +22,15 @@ public class UserEntity {
   @Column(name = "vacancy_now")
   private String vacancyNow;
 
-  private int roadmapId;
+  @Column(columnDefinition = "TEXT")
+  private String testResult;
+
+  @Column(columnDefinition = "TEXT")
+  private String jobRequirements;
+
+  @Column(columnDefinition = "TEXT")
+  private String adaptationCourse;
+
   Timestamp createdAt;
   Timestamp updatedAt;
 }

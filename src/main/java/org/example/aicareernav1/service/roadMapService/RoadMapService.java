@@ -6,7 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.example.aicareernav1.dto.roadMapDto.RoadmapResponseDto;
 import org.example.aicareernav1.entity.roadmapEntity.RoadmapTaskEntity;
 import org.example.aicareernav1.entity.roadmapEntity.RoadmapWeekEntity;
+import org.example.aicareernav1.entity.userEntity.UserEntity;
 import org.example.aicareernav1.repository.RoadmapWeekRepository;
+import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.promptService.RoadMapPrompt;
 import org.springframework.stereotype.Service;
@@ -19,23 +21,31 @@ import java.util.List;
 public class RoadMapService {
   private final GigaChatService gigaChatService;
   private final RoadMapPrompt roadMapPrompt;
-  private final RoadmapWeekRepository roadmapWeekRepository; // Используем репозиторий недель
+  private final RoadmapWeekRepository roadmapWeekRepository;
+  private final UserRepository userRepository;
   private final ObjectMapper objectMapper;
 
   @Transactional
   public List<RoadmapWeekEntity> generateAndSaveRoadMap(Long userId) {
-    String prompt = roadMapPrompt.buildOpenRoadMapPrompt();
-    String rawResponse = gigaChatService.sendMessage(prompt);
+    // 1. Достаем юзера из базы
+    UserEntity user = userRepository.findById(userId)
+      .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
+    // 2. Берем данные из его полей и формируем промпт
+    String prompt = roadMapPrompt.buildOpenRoadMapPrompt(
+      user.getTestResult(),
+      user.getJobRequirements(),
+      user.getAdaptationCourse()
+    );
+
+    // 3. Работаем с нейросетью (Логика JSON остается прежней)
+    String rawResponse = gigaChatService.sendMessage(prompt);
     String cleanJson = rawResponse.replaceAll("(?s)```json(.*?)```|```(.*?)```", "$1$2").trim();
 
     try {
       RoadmapResponseDto responseDto = objectMapper.readValue(cleanJson, RoadmapResponseDto.class);
-
-      // 1. Удаляем старое
       roadmapWeekRepository.deleteByUserId(userId);
 
-      // 2. Маппим DTO в Entities
       List<RoadmapWeekEntity> weekEntities = responseDto.getWeeks().stream()
         .map(weekDto -> {
           RoadmapWeekEntity weekEntity = new RoadmapWeekEntity();
@@ -57,14 +67,15 @@ public class RoadMapService {
           return weekEntity;
         }).toList();
 
-      // 3. Сохраняем ОДИН раз и сразу возвращаем результат
       return roadmapWeekRepository.saveAll(weekEntities);
 
     } catch (JsonProcessingException e) {
+      // Если нейронка выдала плохой JSON, мы увидим это в логах
+      System.err.println("Ошибка парсинга от GigaChat: " + cleanJson);
       throw new RuntimeException("Ошибка парсинга JSON: " + e.getMessage());
     }
   }
-
 }
+
 
 

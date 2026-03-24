@@ -5,12 +5,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class RoadMapPrompt {
-  private UserRoadMapPromptDto userRoadMapPromptDto;
 
-  public String buildOpenRoadMapPrompt() {
-    String testResult = userRoadMapPromptDto.getTestResult();
-    String jobRequirements = userRoadMapPromptDto.getJobRequirements();
-    String adaptationCourse = userRoadMapPromptDto.getAdaptationCourse();
+  public String buildOpenRoadMapPrompt(String testResult, String jobRequirements, String adaptationCourse) {
     return """
       Роль: Методист-архитектор. Составь персонализированный учебный план.
       Вводные: Цель: %s, Уровень: %s, Время: %s.
