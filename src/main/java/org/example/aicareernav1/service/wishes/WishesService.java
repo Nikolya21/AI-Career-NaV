@@ -2,59 +2,125 @@ package org.example.aicareernav1.service.wishes;
 
 import lombok.RequiredArgsConstructor;
 
-import org.example.aicareernav1.dto.wishes.WishesRequest;
-import org.example.aicareernav1.dto.wishes.WishesResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.dto.wishes.WishesCreateDto;
+import org.example.aicareernav1.dto.wishes.WishesResponseDto;
+import org.example.aicareernav1.model.user.UserWishes;
 import org.example.aicareernav1.repository.WishesRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // import из Spring
+import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-public class WishesService implements WishesRepository {
+public class WishesService {
 
-  // Когда появится БД, раскомментируй это:
-  // private final UserRepository userRepository;
+  public final WishesRepository wishesRepository;
 
-  @Override
-  @Transactional // Оставляем аннотацию, она не помешает, даже если БД пока нет
-  public WishesResponse saveAndProcessWishes(WishesRequest request) {
+  @Transactional
+  public WishesResponseDto saveWishes(Long userId, WishesCreateDto dto) {
 
-    // 1. ВАЛИДАЦИЯ
-    if (request.getDesiredProfession() == null || request.getDesiredProfession().isBlank()) {
-      return new WishesResponse(false, "Укажите профессию!", null);
+    if (wishesRepository.existsByUserId(userId)) {
+      return WishesResponseDto.builder()
+              .wishesMessage(dto.getWishesMessage())
+              .nextStepUrl("/wishes/update")
+              .build();
     }
 
-    // 2. ЛОГИКА СОХРАНЕНИЯ (Заглушка для БД)
-    try {
-      System.out.println("--- СОХРАНЕНИЕ В БД (ИМИТАЦИЯ) ---");
-      System.out.println("ID Пользователя: " + request.getUserId());
-      System.out.println("Выбранная профессия: " + request.getDesiredProfession());
-      System.out.println("Выжимка пожеланий: " + request.getAdditionalComments());
+    UserWishes userWishes = UserWishes.builder()
+                .userId(userId)
+                .wishesMessage(dto.getWishesMessage())
+                .build();
 
-            /* КОГДА ПОДКЛЮЧИШЬ БД, КОД БУДЕТ ТАКИМ:
+    UserWishes saved = wishesRepository.save(userWishes);
 
-               User user = userRepository.findById(request.getUserId())
-                                         .orElseThrow(() -> new EntityNotFoundException("Юзер не найден"));
+    log.info("Сохранены пожелания для пользователя {}: ID = {}", userId, saved.getId());
 
-               user.setTargetProfession(request.getDesiredProfession());
-               user.setCareerWishes(request.getAdditionalComments());
+    return WishesResponseDto.builder()
+            .id(saved.getId())
+            .wishesMessage(saved.getWishesMessage())
+            .nextStepUrl("/vacacies/selection")
+            .build();
+  }
 
-               userRepository.save(user);
-            */
+  @Transactional
+  public WishesResponseDto updateWishes(Long wishesId, Long userId, WishesCreateDto dto) {
 
-      System.out.println("--- ДАННЫЕ УСПЕШНО ЗАПИСАНЫ ---");
-
-    } catch (Exception e) {
-      // Если что-то пойдет не так при работе с БД
-      return new WishesResponse(false, "Ошибка при сохранении: " + e.getMessage(), null);
+    // Проверка прав доступа
+    if (!wishesRepository.existsByIdAndUserId(wishesId, userId)) {
+      throw new SecurityException("Нет доступа к этим пожеланиям");
     }
 
-    // 3. ПЕРЕХОД К СЛЕДУЮЩЕМУ ЭТАПУ
-    // Здесь мы возвращаем URL страницы, где пользователь увидит результаты парсинга
-    return new WishesResponse(
-      true,
-      "Пожелания учтены. Начинаем поиск вакансий для вас!",
-      "/vacancies/selection"
-    );
+    // Поиск
+    UserWishes existingWishes = wishesRepository.findById(wishesId)
+      .orElseThrow(() -> new RuntimeException("Пожелания не найдены"));
+
+    // Обновление
+    existingWishes.setWishesMessage(dto.getWishesMessage());
+    UserWishes updated = wishesRepository.save(existingWishes);
+
+    log.info("Обновлены пожелания ID = {}", updated.getId());
+
+    return WishesResponseDto.builder()
+      .id(updated.getId())
+      .wishesMessage(updated.getWishesMessage())
+      .nextStepUrl("/vacancies/selection")
+      .build();
+  }
+
+  @Transactional(readOnly = true)
+  public WishesResponseDto getWishesByUserId(Long userId) {
+
+    UserWishes userWishes = wishesRepository.findByUserId(userId)
+      .orElse(null);
+
+    if (userWishes == null) {
+      return WishesResponseDto.builder()
+        .wishesMessage("Пожелания не найдены")
+        .nextStepUrl("/wishes/form")
+        .build();
+    }
+
+    return WishesResponseDto.builder()
+      .id(userWishes.getId())
+      .wishesMessage(userWishes.getWishesMessage())
+      .nextStepUrl("/vacancies/selection")
+      .build();
+  }
+
+  @Transactional(readOnly = true)
+  public WishesResponseDto getWishesById(Long wishesId, Long userId) {
+
+    // Проверка прав доступа
+    if (!wishesRepository.existsByIdAndUserId(wishesId, userId)) {
+      throw new SecurityException("Нет доступа к этим пожеланиям");
+    }
+
+    UserWishes userWishes = wishesRepository.findById(wishesId)
+      .orElseThrow(() -> new RuntimeException("Пожелания не найдены"));
+
+    return WishesResponseDto.builder()
+      .id(userWishes.getId())
+      .wishesMessage(userWishes.getWishesMessage())
+      .nextStepUrl("/vacancies/selection")
+      .build();
+  }
+
+  @Transactional
+  public void deleteWishesById(Long wishesId, Long userId) {
+
+    // Проверка прав доступа
+    if (!wishesRepository.existsByIdAndUserId(wishesId, userId)) {
+      throw new SecurityException("Нет доступа к этим пожеланиям");
+    }
+
+    wishesRepository.deleteById(wishesId);
+    log.info("Удалены пожелания ID = {}", wishesId);
+  }
+
+  @Transactional
+  public void deleteWishesByUserId(Long userId) {
+    wishesRepository.deleteByUserId(userId);
+    log.info("Удалены пожелания для пользователя ID = {}", userId);
   }
 }
