@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class WishesService {
 
-  public final WishesRepository wishesRepository;
+  private final WishesRepository wishesRepository;
 
   @Transactional
   public WishesResponseDto saveWishes(Long userId, WishesCreateDto dto) {
@@ -39,7 +39,7 @@ public class WishesService {
     return WishesResponseDto.builder()
             .id(saved.getId())
             .wishesMessage(saved.getWishesMessage())
-            .nextStepUrl("/vacacies/selection")
+            .nextStepUrl("/vacancies/selection")
             .build();
   }
 

@@ -5,7 +5,7 @@ import org.example.aicareernav1.dto.dialog.ChatRequest;
 import org.example.aicareernav1.dto.dialog.ChatResponse;
 import org.example.aicareernav1.dto.dialog.SummaryResponse;
 import org.example.aicareernav1.enums.DialogType;
-import org.example.aicareernav1.repository.DialogRepository;
+import org.example.aicareernav1.service.dialog.DialogService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class DialogController {
 
-  private final DialogRepository dialogRepository;
+  private final DialogService dialogService;
 
   // Пример: POST /api/dialogs/start?userId=1&type=INFORMATION
   @PostMapping("/start")
@@ -22,13 +22,13 @@ public class DialogController {
     @RequestParam Long userId,
     @RequestParam DialogType type,
     @RequestParam(required = false) Long contextId) {
-    return ResponseEntity.ok(dialogRepository.startDialog(userId, type, contextId));
+    return ResponseEntity.ok(dialogService.startDialog(userId, type, contextId));
   }
 
   // POST /api/dialogs/chat
   @PostMapping("/chat")
   public ResponseEntity<ChatResponse> chat(@RequestBody ChatRequest request) {
-    return ResponseEntity.ok(dialogRepository.processMessage(request));
+    return ResponseEntity.ok(dialogService.processMessage(request));
   }
 
   // GET /api/dialogs/summarize?userId=1&type=INFORMATION
@@ -36,6 +36,6 @@ public class DialogController {
   public ResponseEntity<SummaryResponse> summarize(
     @RequestParam Long userId,
     @RequestParam DialogType type) {
-    return ResponseEntity.ok(dialogRepository.summarize(userId, type));
+    return ResponseEntity.ok(dialogService.summarize(userId, type));
   }
 }
