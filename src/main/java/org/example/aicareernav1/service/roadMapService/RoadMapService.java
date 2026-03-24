@@ -4,8 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.example.aicareernav1.dto.roadMapDto.RoadmapResponseDto;
-import org.example.aicareernav1.entity.roadmapEntity.RoadmapEntity;
-import org.example.aicareernav1.repository.RoadmapRepository;
+import org.example.aicareernav1.entity.roadmapEntity.RoadmapTaskEntity;
+import org.example.aicareernav1.entity.roadmapEntity.RoadmapWeekEntity;
+import org.example.aicareernav1.repository.RoadmapWeekRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.promptService.RoadMapPrompt;
 import org.springframework.stereotype.Service;
@@ -18,33 +19,52 @@ import java.util.List;
 public class RoadMapService {
   private final GigaChatService gigaChatService;
   private final RoadMapPrompt roadMapPrompt;
-  private final RoadmapRepository roadmapRepository;
+  private final RoadmapWeekRepository roadmapWeekRepository; // Используем репозиторий недель
   private final ObjectMapper objectMapper;
 
   @Transactional
-  public void generateAndSaveRoadMap(Long userId) {
+  public List<RoadmapWeekEntity> generateAndSaveRoadMap(Long userId) {
     String prompt = roadMapPrompt.buildOpenRoadMapPrompt();
     String rawResponse = gigaChatService.sendMessage(prompt);
+
     String cleanJson = rawResponse.replaceAll("(?s)```json(.*?)```|```(.*?)```", "$1$2").trim();
 
     try {
       RoadmapResponseDto responseDto = objectMapper.readValue(cleanJson, RoadmapResponseDto.class);
-      roadmapRepository.deleteByUserId(userId);
-      List<RoadmapEntity> entities = responseDto.getWeeks().stream()
-        .map(week -> RoadmapEntity.builder()
-          .userId(userId)
-          .weekNumber(week.getWeek_number())
-          .field1(week.getField_1())
-          .field2(week.getField_2())
-          .field3(week.getField_3())
-          .field4(week.getField_4())
-          .field5(week.getField_5())
-          .build())
-        .toList();
-      roadmapRepository.saveAll(entities);
+
+      // 1. Удаляем старое
+      roadmapWeekRepository.deleteByUserId(userId);
+
+      // 2. Маппим DTO в Entities
+      List<RoadmapWeekEntity> weekEntities = responseDto.getWeeks().stream()
+        .map(weekDto -> {
+          RoadmapWeekEntity weekEntity = new RoadmapWeekEntity();
+          weekEntity.setUserId(userId);
+          weekEntity.setWeekNumber(weekDto.getWeekNumber());
+          weekEntity.setWeekTopic(weekDto.getWeekTopic());
+
+          List<RoadmapTaskEntity> taskEntities = weekDto.getTasks().stream()
+            .map(taskDto -> {
+              RoadmapTaskEntity taskEntity = new RoadmapTaskEntity();
+              taskEntity.setTitle(taskDto.getTitle());
+              taskEntity.setTaskType(taskDto.getType());
+              taskEntity.setContent(taskDto.getContent());
+              taskEntity.setWeek(weekEntity);
+              return taskEntity;
+            }).toList();
+
+          weekEntity.setTasks(taskEntities);
+          return weekEntity;
+        }).toList();
+
+      // 3. Сохраняем ОДИН раз и сразу возвращаем результат
+      return roadmapWeekRepository.saveAll(weekEntities);
+
     } catch (JsonProcessingException e) {
-      throw new RuntimeException("Ошибка парсинга ответа от нейросети: " + e.getMessage());
+      throw new RuntimeException("Ошибка парсинга JSON: " + e.getMessage());
     }
   }
+
 }
+
 

@@ -2,12 +2,11 @@ package org.example.aicareernav1.dto.roadMapDto;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class WeekDto {
-  private int week_number;
-  private String field_1;
-  private String field_2;
-  private String field_3;
-  private String field_4;
-  private String field_5;
+  private int weekNumber;
+  private String weekTopic; // Тема недели
+  private List<TaskDto> tasks; // Список из 5 объектов-задач
 }
