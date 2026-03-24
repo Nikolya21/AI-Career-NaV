@@ -18,7 +18,8 @@ public class QuizService {
   private final ObjectMapper objectMapper;
   private final RedisTemplate<String, Object> redisTemplate;
   public void processAndSave(Long userId, String gigaChatResponse) throws JsonProcessingException {
-    List<QuestionDto> questions = objectMapper.readValue(gigaChatResponse,
+    String cleanJson = extractJson(gigaChatResponse);
+    List<QuestionDto> questions = objectMapper.readValue(cleanJson,
       new TypeReference<List<QuestionDto>>() {});
     saveQuestions(userId, questions);
   }
@@ -31,5 +32,12 @@ public class QuizService {
   public List<QuestionDto> getQuestions(Long userId) {
     String key = "user_quiz:" + userId;
     return (List<QuestionDto>) redisTemplate.opsForValue().get(key);
+  }
+
+  private String extractJson(String response) {
+    if (response.contains("```")) {
+      return response.replaceAll("```json|```", "").trim();
+    }
+    return response.trim();
   }
 }

@@ -4,6 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
+import org.example.aicareernav1.entity.userEntity.UserEntity;
+import org.example.aicareernav1.repository.UserRepository;
+import org.example.aicareernav1.service.gigachat.GigaChatService;
+import org.example.aicareernav1.service.promptService.TestPrompt;
 import org.example.aicareernav1.service.testService.QuizService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,18 +20,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QuizController {
   private final QuizService quizService;
+  private final GigaChatService gigaChatService;
+  private final TestPrompt testPrompt;
+  private final UserRepository userRepository;
 
-  @PostMapping("/test-save/{userId}")
-  public ResponseEntity<String> testSave(@PathVariable Long userId) throws JsonProcessingException {
-    String mockJson = "[" +
-      "{\"number\": 1, \"question\": \"Что такое Spring Boot?\"}," +
-      "{\"number\": 2, \"question\": \"Зачем нужен Redis?\"}," +
-      "{\"number\": 3, \"question\": \"Как работает JSON?\"}" +
-      "]";
-
-    quizService.processAndSave(userId, mockJson);
-    return ResponseEntity.status(HttpStatus.CREATED)
-      .body("Тестовый JSON успешно сохранен в Redis для пользователя " + userId);
+  @PostMapping("/generate-Test/{userId}")
+  public ResponseEntity<String> generateAndSave(@PathVariable Long userId) throws JsonProcessingException {
+    String email = userRepository.findById(userId).map(UserEntity::getEmail)
+      .orElseThrow(() -> new RuntimeException("User not found"));
+    String prompt = testPrompt.buildOpenTestPrompt(email);
+    String gigaChatResponse = gigaChatService.sendMessage(prompt);
+    quizService.processAndSave(userId, gigaChatResponse);
+    return ResponseEntity.ok("Тест успешно сгенерирован и сохранен в Redis для пользователя " + userId);
   }
 
   @GetMapping("/questions/{userId}")

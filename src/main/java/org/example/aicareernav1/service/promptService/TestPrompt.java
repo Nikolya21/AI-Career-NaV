@@ -1,15 +1,17 @@
 package org.example.aicareernav1.service.promptService;
 
-import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import org.example.aicareernav1.service.testService.UserService;
 import org.springframework.stereotype.Service;
 
 @Service
-@Data
+@RequiredArgsConstructor
 public class TestPrompt {
   private final UserService userService;
 
-  public String buildOpenTestPrompt() {
+  public String buildOpenTestPrompt(String email) {
+    String vacancy = userService.getVacancyByEmail(email);
+
     return """
         РОЛЬ:
         Ты — Senior Technical Interviewer. Твоя задача — составить проверочный тест 
@@ -25,18 +27,23 @@ public class TestPrompt {
         которую кандидат должен решить текстом (без вариантов ответа).
 
         ФОРМАТ ВЫВОДА:
-        Для каждого вопроса используй строго следующий шаблон:
-        
-        Вопрос № [номер]: [Текст вопроса-кейса]
-        Сложность: [Junior / Middle / Middle+ / Senior / Expert]
-        Ожидаемые ключевые понятия в ответе: [список из 3-4 терминов или технологий, которые кандидат должен упомянуть]
-        Эталонный краткий ответ (для проверяющего): [суть правильного решения в 2-3 предложениях]
+            СТРУКТУРА JSON:
+            [
+              {
+                "number": 1,
+                "question": "Текст вопроса",
+                "complexity": "Senior",
+                "keyConcepts": ["Concept1", "Concept2"],
+                "referenceAnswer": "Краткий эталон"
+              }
+            ]
 
         ОГРАНИЧЕНИЯ:
-        - НИКАКИХ вариантов ответа (A, B, C, D). 
+        - НИКАКИХ вариантов ответа (A, B, C, D).
+        - Весь текст внутри JSON на русском.
         - Вопросы должны начинаться с фраз: "Как бы вы решили...", "Опишите алгоритм действий при...", "В чем причина деградации производительности, если...".
         - Фокус на практику: PostgreSQL Locks, Kafka Consumer Groups, Redis Persistence, Python Memory Management.
         - Весь текст на русском языке.
-        """.formatted("");
+        """.formatted(vacancy);
   }
 }
