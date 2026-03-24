@@ -28,9 +28,7 @@ public class QuizController {
   public ResponseEntity<List<QuestionDto>> generateAndSave(@PathVariable Long userId) throws JsonProcessingException {
     String email = userRepository.findById(userId).map(UserEntity::getEmail)
       .orElseThrow(() -> new RuntimeException("User not found"));
-    String prompt = testPrompt.buildOpenTestPrompt(email);
-    String gigaChatResponse = gigaChatService.sendMessage(prompt);
-    List<QuestionDto> questions = quizService.processAndSave(userId, gigaChatResponse);
+    List<QuestionDto> questions = quizService.generateAndSaveQuestions(userId, email);
     return ResponseEntity.ok(questions);
   }
 }
