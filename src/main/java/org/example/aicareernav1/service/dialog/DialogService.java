@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DialogService {
 
   // Хранилище историй: Ключ - userId, Значение - список сообщений
-  private final Map<Long, List<String>> historyMap = new ConcurrentHashMap<>();
+  private final Map<String, List<String>> historyMap = new ConcurrentHashMap<>();
 
   private final GigaChatService gigaChatService;
 
@@ -28,7 +28,8 @@ public class DialogService {
 
   public ChatResponse startDialog(Long userId, DialogType dialogType, Long contextId) {
     // Очищаем старую историю при старте нового диалога
-    historyMap.put(userId, new ArrayList<>());
+    String key = getKey(userId, dialogType);
+    historyMap.put(key, new ArrayList<>());
 
     String initialMessage = switch (dialogType) {
       case INFORMATION -> Prompts.WELCOME_MESSAGE;
@@ -40,7 +41,8 @@ public class DialogService {
 
   public ChatResponse processMessage(ChatRequest request) {
     Long userId = request.getUserId();
-    List<String> fullHistory = historyMap.computeIfAbsent(userId, k -> new ArrayList<>());
+    String key = getKey(userId, request.getDialogType());
+    List<String> fullHistory = historyMap.computeIfAbsent(key, k -> new ArrayList<>());
 
     // Добавляем сообщение пользователя в историю
     fullHistory.add("User: " + request.getMessage());
@@ -63,7 +65,8 @@ public class DialogService {
   }
 
   public SummaryResponse summarize(Long userId, DialogType dialogType) {
-    List<String> fullHistory = historyMap.getOrDefault(userId, Collections.emptyList());
+    String key = getKey(userId, dialogType);
+    List<String> fullHistory = historyMap.getOrDefault(key, Collections.emptyList());
 
     if (fullHistory.isEmpty()) {
       return new SummaryResponse("История диалога пуста.");
@@ -99,6 +102,10 @@ public class DialogService {
     }
     // Берем последние WINDOW_SIZE элементов
     return new ArrayList<>(fullHistory.subList(size - WINDOW_SIZE, size));
+  }
+
+  private String getKey(Long userId, DialogType dialogType) {
+    return userId + "_" + dialogType.name();
   }
 }
 
