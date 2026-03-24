@@ -1,4 +1,4 @@
-package com.aicareer.core.service.parserOfVacancy;
+package com.aicareer.core.service.parser;
 
 import com.aicareer.core.dto.hhDto.HhKeySkill;
 import com.aicareer.core.dto.hhDto.HhSalary;
@@ -134,4 +134,6 @@ public class ParserService {
     }
     return null;
   }
+
+
 }

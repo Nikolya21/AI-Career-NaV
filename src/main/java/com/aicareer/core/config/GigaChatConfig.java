@@ -1,31 +1,61 @@
 package com.aicareer.core.config;
 
+import chat.giga.client.GigaChatClient;
+import chat.giga.client.auth.AuthClient;
+import chat.giga.client.auth.AuthClientBuilder;
+import chat.giga.model.Scope;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Slf4j
+@Configuration
 public class GigaChatConfig {
-  private final String clientId;
-  private final String clientSecret;
-  private final String scope;
-  private final int timeoutSeconds;
 
-  public GigaChatConfig() {
-    this.clientId = System.getenv("GIGACHAT_CLIENT_ID");
-    this.clientSecret = System.getenv("GIGACHAT_CLIENT_SECRET");
-    this.scope = System.getenv("GIGACHAT_SCOPE");
-    this.timeoutSeconds = Integer.parseInt(
-        System.getenv().getOrDefault("GIGACHAT_TIMEOUT_SECONDS", "30") // дефолт 30 сек
-    );
+  @Value("${gigachat.client-id:}")
+  private String clientId;
+
+  @Value("${gigachat.client-secret:}")
+  private String clientSecret;
+
+  @Value("${gigachat.scope:GIGACHAT_API_PERS}")
+  private String scope;
+
+  @Value("${gigachat.timeout-seconds:30}")
+  private int timeoutSeconds;
+
+  @Value("${gigachat.verify-ssl-certs:false}")
+  private boolean verifySslCerts;
+
+  /**
+   * Создаёт бин GigaChatClient для использования в сервисах
+   */
+  @Bean
+  public GigaChatClient gigaChatClient() {
+    log.info("Создание GigaChatClient с таймаутом {} секунд", timeoutSeconds);
+
+    // Определяем scope из строки
+    Scope gigaScope;
+    try {
+      gigaScope = Scope.valueOf(scope);
+    } catch (IllegalArgumentException e) {
+      log.warn("Неизвестный scope: {}, используем GIGACHAT_API_PERS", scope);
+      gigaScope = Scope.GIGACHAT_API_PERS;
+    }
+
+    // Собираем authKey из clientId:clientSecret
+    String authKey = clientId + ":" + clientSecret;
+
+    return GigaChatClient.builder()
+        .verifySslCerts(verifySslCerts)
+        .readTimeout(timeoutSeconds * 1000)  // переводим в миллисекунды
+        .authClient(AuthClient.builder()
+            .withOAuth(AuthClientBuilder.OAuthBuilder.builder()
+                .scope(gigaScope)
+                .authKey(authKey)
+                .build())
+            .build())
+        .build();
   }
-
-  public GigaChatConfig(String clientId, String clientSecret, String scope, int timeoutSeconds) {
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
-    this.scope = scope;
-    this.timeoutSeconds = timeoutSeconds;
-  }
-
-  // Геттеры
-  public String getClientId() { return clientId; }
-  public String getClientSecret() { return clientSecret; }
-  public String getScope() { return scope; }
-  public int getTimeoutSeconds() { return timeoutSeconds; } // ← НОВЫЙ ГЕТТЕР
-  public int getTimeoutMillis() { return timeoutSeconds * 1000; } // удобно для Java
 }

@@ -7,6 +7,7 @@ import com.aicareer.core.model.vacancy.SelectedPotentialVacancy;
 import com.aicareer.core.model.user.UserPreferences;
 import com.aicareer.core.repository.SelectOfVacancy;
 import com.aicareer.core.service.gigachat.GigaChatService;
+import com.aicareer.core.service.parser.ParserService;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,11 +22,11 @@ public class SelectVacancy implements SelectOfVacancy {
   private SelectedPotentialVacancy selectedVacancy;
   private String analysisResult;
 
-  // Внедряем оба сервиса
-  private final com.aicareer.core.service.parserOfVacancy.ParserService parserService;
+
+  private final ParserService parserService;
   private final GigaChatService gigaChatService;
 
-  public SelectVacancy(com.aicareer.core.service.parserOfVacancy.ParserService parserService, GigaChatService gigaChatService) {
+  public SelectVacancy(ParserService parserService, GigaChatService gigaChatService) {
     this.parserService = parserService;
     this.gigaChatService = gigaChatService;
   }
