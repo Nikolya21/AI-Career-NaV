@@ -1,31 +1,36 @@
 package org.example.aicareernav1.config;
 
+import chat.giga.client.GigaChatClient;
+import chat.giga.client.auth.AuthClient;
+import chat.giga.client.auth.AuthClientBuilder;
+import chat.giga.model.Scope;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
 public class GigaChatConfig {
-  private final String clientId;
-  private final String clientSecret;
-  private final String scope;
-  private final int timeoutSeconds;
 
-  public GigaChatConfig() {
-    this.clientId = System.getenv("GIGACHAT_CLIENT_ID");
-    this.clientSecret = System.getenv("GIGACHAT_CLIENT_SECRET");
-    this.scope = System.getenv("GIGACHAT_SCOPE");
-    this.timeoutSeconds = Integer.parseInt(
-      System.getenv().getOrDefault("GIGACHAT_TIMEOUT_SECONDS", "30") // дефолт 30 сек
-    );
+  @Value("${gigachat.auth-key}")
+  private String authKey;
+
+  @Value("${gigachat.read-timeout-ms:30000}")
+  private int readTimeout;
+
+  @Value("${gigachat.verify-ssl-certs:false}")
+  private boolean verifySslCerts;
+
+  @Bean
+  public GigaChatClient gigaChatClient() {
+    return GigaChatClient.builder()
+        .verifySslCerts(verifySslCerts)
+        .readTimeout(readTimeout)
+        .authClient(AuthClient.builder()
+            .withOAuth(AuthClientBuilder.OAuthBuilder.builder()
+                .scope(Scope.GIGACHAT_API_PERS)
+                .authKey(authKey)
+                .build())
+            .build())
+        .build();
   }
-
-  public GigaChatConfig(String clientId, String clientSecret, String scope, int timeoutSeconds) {
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
-    this.scope = scope;
-    this.timeoutSeconds = timeoutSeconds;
-  }
-
-  // Геттеры
-  public String getClientId() { return clientId; }
-  public String getClientSecret() { return clientSecret; }
-  public String getScope() { return scope; }
-  public int getTimeoutSeconds() { return timeoutSeconds; } // ← НОВЫЙ ГЕТТЕР
-  public int getTimeoutMillis() { return timeoutSeconds * 1000; } // удобно для Java
 }
