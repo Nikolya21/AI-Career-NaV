@@ -6,7 +6,7 @@ import org.example.aicareernav1.model.courseModel.Week;
 import org.example.aicareernav1.model.roadmap.Roadmap;
 import org.example.aicareernav1.model.roadmap.RoadmapZone;
 import org.example.aicareernav1.model.user.entity.*;
-import org.example.aicareernav1.service.roadmap.RoadmapService;
+import org.example.aicareernav1.service.roadMapService.RoadMapService;
 import org.example.aicareernav1.service.user.util.PasswordEncoder;
 import org.example.aicareernav1.repository.user.jpa.*;
 import org.springframework.stereotype.Component;
@@ -23,14 +23,14 @@ public class ServiceDataGenerator {
   private final CVDataJpaRepository cvDataRepository;
   private final UserPreferencesJpaRepository userPreferencesRepository;
   private final UserSkillsJpaRepository userSkillsRepository;
-  private final RoadmapService roadmapService;
+  private final RoadMapService roadmapService;
   private final Random random = new Random();
 
   public ServiceDataGenerator(UserJpaRepository userRepository,
       CVDataJpaRepository cvDataRepository,
       UserPreferencesJpaRepository userPreferencesRepository,
       UserSkillsJpaRepository userSkillsRepository,
-      RoadmapService roadmapService) {
+      RoadMapService roadmapService) {
     this.userRepository = userRepository;
     this.cvDataRepository = cvDataRepository;
     this.userPreferencesRepository = userPreferencesRepository;
