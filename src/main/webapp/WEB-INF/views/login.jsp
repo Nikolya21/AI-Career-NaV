@@ -146,15 +146,21 @@
     <h1>Welcome back</h1>
     <p class="desc">Enter your credentials to access the portal</p>
 
-    <form action="loginHandler.jsp" method="POST">
+    <form action="${pageContext.request.contextPath}/login" method="POST">
         <div class="input-box">
-            <input type="text" name="user" placeholder="Username" required>
+            <input type="text" name="email" placeholder="Email" required>
         </div>
         <div class="input-box">
-            <input type="password" name="pass" placeholder="Password" required>
+            <input type="password" name="password" placeholder="Password" required>
         </div>
         <button type="submit">Continue</button>
     </form>
+
+    <c:if test="${not empty errors}">
+        <div style="color: red;">
+            <c:forEach items="${errors}" var="error">${error}<br/></c:forEach>
+        </div>
+    </c:if>
 
     <div class="footer">
         Don't have an account? <a href="#">Request access</a>
