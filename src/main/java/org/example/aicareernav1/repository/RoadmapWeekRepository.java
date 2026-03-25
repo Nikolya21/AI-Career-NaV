@@ -9,6 +9,6 @@ import java.util.List;
 @Repository
 public interface RoadmapWeekRepository extends JpaRepository<RoadmapWeekEntity, Long> {
   void deleteByUserId(Long userId);
-
+  List<RoadmapWeekEntity> findByUserId(Long userId);
   List<RoadmapWeekEntity> findAllByUserIdOrderByWeekNumberAsc(Long userId);
 }

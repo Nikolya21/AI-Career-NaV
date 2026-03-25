@@ -169,6 +169,15 @@ public class RoadMapService {
 
     return fixed;
   }
+
+  public List<RoadmapWeekEntity> getWeeksByUserId(Long userId) {
+    return roadmapWeekRepository.findByUserId(userId);
+  }
+
+  public RoadmapWeekEntity getWeekById(Long weekId) {
+    return roadmapWeekRepository.findById(weekId)
+      .orElseThrow(() -> new RuntimeException("Week not found"));
+  }
 }
 
 
