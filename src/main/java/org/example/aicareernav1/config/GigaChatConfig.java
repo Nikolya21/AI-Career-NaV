@@ -16,14 +16,17 @@ public class GigaChatConfig {
   @Value("${gigachat.client-id:}")
   private String clientId;
 
-  @Value("${gigachat.client-secret:}")
+  @Value("${gigachat.secret:}")  // Изменено с client-secret на secret
   private String clientSecret;
+
+  @Value("${gigachat.auth-key:}")  // Добавлена поддержка auth-key
+  private String authKey;
 
   @Value("${gigachat.scope:GIGACHAT_API_PERS}")
   private String scope;
 
-  @Value("${gigachat.timeout-seconds:30}")
-  private int timeoutSeconds;
+  @Value("${gigachat.read-timeout-ms:30000}")  // Исправлено название
+  private int readTimeoutMs;
 
   @Value("${gigachat.verify-ssl-certs:false}")
   private boolean verifySslCerts;
@@ -33,7 +36,7 @@ public class GigaChatConfig {
    */
   @Bean
   public GigaChatClient gigaChatClient() {
-    log.info("Создание GigaChatClient с таймаутом {} секунд", timeoutSeconds);
+    log.info("Создание GigaChatClient с таймаутом {} мс", readTimeoutMs);
 
     // Определяем scope из строки
     Scope gigaScope;
@@ -44,18 +47,33 @@ public class GigaChatConfig {
       gigaScope = Scope.GIGACHAT_API_PERS;
     }
 
-    // Собираем authKey из clientId:clientSecret
-    String authKey = clientId + ":" + clientSecret;
+    // Определяем authKey
+    String finalAuthKey;
+    if (authKey != null && !authKey.isEmpty()) {
+      // Используем готовый auth-key
+      finalAuthKey = authKey;
+      log.info("Используем готовый auth-key");
+    } else if (clientId != null && !clientId.isEmpty() && clientSecret != null && !clientSecret.isEmpty()) {
+      // Формируем authKey из clientId и secret
+      finalAuthKey = clientId + ":" + clientSecret;
+      log.info("Используем client-id и secret для аутентификации");
+    } else {
+      log.error("Не настроены credentials для GigaChat! Укажите либо auth-key, либо client-id + secret");
+      throw new IllegalStateException("GigaChat credentials not configured");
+    }
+
+    // Создаем OAuth клиент с правильным authKey
+    AuthClient authClient = AuthClient.builder()
+      .withOAuth(AuthClientBuilder.OAuthBuilder.builder()
+        .scope(gigaScope)
+        .authKey(finalAuthKey)
+        .build())
+      .build();
 
     return GigaChatClient.builder()
-        .verifySslCerts(verifySslCerts)
-        .readTimeout(timeoutSeconds * 1000)  // переводим в миллисекунды
-        .authClient(AuthClient.builder()
-            .withOAuth(AuthClientBuilder.OAuthBuilder.builder()
-                .scope(gigaScope)
-                .authKey(authKey)
-                .build())
-            .build())
-        .build();
+      .verifySslCerts(verifySslCerts)
+      .readTimeout(readTimeoutMs)
+      .authClient(authClient)
+      .build();
   }
 }
