@@ -1,6 +1,5 @@
 package org.example.aicareernav1.service.promptService;
 
-import org.example.aicareernav1.dto.userPromptDto.UserRoadMapPromptDto;
 import org.springframework.stereotype.Service;
 
 @Service

@@ -1,7 +1,7 @@
 package org.example.aicareernav1.service.userService;
 
 import lombok.RequiredArgsConstructor;
-import org.example.aicareernav1.entity.userEntity.UserEntity;
+import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.repository.UserRepository;
 import org.springframework.stereotype.Service;
 

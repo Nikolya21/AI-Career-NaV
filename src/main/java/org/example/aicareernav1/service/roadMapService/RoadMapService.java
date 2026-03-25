@@ -1,13 +1,12 @@
 package org.example.aicareernav1.service.roadMapService;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadMapDto.RoadmapResponseDto;
 import org.example.aicareernav1.entity.roadmapEntity.RoadmapTaskEntity;
 import org.example.aicareernav1.entity.roadmapEntity.RoadmapWeekEntity;
-import org.example.aicareernav1.entity.userEntity.UserEntity;
+import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.repository.RoadmapWeekRepository;
 import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;

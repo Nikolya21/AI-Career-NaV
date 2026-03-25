@@ -32,6 +32,15 @@ public class UserEntity {
   @Column(name = "vacancy_now")
   private String vacancyNow;
 
+  @Column(columnDefinition = "TEXT")
+  private String testResult;
+
+  @Column(columnDefinition = "TEXT")
+  private String jobRequirements;
+
+  @Column(columnDefinition = "TEXT")
+  private String adaptationCourse;
+
   @Column(name = "roadmap_id")
   private Long roadmapId;
 

@@ -18,7 +18,7 @@ public class User {
   private String email;
   private String passwordHash;
   private String vacancyNow; // - delete
-  private Long roadmapsId; //
+  private Long roadmapId; //
   private Instant createdAt;
   private Instant updatedAt;
 
