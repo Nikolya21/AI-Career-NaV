@@ -1,0 +1,37 @@
+/* Форма загрузки PNG в шапке */
+.upload-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 20px;
+}
+
+.upload-form input[type="file"] {
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.upload-png-btn {
+    background: white;
+    color: #e30613;
+    border: 2px solid #e30613;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.upload-png-btn:hover {
+    background: #e30613;
+    color: white;
+}
+
+.upload-error {
+    color: #dc3545;
+    font-size: 12px;
+    white-space: nowrap;
+}

@@ -17,7 +17,7 @@ import java.util.List;
 
 @Slf4j
 @Controller
-@RequestMapping("/choose-vacancy")
+@RequestMapping("/choose-vacancy-old")
 @RequiredArgsConstructor
 public class ChooseVacancyController {
 
