@@ -6,13 +6,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
+import org.example.aicareernav1.dto.testDto.QuizSessionDto;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.promptService.TestPrompt;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -23,6 +27,9 @@ public class QuizService {
   private final RedisTemplate<String, Object> redisTemplate;
   private final GigaChatService gigaChatService;
   private final TestPrompt testPrompt;
+
+  private static final String QUESTIONS_KEY = "user_quiz:questions:";
+  private static final String SESSION_KEY = "user_quiz:session:";
 
   /**
    * Генерирует и сохраняет вопросы для пользователя
@@ -75,7 +82,7 @@ public class QuizService {
    * Сохраняет вопросы в Redis
    */
   public void saveQuestions(Long userId, List<QuestionDto> questions) {
-    String key = "user_quiz:" + userId;
+    String key = QUESTIONS_KEY + userId;
     redisTemplate.opsForValue().set(key, questions, Duration.ofMinutes(30));
   }
 
@@ -83,10 +90,65 @@ public class QuizService {
    * Получает вопросы из Redis
    */
   public List<QuestionDto> getQuestions(Long userId) {
-    String key = "user_quiz:" + userId;
+    String key = QUESTIONS_KEY + userId;
     Object data = redisTemplate.opsForValue().get(key);
     if (data == null) return null;
     return objectMapper.convertValue(data, new TypeReference<List<QuestionDto>>() {});
+  }
+
+  public void createQuizSession(Long userId) {
+    String key = SESSION_KEY + userId;
+    QuizSessionDto session = new QuizSessionDto();
+    session.setUserId(userId);
+    session.setAnswers(new ConcurrentHashMap<>()); // Используем ConcurrentHashMap для потокобезопасности
+    redisTemplate.opsForValue().set(key, session, Duration.ofHours(2));
+  }
+
+  public void saveAnswer(Long userId, String questionText, String answer) {
+    String key = SESSION_KEY + userId;
+    QuizSessionDto session = (QuizSessionDto) redisTemplate.opsForValue().get(key);
+
+    if (session == null) {
+      // Если сессии нет, создаем новую
+      session = new QuizSessionDto();
+      session.setUserId(userId);
+      session.setAnswers(new ConcurrentHashMap<>());
+    }
+
+    // Сохраняем пару вопрос → ответ
+    session.getAnswers().put(questionText, answer);
+
+    // Обновляем в Redis
+    redisTemplate.opsForValue().set(key, session, Duration.ofHours(2));
+  }
+
+
+  public Map<String, String> getAllAnswers(Long userId) {
+    String key = SESSION_KEY + userId;
+    QuizSessionDto session = (QuizSessionDto) redisTemplate.opsForValue().get(key);
+
+    if (session == null) {
+      return new HashMap<>();
+    }
+
+    return session.getAnswers();
+  }
+
+  public String getAnswerByQuestion(Long userId, String questionText) {
+    Map<String, String> answers = getAllAnswers(userId);
+    return answers.get(questionText);
+  }
+
+  public boolean isQuizCompleted(Long userId) {
+    List<QuestionDto> questions = getQuestions(userId);
+    Map<String, String> answers = getAllAnswers(userId);
+
+    if (questions == null || answers == null) {
+      return false;
+    }
+
+    // Проверяем, что количество ответов равно количеству вопросов
+    return answers.size() == questions.size();
   }
 
   /**
