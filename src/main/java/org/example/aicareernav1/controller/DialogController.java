@@ -9,6 +9,8 @@ import org.example.aicareernav1.service.dialog.DialogService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/dialogs")
 @RequiredArgsConstructor
@@ -37,5 +39,12 @@ public class DialogController {
     @RequestParam Long userId,
     @RequestParam DialogType type) {
     return ResponseEntity.ok(dialogService.summarize(userId, type));
+  }
+
+  @GetMapping("/history")
+  public ResponseEntity<List<String>> getHistory(
+    @RequestParam Long userId,
+    @RequestParam DialogType type) {
+    return ResponseEntity.ok(dialogService.getHistory(userId, type));
   }
 }

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои пожелания — AI Career Nav</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #6f42c1;
+            --success-color: #28a745;
+            --bg-color: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h2 { color: #333; margin-bottom: 10px; }
+        p { color: #666; margin-bottom: 25px; line-height: 1.5; }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #e1e4e8;
+            border-radius: 12px;
+            resize: none;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: var(--primary-color);
+        }
+
+        .button-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:active { transform: scale(0.98); }
+
+        .btn-save {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .btn-ai {
+            background-color: var(--secondary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🎯 Чего вы хотите от карьеры?</h2>
+    <p>Опишите ваши цели, желаемый стек или условия работы. Мы используем это для подбора вакансий.</p>
+
+    <textarea id="wishesInput"
+              placeholder="Например: Хочу перейти из системного администрирования в Java-разработку, готов уделять учебе 10 часов в неделю..."></textarea>
+
+    <div class="button-stack">
+        <button class="btn-save" onclick="saveWishes()">Сохранить и продолжить</button>
+        <button class="btn-ai" onclick="startAIConsultation()">
+            ✨ Помощь ИИ-ассистента
+        </button>
+    </div>
+
+    <div id="status" class="status"></div>
+</div>
+
+<script>
+    // Для разработки используем жесткий ID, в будущем заменим на сессию
+    const USER_ID = 1;
+
+    async function saveWishes() {
+        const input = document.getElementById('wishesInput');
+        const status = document.getElementById('status');
+        const message = input.value.trim();
+
+        if (!message) {
+            status.style.color = "red";
+            status.innerText = "Пожалуйста, введите текст ваших пожеланий.";
+            return;
+        }
+
+        status.style.color = "gray";
+        status.innerText = "Сохранение...";
+
+        try {
+            const response = await fetch(`/api/wishes?userId=${USER_ID}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wishesMessage: message })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                status.style.color = "green";
+                status.innerText = "Успешно сохранено! Перенаправляем...";
+                // Редирект на следующий шаг (например, подбор вакансий)
+                setTimeout(() => {
+                    window.location.href = data.nextStepUrl;
+                }, 1000);
+            } else {
+                status.style.color = "red";
+                status.innerText = "Ошибка: " + (data.message || "Не удалось сохранить");
+            }
+        } catch (e) {
+            status.style.color = "red";
+            status.innerText = "Ошибка связи с сервером.";
+        }
+    }
+
+    function startAIConsultation() {
+        // Перенаправляем на DialogViewController, который мы создали ранее
+        window.location.href = `/dialogs/chat?userId=${USER_ID}&type=INFORMATION`;
+    }
+</script>
+
+</body>
+</html>

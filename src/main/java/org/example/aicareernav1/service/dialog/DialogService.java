@@ -19,22 +19,23 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class DialogService {
 
-  // Хранилище историй: Ключ - userId, Значение - список сообщений
   private final Map<String, List<String>> historyMap = new ConcurrentHashMap<>();
-
   private final GigaChatService gigaChatService;
-
   private static final int WINDOW_SIZE = 8;
 
   public ChatResponse startDialog(Long userId, DialogType dialogType, Long contextId) {
-    // Очищаем старую историю при старте нового диалога
     String key = getKey(userId, dialogType);
-    historyMap.put(key, new ArrayList<>());
 
+    List<String> history = new ArrayList<>();
+
+    // 2. Выбираем приветственное сообщение
     String initialMessage = switch (dialogType) {
       case INFORMATION -> Prompts.WELCOME_MESSAGE;
       case ROADMAP -> Prompts.ROADMAP_INITIAL_QUESTION;
     };
+
+    history.add("AI: " + initialMessage);
+    historyMap.put(key, history);
 
     return new ChatResponse(initialMessage, false);
   }
@@ -42,12 +43,11 @@ public class DialogService {
   public ChatResponse processMessage(ChatRequest request) {
     Long userId = request.getUserId();
     String key = getKey(userId, request.getDialogType());
+
     List<String> fullHistory = historyMap.computeIfAbsent(key, k -> new ArrayList<>());
 
-    // Добавляем сообщение пользователя в историю
     fullHistory.add("User: " + request.getMessage());
 
-    // Получаем только "хвост" диалога для отправки в LLM
     List<String> contextWindow = getContextWindow(fullHistory);
 
     String systemPrompt = switch (request.getDialogType()) {
@@ -55,13 +55,17 @@ public class DialogService {
       case ROADMAP -> Prompts.ROADMAP_SYSTEM_PROMPT;
     };
 
-    // Здесь вызывается твой LLM Client, куда передается systemPrompt + contextWindow
     String llmReply = gigaChatService.chat(systemPrompt, contextWindow);
 
-    // Добавляем ответ LLM в историю
     fullHistory.add("AI: " + llmReply);
 
     return new ChatResponse(llmReply, false);
+  }
+
+  // Новый метод для фронтенда: загрузить историю при обновлении страницы
+  public List<String> getHistory(Long userId, DialogType dialogType) {
+    String key = getKey(userId, dialogType);
+    return new ArrayList<>(historyMap.getOrDefault(key, Collections.emptyList()));
   }
 
   public SummaryResponse summarize(Long userId, DialogType dialogType) {
@@ -72,26 +76,16 @@ public class DialogService {
       return new SummaryResponse("История диалога пуста.");
     }
 
-    // Собираем историю
-    StringBuilder historyBuilder = new StringBuilder();
-    for (String msg : fullHistory) {
-      historyBuilder.append(msg).append("\n");
+    if (fullHistory.size() < 4) {
+      return new SummaryResponse("Слишком мало данных. Пожалуйста, ответьте на вопросы ассистента.");
     }
 
-    // Выбираем промпт в зависимости от типа диалога
     String systemPrompt = switch (dialogType) {
       case INFORMATION -> Prompts.SUMMARIZE_INFO_PROMPT;
       case ROADMAP -> Prompts.SUMMARIZE_ROADMAP_PROMPT;
     };
 
     String llmResult = gigaChatService.summarize(fullHistory, systemPrompt);
-    /* ПРИМЕР ТОГО, ЧТО ВЕРНЕТ LLM ДЛЯ ROADMAP:
-       1. Время: 10 часов в неделю.
-       2. Формат: Видео-лекции, есть опыт на Stepik.
-       3. Драйвер: Смена профессии, интерес к алгоритмам.
-       4. База: Инженерное образование, хобби - шахматы.
-    */
-
     return new SummaryResponse(llmResult);
   }
 
@@ -100,7 +94,6 @@ public class DialogService {
     if (size <= WINDOW_SIZE) {
       return new ArrayList<>(fullHistory);
     }
-    // Берем последние WINDOW_SIZE элементов
     return new ArrayList<>(fullHistory.subList(size - WINDOW_SIZE, size));
   }
 
@@ -108,4 +101,3 @@ public class DialogService {
     return userId + "_" + dialogType.name();
   }
 }
-
