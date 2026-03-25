@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Career Interview</title>
+    <link rel="stylesheet" th:href="@{/css/InterviewPage.css}">
+</head>
+<body th:data-user-id="${userId}">
+
+<div class="interview-container">
+    <div id="loader" class="loader">Загрузка вопросов...</div>
+
+    <div id="quiz-content" style="display: none;">
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            <span id="progress-text" class="progress-text">Вопрос 1 из 0</span>
+        </div>
+
+        <div id="question-card" class="question-card">
+            <h2 id="question-title" class="question-title"></h2>
+            <div class="answer-section">
+                <textarea id="answer-input" class="answer-input" placeholder="Введите ваш ответ здесь..." rows="6"></textarea>
+                <button id="next-button" class="next-button" onclick="submitAnswer()">Следующий вопрос →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="completion-card" class="completion-card" style="display: none;">
+        <!-- Сюда вставится финальный текст через JS -->
+    </div>
+</div>
+
+<script>
+    const userId = document.body.getAttribute('data-user-id');
+    let currentQuestion = null;
+    let totalQuestions = 0;
+
+    async function initQuiz() {
+        if (!userId) return;
+        try {
+            const genRes = await fetch('/api/v1/quiz/generate/' + userId, { method: 'POST' });
+            const questions = await genRes.json();
+            totalQuestions = questions.length;
+
+            const startRes = await fetch('/api/v1/quiz/start/' + userId);
+            currentQuestion = await startRes.json();
+
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('quiz-content').style.display = 'block';
+            updateUI();
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loader').innerText = 'Ошибка загрузки теста.';
+        }
+    }
+
+    function updateUI() {
+        if (!currentQuestion || !currentQuestion.question) {
+            showCompletion();
+            return;
+        }
+
+        const card = document.getElementById('question-card');
+        card.classList.remove('fade-out');
+        card.classList.add('fade-in');
+
+        document.getElementById('question-title').innerText = currentQuestion.question;
+        document.getElementById('answer-input').value = '';
+
+        const qNumber = currentQuestion.number || totalQuestions;
+        const progress = (qNumber / totalQuestions) * 100;
+
+        document.getElementById('progress-fill').style.width = progress + '%';
+        document.getElementById('progress-text').innerText = 'Вопрос ' + qNumber + ' из ' + totalQuestions;
+
+        if (qNumber === totalQuestions) {
+            document.getElementById('next-button').innerText = 'Завершить';
+        }
+    }
+
+    async function submitAnswer() {
+        const answerVal = document.getElementById('answer-input').value;
+        if (!answerVal.trim()) return alert('Пожалуйста, введите ответ');
+
+        const card = document.getElementById('question-card');
+        card.classList.add('fade-out');
+
+        try {
+            const response = await fetch('/api/v1/quiz/answer/' + userId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question: currentQuestion.question,
+                    answer: answerVal.trim()
+                })
+            });
+
+            // Если сервер вернул 204 или любую ошибку (например 404), считаем что тест окончен
+            if (response.status === 204 || !response.ok) {
+                currentQuestion = null;
+            } else {
+                const text = await response.text();
+                try {
+                    currentQuestion = text ? JSON.parse(text) : null;
+                } catch (e) {
+                    // Если пришел текст "Вопросы не найдены", JSON.parse упадет.
+                    // Ловим это и завершаем тест.
+                    currentQuestion = null;
+                }
+            }
+
+            setTimeout(() => {
+                if (currentQuestion && currentQuestion.question) {
+                    updateUI();
+                } else {
+                    showCompletion();
+                }
+            }, 300);
+
+        } catch (error) {
+            console.error("Критическая ошибка:", error);
+            showCompletion();
+        }
+    } // Сюда добавлена закрывающая скобка!
+
+    function showCompletion() {
+        const completionCard = document.getElementById('completion-card');
+        document.getElementById('quiz-content').style.display = 'none';
+
+        completionCard.innerHTML = '<h2>✅ Тест успешно завершен!</h2>' +
+            '<p>Обрабатываем ваши ответы, строим персональный план обучения...</p>' +
+            '<div class="loader" style="font-size: 14px; margin-top: 20px;">Пожалуйста, подождите...</div>';
+
+        completionCard.style.display = 'block';
+
+        setTimeout(() => {
+            window.location.href = '/roadmap';
+        }, 3000);
+    }
+
+    initQuiz();
+</script>
+
+</body>
+</html>

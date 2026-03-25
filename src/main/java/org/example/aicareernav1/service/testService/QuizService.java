@@ -6,14 +6,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
+import org.example.aicareernav1.dto.testDto.QuizSessionDto;
+import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.promptService.TestPrompt;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
-import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -23,6 +27,12 @@ public class QuizService {
   private final RedisTemplate<String, Object> redisTemplate;
   private final GigaChatService gigaChatService;
   private final TestPrompt testPrompt;
+  private final UserRepository userRepository;
+  private final AnalysisService analysisService;
+
+
+  private static final String QUESTIONS_KEY = "user_quiz:questions:";
+  private static final String SESSION_KEY = "user_quiz:session:";
 
   /**
    * Генерирует и сохраняет вопросы для пользователя
@@ -75,7 +85,7 @@ public class QuizService {
    * Сохраняет вопросы в Redis
    */
   public void saveQuestions(Long userId, List<QuestionDto> questions) {
-    String key = "user_quiz:" + userId;
+    String key = QUESTIONS_KEY + userId;
     redisTemplate.opsForValue().set(key, questions, Duration.ofMinutes(30));
   }
 
@@ -83,10 +93,75 @@ public class QuizService {
    * Получает вопросы из Redis
    */
   public List<QuestionDto> getQuestions(Long userId) {
-    String key = "user_quiz:" + userId;
+    String key = QUESTIONS_KEY + userId;
     Object data = redisTemplate.opsForValue().get(key);
     if (data == null) return null;
     return objectMapper.convertValue(data, new TypeReference<List<QuestionDto>>() {});
+  }
+
+  public void createQuizSession(Long userId) {
+    String key = SESSION_KEY + userId;
+    QuizSessionDto session = new QuizSessionDto();
+    session.setUserId(userId);
+    session.setAnswers(new ConcurrentHashMap<>()); // Используем ConcurrentHashMap для потокобезопасности
+    redisTemplate.opsForValue().set(key, session, Duration.ofHours(2));
+  }
+
+  public void saveAnswer(Long userId, String questionText, String answer) {
+    String key = SESSION_KEY + userId;
+    QuizSessionDto session = (QuizSessionDto) redisTemplate.opsForValue().get(key);
+
+    if (session == null) {
+      session = new QuizSessionDto();
+      session.setUserId(userId);
+      session.setAnswers(new ConcurrentHashMap<>());
+    }
+
+    session.getAnswers().put(questionText, answer);
+    redisTemplate.opsForValue().set(key, session, Duration.ofHours(2));
+
+    // ДОБАВЛЕНО: Проверяем, не завершен ли тест
+    checkAndCompleteTest(userId);
+  }
+
+
+  public Map<String, String> getAllAnswers(Long userId) {
+    String key = SESSION_KEY + userId;
+    QuizSessionDto session = (QuizSessionDto) redisTemplate.opsForValue().get(key);
+
+    if (session == null) {
+      return new HashMap<>();
+    }
+
+    return session.getAnswers();
+  }
+
+  public String getAnswerByQuestion(Long userId, String questionText) {
+    Map<String, String> answers = getAllAnswers(userId);
+    return answers.get(questionText);
+  }
+
+  private void checkAndCompleteTest(Long userId) {
+    List<QuestionDto> questions = getQuestions(userId);
+    Map<String, String> answers = getAllAnswers(userId);
+
+    if (questions != null && answers != null && answers.size() == questions.size()) {
+      log.info("Пользователь {} ответил на все {} вопросов. Автоматическое завершение теста.",
+        userId, questions.size());
+      completeTest(userId);
+    }
+  }
+
+  public boolean isQuizCompleted(Long userId) {
+    List<QuestionDto> questions = getQuestions(userId);
+    Map<String, String> answers = getAllAnswers(userId);
+
+    if (questions == null || answers == null) {
+      return false;
+    }
+
+    // Проверяем, что количество ответов равно количеству вопросов
+    return answers.size() == questions.size();
   }
 
   /**
@@ -136,6 +211,14 @@ public class QuizService {
     log.debug("Восстановленный JSON: {}", fixed);
 
     return fixed;
+  }
+
+  public void clearAllQuizData(Long userId) {
+    String questionsKey = QUESTIONS_KEY + userId;
+    String sessionKey = SESSION_KEY + userId;
+    redisTemplate.delete(questionsKey);
+    redisTemplate.delete(sessionKey);
+    log.debug("Очищены данные теста для пользователя: {}", userId);
   }
 
   /**
@@ -206,5 +289,46 @@ public class QuizService {
   public void deleteQuestions(Long userId) {
     String key = "user_quiz:" + userId;
     redisTemplate.delete(key);
+  }
+
+  public void completeTest(Long userId) {
+    log.info("Завершение теста для пользователя: {}", userId);
+
+    try {
+      // 1. Получаем все ответы пользователя
+      Map<String, String> answers = getAllAnswers(userId);
+
+      if (answers == null || answers.isEmpty()) {
+        log.error("Нет ответов для анализа у пользователя: {}", userId);
+        throw new RuntimeException("Нет ответов для анализа");
+      }
+
+      // 2. Получаем вопросы, чтобы проверить полноту
+      List<QuestionDto> questions = getQuestions(userId);
+      if (questions == null) {
+        log.error("Нет вопросов для пользователя: {}", userId);
+        throw new RuntimeException("Нет вопросов для анализа");
+      }
+
+      log.info("Получено {} ответов из {} вопросов", answers.size(), questions.size());
+
+      // 3. Анализируем ответы
+      String analysisResult = analysisService.analyzeWithRetry(answers, 1);
+
+      // 4. Форматируем результат
+      String formattedResult = analysisService.formatAnalysis(analysisResult);
+
+      // 5. Сохраняем результат в БД
+      userRepository.updateTestResult(userId, formattedResult);
+      log.info("Результат анализа сохранен в БД для пользователя: {}", userId);
+
+      // 6. Очищаем Redis
+      clearAllQuizData(userId);
+      log.info("Данные теста удалены из Redis для пользователя: {}", userId);
+
+    } catch (Exception e) {
+      log.error("Ошибка при завершении теста для пользователя {}: {}", userId, e.getMessage(), e);
+      throw new RuntimeException("Не удалось завершить тест: " + e.getMessage(), e);
+    }
   }
 }
