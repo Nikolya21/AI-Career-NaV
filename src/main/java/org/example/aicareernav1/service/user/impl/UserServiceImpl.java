@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.user.impl;
 
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.example.aicareernav1.dto.user.*;
 import org.example.aicareernav1.model.user.*;
 import org.example.aicareernav1.model.user.entity.*;
