@@ -65,28 +65,38 @@ public class QuizController {
     String questionText = request.get("question");
     String answer = request.get("answer");
 
-    // Сохраняем ответ (вопрос → ответ)
+    // 1. Просто сохраняем ответ
     quizService.saveAnswer(userId, questionText, answer);
 
-    // Получаем текущий номер вопроса
+    // 2. Получаем список вопросов
     List<QuestionDto> questions = quizService.getQuestions(userId);
+
+    // Если списка нет вообще, просто возвращаем 204 (конец)
+    if (questions == null || questions.isEmpty()) {
+      return ResponseEntity.noContent().build();
+    }
+
+    // 3. Ищем текущий номер
     int currentNumber = questions.stream()
       .filter(q -> q.getQuestion().equals(questionText))
       .findFirst()
       .map(QuestionDto::getNumber)
       .orElse(0);
 
-    // Получаем следующий вопрос
-    QuestionDto nextQuestion = null;
-    if (currentNumber < questions.size()) {
-      nextQuestion = questions.stream()
-        .filter(q -> q.getNumber() == currentNumber + 1)
-        .findFirst()
-        .orElse(null);
+    // 4. Ищем следующий вопрос
+    QuestionDto nextQuestion = questions.stream()
+      .filter(q -> q.getNumber() == currentNumber + 1)
+      .findFirst()
+      .orElse(null);
+
+    // 5. Если следующего нет — статус 204 (No Content)
+    if (nextQuestion == null) {
+      return ResponseEntity.noContent().build();
     }
 
     return ResponseEntity.ok(nextQuestion);
   }
+
 
   /**
    * Получить все ответы (для отладки)

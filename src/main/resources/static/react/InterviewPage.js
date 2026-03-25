@@ -16,21 +16,27 @@ const InterviewPage = ({ userId }) => {
 
     const loadFirstQuestion = async () => {
         try {
+            setIsLoading(true);
+            // 1. СНАЧАЛА ГЕНЕРИРУЕМ ТЕСТ (POST запрос)
+            const questionsResponse = await fetch(`/api/v1/quiz/generate/${userId}`, {
+                method: 'POST'
+            });
+
+            if (!questionsResponse.ok) throw new Error('Ошибка генерации');
+
+            const questions = await questionsResponse.json();
+            setTotalQuestions(questions.length);
+
+            // 2. И ТОЛЬКО ПОТОМ ПОЛУЧАЕМ ПЕРВЫЙ ВОПРОС
             const response = await fetch(`/api/v1/quiz/start/${userId}`);
             const data = await response.json();
+
             setCurrentQuestion(data);
             setCurrentNumber(data.number);
             setIsLoading(false);
 
-            // Получаем общее количество вопросов
-            const questionsResponse = await fetch(`/api/v1/quiz/generate/${userId}`, {
-                method: 'POST'
-            });
-            const questions = await questionsResponse.json();
-            setTotalQuestions(questions.length);
-
         } catch (error) {
-            console.error('Ошибка загрузки вопросов:', error);
+            console.error('Ошибка загрузки:', error);
             setIsLoading(false);
         }
     };
@@ -44,29 +50,33 @@ const InterviewPage = ({ userId }) => {
         try {
             const response = await fetch(`/api/v1/quiz/answer/${userId}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: currentQuestion.question,
                     answer: answer.trim()
                 }),
             });
 
-            const nextQuestion = await response.json();
+// Проверяем, есть ли содержимое в ответе
+            const text = await response.text();
+            const nextQuestion = text ? JSON.parse(text) : null;
 
-            // Анимация перехода
             setIsTransitioning(true);
             setAnswer('');
 
             setTimeout(() => {
-                if (nextQuestion) {
+                if (nextQuestion && nextQuestion.question) {
                     setCurrentQuestion(nextQuestion);
                     setCurrentNumber(nextQuestion.number);
+                    setIsTransitioning(false);
                 } else {
+                    // ЕСЛИ ВОПРОСОВ БОЛЬШЕ НЕТ:
                     setIsCompleted(true);
+                    // Редирект на роадмап через 3 секунды
+                    setTimeout(() => {
+                        window.location.href = '/roadmap';
+                    }, 3000);
                 }
-                setIsTransitioning(false);
             }, 500);
 
         } catch (error) {
