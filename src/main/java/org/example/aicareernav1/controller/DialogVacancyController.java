@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 @Controller
 @RequiredArgsConstructor
-public class DialogController {
+public class DialogVacancyController {
 
   private final GigaChatService gigaChatService;
   private final ParserService parserService;
