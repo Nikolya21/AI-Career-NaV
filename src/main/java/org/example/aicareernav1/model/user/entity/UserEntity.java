@@ -20,7 +20,7 @@ public class UserEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false)
+  @Column(nullable = true)
   private String name;
 
   @Column(nullable = false, unique = true)
@@ -29,16 +29,19 @@ public class UserEntity {
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
 
+  @Column(name = "wishes")
+  private String wishes;
+
   @Column(name = "vacancy_now")
   private String vacancyNow;
 
-  @Column(columnDefinition = "TEXT")
+  @Column(name = "vacancy_requirements")
+  private String vacancyRequirements;
+
+  @Column(name = "test_result", columnDefinition = "TEXT")
   private String testResult;
 
-  @Column(columnDefinition = "TEXT")
-  private String jobRequirements;
-
-  @Column(columnDefinition = "TEXT")
+  @Column(name = "adaptation_course", columnDefinition = "TEXT")
   private String adaptationCourse;
 
   @Column(name = "roadmap_id")

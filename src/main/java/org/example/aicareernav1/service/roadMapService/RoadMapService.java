@@ -35,7 +35,7 @@ public class RoadMapService {
     // 2. Берем данные из его полей и формируем промпт
     String prompt = roadMapPrompt.buildOpenRoadMapPrompt(
       user.getTestResult(),
-      user.getJobRequirements(),
+      user.getVacancyRequirements(),
       user.getAdaptationCourse()
     );
 
