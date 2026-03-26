@@ -759,6 +759,34 @@
         </div>
       </div>
 
+      <form th:action="@{/choose-vacancy}" method="post" id="vacancyForm">
+        <div class="vacancy-options">
+          <div th:each="vacancy, iterStat : ${suggestedVacancies}" class="vacancy-option">
+            <input type="radio"
+                   th:id="'vacancy_' + ${iterStat.index}"
+                   name="selectedVacancy"
+                   th:value="${vacancy}"
+                   required>
+            <label th:for="'vacancy_' + ${iterStat.index}" class="vacancy-label">
+              <div class="vacancy-number" th:text="${iterStat.index + 1}">1</div>
+              <div class="vacancy-content">
+                <div class="vacancy-title" th:text="${vacancy}">Java Developer</div>
+                <div class="vacancy-subtitle">Нажмите, чтобы выбрать</div>
+              </div>
+              <div class="check-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" id="submitBtn" class="submit-btn" disabled>
+          <span>Выбрать вакансию</span>
+          <span>→</span>
+        </button>
+      </form>
 
       <!-- Empty State -->
       <div th:if="${suggestedVacancies == null or suggestedVacancies.isEmpty()}" class="error-message">
@@ -816,41 +844,56 @@
   </script>
   <script th:inline="javascript">
     document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Получаем userId (из URL или сессии)
-      const urlParams = new URLSearchParams(window.location.search);
-      const userId = urlParams.get('userId') || 1;
+      // Получаем email пользователя из сессии (передан через model)
+      const userEmail = [[${userEmail}]];
 
       const loader = document.getElementById('vacancies-loader');
       const grid = document.getElementById('vacancies-grid');
 
       try {
-        // 2. Вызываем твой контроллер VacancyByWishesController
-        const response = await fetch(`/api/vacancies/by-wishes?userId=${userId}`);
+        // Загружаем вакансии
+        const response = await fetch(`/api/vacancies/by-wishes?userId=1`);
         const vacancies = await response.json();
 
-        // 3. Убираем лоадер и рисуем карточки
         loader.style.display = 'none';
         grid.style.display = 'grid';
 
         grid.innerHTML = vacancies.map(vacancy => `
-              <div class="vacancy-item" onclick="selectVacancy('${vacancy}')">
-                  <h3>${vacancy}</h3>
-                  <p style="color: #a5b4fc; font-size: 0.8rem; margin-bottom: 1rem;">Подходит по вашим пожеланиям</p>
-                  <button class="select-btn">Выбрать</button>
-              </div>
-          `).join('');
+        <div class="vacancy-item" onclick="selectAndSaveVacancy('${vacancy}', '${userEmail}')">
+          <h3>${vacancy}</h3>
+          <p style="color: #a5b4fc; font-size: 0.8rem; margin-bottom: 1rem;">Подходит по вашим пожеланиям</p>
+          <button class="select-btn">Выбрать</button>
+        </div>
+      `).join('');
 
       } catch (error) {
         loader.innerHTML = '<p style="color: #ef4444;">Ошибка при загрузке вакансий. Попробуйте обновить страницу.</p>';
       }
     });
 
-    function selectVacancy(name) {
-      // Сохраняем выбранную вакансию в sessionStorage
-      sessionStorage.setItem('selectedVacancy', name);
+    async function selectAndSaveVacancy(vacancyName, userEmail) {
+      try {
+        // Сохраняем вакансию в БД
+        const response = await fetch('/choose-vacancy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `selectedVacancy=${encodeURIComponent(vacancyName)}`
+        });
 
-      // Переход на страницу реальных вакансий с параметром vacancy
-      window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(name)}`;
+        if (response.ok) {
+          // Если сохранилось успешно, переходим к реальным вакансиям
+          window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
+        } else {
+          console.error('Ошибка при сохранении вакансии');
+          // Всё равно переходим, даже если ошибка
+          window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
+        }
+      } catch (error) {
+        console.error('Ошибка:', error);
+        window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
+      }
     }
   </script>
 

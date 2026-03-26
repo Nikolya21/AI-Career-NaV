@@ -3,7 +3,9 @@ package org.example.aicareernav1.controller;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.model.vacancy.RealVacancy;
+import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.parser.ParserService;
 import org.springframework.stereotype.Controller;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Controller
@@ -23,6 +26,7 @@ public class DialogVacancyController {
 
   private final GigaChatService gigaChatService;
   private final ParserService parserService;
+  private final UserRepository userRepository;
 
   private static final String SYSTEM_PROMPT = """
         Ты — опытный HR-аналитик и карьерный консультант.
@@ -158,14 +162,43 @@ public class DialogVacancyController {
 
   @PostMapping("/choose-vacancy")
   public String chooseVacancy(@RequestParam("selectedVacancy") String selectedVacancyName,
-      HttpSession session) {
+                              HttpSession session) {
     if (session.getAttribute("authenticated") == null) {
+      log.warn("⚠️ Пользователь не аутентифицирован");
       return "redirect:/login";
     }
 
     session.setAttribute("selectedVacancyName", selectedVacancyName);
-    log.info("✅ Пользователь выбрал вакансию: {}", selectedVacancyName);
 
+    // Логируем все атрибуты сессии для отладки
+    log.info("🔍 Содержимое сессии:");
+    log.info("  - authenticated: {}", session.getAttribute("authenticated"));
+    log.info("  - userId: {}", session.getAttribute("userId"));
+    log.info("  - userEmail: {}", session.getAttribute("userEmail"));
+    log.info("  - userName: {}", session.getAttribute("userName"));
+
+    Long userId = (Long) session.getAttribute("userId");
+    if (userId != null) {
+      log.info("🔍 Ищем пользователя с ID: {}", userId);
+      Optional<UserEntity> userOpt = userRepository.findById(userId);
+      if (userOpt.isPresent()) {
+        UserEntity user = userOpt.get();
+        log.info("🔍 Найден пользователь: {}, текущая вакансия: {}", user.getEmail(), user.getVacancyNow());
+        user.setVacancyNow(selectedVacancyName);
+        userRepository.save(user);
+        log.info("✅ Вакансия {} сохранена в БД для пользователя {}", selectedVacancyName, user.getEmail());
+
+        // Проверяем, что сохранилось
+        UserEntity savedUser = userRepository.findById(userId).get();
+        log.info("✅ Проверка: в БД теперь вакансия: {}", savedUser.getVacancyNow());
+      } else {
+        log.warn("⚠️ Пользователь с ID {} не найден в БД", userId);
+      }
+    } else {
+      log.warn("⚠️ userId отсутствует в сессии");
+    }
+
+    log.info("✅ Пользователь выбрал вакансию: {}", selectedVacancyName);
     return "redirect:/real-vacancies";
   }
 
