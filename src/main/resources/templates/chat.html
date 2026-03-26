@@ -25,7 +25,7 @@
 <body>
 
 <div class="chat-container">
-    <a href="/wishes/form" style="text-decoration: none; color: #666; font-size: 14px;">← Назад</a>
+    <a id="backLink" href="/wishes/form" style="text-decoration: none; color: #666; font-size: 14px;">← Назад</a>
     <h3 style="text-align: center; color: #333;" th:text="${dialogType.name() == 'INFORMATION' ? 'Опрос по целям' : 'Создание плана обучения'}">Чат</h3>
 
     <div class="chat-box" id="chatBox"></div>
@@ -54,7 +54,12 @@
     const dialogType = [[${dialogType}]];
 
     window.onload = async () => {
-        const res = await fetch(`/api/dialogs/history?userId=${userId}&type=${dialogType}`);
+        // ОБНОВЛЕНИЕ ССЫЛКИ "НАЗАД"
+        if (userId) {
+            document.getElementById('backLink').href = `/wishes/form?userId=${userId}`;
+        }
+
+        const res = await fetch(`/api/dialogs/history?userId=${userId}&type=${dialogType}`)
         const history = await res.json();
 
         if (history.length === 0) {
@@ -117,7 +122,7 @@
 
             // Проверяем, не является ли ответ системным предупреждением о нехватке данных
             const isTooShort = data.summary.includes("Слишком мало данных") ||
-                               data.summary.includes("История диалога пуста");
+                data.summary.includes("История диалога пуста");
 
             if (isTooShort) {
                 // Показываем текст предупреждения, но СКРЫВАЕМ блок с кнопкой перехода
@@ -154,7 +159,8 @@
         if (dialogType === 'INFORMATION') {
             navigator.clipboard.writeText(text).then(() => {
                 alert("Резюме скопировано! Сейчас вы вернетесь к форме.");
-                window.location.href = '/wishes/form';
+                // Добавляем userId и сюда
+                window.location.href = `/wishes/form?userId=${userId}`;
             });
         } else {
             // Для ROADMAP — идем на страницу результата
