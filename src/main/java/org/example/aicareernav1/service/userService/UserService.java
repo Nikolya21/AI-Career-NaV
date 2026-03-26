@@ -14,4 +14,9 @@ public class UserService {
       .map(UserEntity::getVacancyNow)
       .orElse("Вакансия не заполнена");
   }
+
+  public UserEntity findByEmail(String email) {
+    return userRepository.findByEmail(email)
+      .orElseThrow(() -> new RuntimeException("Пользователь не найден: " + email));
+  }
 }

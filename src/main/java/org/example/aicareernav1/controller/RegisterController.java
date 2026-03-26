@@ -1,82 +1,82 @@
 package org.example.aicareernav1.controller;
 
 import jakarta.servlet.http.HttpSession;
-import java.io.UnsupportedEncodingException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.dto.user.UserRegistrationDto;
+import org.example.aicareernav1.service.user.UserService;
+import org.example.aicareernav1.service.user.model.RegistrationResult;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Controller
 @RequiredArgsConstructor
 public class RegisterController {
 
+  private final UserService userService;
+
+  // ВАЖНО: Добавляем метод для отображения формы регистрации
   @GetMapping("/register")
-  public String showRegisterForm() {
+  public String showRegisterForm(Model model) {
+    log.info("=== SHOW REGISTER FORM ===");
+    model.addAttribute("userRegistrationDto", new UserRegistrationDto());
     return "register";
   }
 
   @PostMapping("/register")
   public String register(
-      @RequestParam("name") String name,
-      @RequestParam("email") String email,
-      @RequestParam("password") String password,
-      @RequestParam("confirmPassword") String confirmPassword,
-      HttpSession session,
-      Model model) throws UnsupportedEncodingException {
+    @Valid @ModelAttribute("userRegistrationDto") UserRegistrationDto registrationDto,
+    BindingResult bindingResult,
+    HttpSession session,
+    Model model) throws UnsupportedEncodingException {
 
-    List<String> errors = new ArrayList<>();
+    log.info("Processing registration for email: {}", registrationDto.getEmail());
 
-
-    if (name == null || name.trim().isEmpty()) {
-      errors.add("Имя не может быть пустым");
-    } else if (name.length() < 2) {
-      errors.add("Имя должно содержать минимум 2 символа");
+    // 1. Проверяем совпадение паролей
+    if (!bindingResult.hasFieldErrors("password") &&
+      !registrationDto.getPassword().equals(registrationDto.getConfirmPassword())) {
+      bindingResult.rejectValue("confirmPassword", "error.confirmPassword", "Пароли не совпадают");
     }
 
-    if (email == null || email.trim().isEmpty()) {
-      errors.add("Email не может быть пустым");
-    } else if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
-      errors.add("Введите корректный email");
+    // 2. Проверяем, существует ли email
+    if (!bindingResult.hasFieldErrors("email") && !userService.isEmailAvailable(registrationDto.getEmail())) {
+      bindingResult.rejectValue("email", "error.email", "Пользователь с таким email уже существует");
     }
 
-    if (password == null || password.trim().isEmpty()) {
-      errors.add("Пароль не может быть пустым");
-    } else if (password.length() < 6) {
-      errors.add("Пароль должен содержать минимум 6 символов");
-    }
-
-    if (confirmPassword == null || !confirmPassword.equals(password)) {
-      errors.add("Пароли не совпадают");
-    }
-
-
-    if (!errors.isEmpty()) {
-      model.addAttribute("errors", errors);
-      model.addAttribute("name", name);
-      model.addAttribute("email", email);
+    // 3. Если есть ошибки валидации, возвращаемся на форму
+    if (bindingResult.hasErrors()) {
+      log.warn("Registration validation failed: {}", bindingResult.getAllErrors());
       return "register";
     }
 
-    // TODO: Сохранить пользователя в БД
-    // Здесь нужно сохранить пользователя в базу данных
-    // Для теста просто сохраняем в сессию
+    // 4. Сохраняем пользователя через UserService
+    RegistrationResult registrationResult = userService.registerUser(registrationDto);
 
-    session.setAttribute("authenticated", true);
-    session.setAttribute("userEmail", email);
-    session.setAttribute("userName", name);
-    session.setAttribute("userId", System.currentTimeMillis());
+    if (registrationResult.isSuccess()) {
+      log.info("✅ User registered successfully: {} ({})",
+        registrationDto.getName(), registrationDto.getEmail());
 
-    log.info("✅ Пользователь зарегистрирован: {} ({})", name, email);
-
-    // Перенаправляем на логин с параметром успеха
-    return "redirect:/login?registered=true&email=" + java.net.URLEncoder.encode(email, "UTF-8");
+      // Перенаправляем на логин с параметром успеха
+      String encodedEmail = URLEncoder.encode(registrationDto.getEmail(), StandardCharsets.UTF_8.toString());
+      return "redirect:/login?registered=true&email=" + encodedEmail;
+    } else {
+      // Если регистрация не удалась, добавляем ошибки в BindingResult
+      for (String error : registrationResult.getErrors()) {
+        bindingResult.reject("registration.error", error);
+      }
+      log.error("Registration failed for email: {}. Errors: {}",
+        registrationDto.getEmail(), registrationResult.getErrors());
+      return "register";
+    }
   }
 }
