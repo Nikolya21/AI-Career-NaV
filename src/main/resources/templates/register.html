@@ -1,143 +1,167 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ru" xmlns:th="http://thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Регистрация</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        input[type="text"],
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        input:focus {
-            outline: none;
-            border-color: #007AFF;
-            box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
-        }
-        input.error {
-            border-color: #dc3545;
-        }
-        .field-error {
-            color: #dc3545;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-        .global-errors {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 20px;
-        }
-        .global-errors ul {
-            margin: 0;
-            padding-left: 20px;
-            color: #721c24;
-        }
-        button {
-            width: 100%;
-            background-color: #007AFF;
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .link {
-            margin-top: 20px;
-            text-align: center;
-        }
-        .link a {
-            color: #007AFF;
-            text-decoration: none;
-        }
-        .link a:hover {
-            text-decoration: underline;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join the Future</title>
+  <link href="https://googleapis.com" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ffffff;
+      --accent: #007AFF;
+      --glass: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.15);
+      --error: #ff4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+    body {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .gradient-bg {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000 100%);
+      z-index: -1;
+    }
+
+    .blob {
+      position: absolute;
+      width: 500px; height: 500px;
+      background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+      filter: blur(80px);
+      border-radius: 50%;
+      opacity: 0.3;
+      pointer-events: none;
+      left: 0; top: 0;
+      transform: translate(-50%, -50%);
+      will-change: transform;
+    }
+
+    .login-card {
+      background: var(--glass);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      padding: 40px;
+      width: 440px;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+    }
+
+    h1 { color: var(--primary); font-size: 28px; font-weight: 700; margin-bottom: 8px; letter-spacing: -1px; }
+    p.desc { color: rgba(255, 255, 255, 0.5); font-size: 14px; margin-bottom: 30px; }
+
+    .input-box { position: relative; margin-bottom: 12px; text-align: left; }
+
+    input {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      outline: none;
+      color: #fff;
+      font-size: 15px;
+      transition: 0.3s;
+    }
+
+    input:focus { border-color: var(--accent); background: rgba(255, 255, 255, 0.1); }
+    input.error-field { border-color: var(--error); background: rgba(255, 68, 68, 0.05); }
+
+    .field-error { color: var(--error); font-size: 11px; margin-top: 4px; padding-left: 5px; }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 15px;
+    }
+
+    button:hover { background: var(--accent); color: #fff; transform: translateY(-2px); }
+
+    .footer { margin-top: 20px; font-size: 13px; color: rgba(255, 255, 255, 0.4); }
+    .footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+    .global-errors {
+      background: rgba(255, 68, 68, 0.1);
+      border: 1px solid var(--error);
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      color: var(--error);
+      font-size: 13px;
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-    <h2>Регистрация</h2>
 
-    <!-- Отображение ошибок из model (если есть) -->
-    <div th:if="${errors != null and !errors.isEmpty()}" class="global-errors">
-        <ul>
-            <li th:each="error : ${errors}" th:text="${error}"></li>
-        </ul>
+<div class="gradient-bg"></div>
+<div class="blob"></div>
+
+<div class="login-card">
+  <h1>Регистрация</h1>
+  <p class="desc">Присоединяйтесь к нашей цифровой экосистеме</p>
+
+  <form th:action="@{/register}" th:object="${userRegistrationDto}" method="POST">
+
+    <div th:if="${#fields.hasErrors('global')}" class="global-errors">
+      <p th:each="err : ${#fields.errors('global')}" th:text="${err}"></p>
     </div>
 
-    <!-- Форма регистрации -->
-    <form th:action="@{/register}" th:object="${userRegistrationDto}" method="post">
-        <div class="form-group">
-            <label for="name">Имя:</label>
-            <input type="text" id="name" th:field="*{name}" />
-            <div th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="field-error"></div>
-        </div>
-
-        <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" id="email" th:field="*{email}" />
-            <div th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="field-error"></div>
-        </div>
-
-        <div class="form-group">
-            <label for="password">Пароль:</label>
-            <input type="password" id="password" th:field="*{password}" />
-            <div th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="field-error"></div>
-        </div>
-
-        <div class="form-group">
-            <label for="confirmPassword">Подтверждение пароля:</label>
-            <input type="password" id="confirmPassword" th:field="*{confirmPassword}" />
-            <div th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}" class="field-error"></div>
-        </div>
-
-        <div class="form-group">
-            <button type="submit">Зарегистрироваться</button>
-        </div>
-    </form>
-
-    <div class="link">
-        <p>Уже есть аккаунт? <a th:href="@{/login}">Войти</a></p>
+    <div class="input-box">
+      <input type="text" th:field="*{name}" placeholder="Полное имя"
+             th:classappend="${#fields.hasErrors('name')} ? 'error-field'">
+      <div class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
     </div>
+
+    <div class="input-box">
+      <input type="email" th:field="*{email}" placeholder="Email адрес"
+             th:classappend="${#fields.hasErrors('email')} ? 'error-field'">
+      <div class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+    </div>
+
+    <div class="input-box">
+      <input type="password" th:field="*{password}" placeholder="Пароль"
+             th:classappend="${#fields.hasErrors('password')} ? 'error-field'">
+      <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
+    </div>
+
+    <div class="input-box">
+      <input type="password" th:field="*{confirmPassword}" placeholder="Подтвердите пароль"
+             th:classappend="${#fields.hasErrors('confirmPassword')} ? 'error-field'">
+      <div class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></div>
+    </div>
+
+    <button type="submit">Создать аккаунт</button>
+  </form>
+
+  <div class="footer">
+    Уже есть аккаунт? <a th:href="@{/login}">Войти</a>
+  </div>
 </div>
+
+<script>
+  const blob = document.querySelector('.blob');
+  window.addEventListener('mousemove', (e) => {
+    blob.style.transform = `translate(-50%, -50%) translate(${e.clientX}px, ${e.clientY}px)`;
+  });
+</script>
 </body>
 </html>

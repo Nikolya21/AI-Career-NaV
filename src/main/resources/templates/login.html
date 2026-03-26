@@ -42,15 +42,19 @@
         }
 
         .blob {
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-            filter: blur(80px);
-            border-radius: 50%;
-            opacity: 0.4;
-            pointer-events: none;
-            transition: transform 0.1s ease-out;
+          position: absolute;
+          width: 600px;
+          height: 600px;
+          background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+          filter: blur(80px);
+          border-radius: 50%;
+          opacity: 0.4;
+          pointer-events: none;
+          left: 0;
+          top: 0;
+          transform: translate(-50%, -50%);
+          transition: transform 0.1s ease-out;
+          z-index: 1;
         }
 
         .login-card {
@@ -177,45 +181,42 @@
 <div class="blob"></div>
 
 <div class="login-card">
-    <h1>Welcome back</h1>
-    <p class="desc">Enter your credentials to access the portal</p>
+  <h1>С возвращением</h1>
+  <p class="desc">Введите свои данные для доступа в портал</p>
 
-    <!-- Сообщение об успешной регистрации -->
-    <div th:if="${registered}" class="success-msg">
-        <span>✓ Registration successful!</span>
-        <span th:if="${registeredEmail}" th:text="'Email: ' + ${registeredEmail}" style="display: block; font-size: 12px;"></span>
-        Please login with your credentials.
+  <div th:if="${registered}" class="success-msg">
+    <span>✓ Регистрация прошла успешно!</span>
+    <span th:if="${registeredEmail}" th:text="'Email: ' + ${registeredEmail}" style="display: block; font-size: 12px;"></span>
+    Пожалуйста, войдите в систему.
+  </div>
+
+  <div th:if="${param.error}" class="error-msg">
+    Неверный email или пароль.
+  </div>
+
+  <form action="/login" method="POST">
+    <div class="input-box">
+      <input type="email" name="email" placeholder="Электронная почта" required>
     </div>
-
-    <!-- Сообщение об ошибке -->
-    <div th:if="${param.error}" class="error-msg">
-        Invalid username or password.
+    <div class="input-box">
+      <input type="password" name="password" placeholder="Пароль" required>
     </div>
+    <button type="submit">Продолжить</button>
+  </form>
 
-    <form action="/login" method="POST">
-        <div class="input-box">
-            <input type="text" name="email" placeholder="Email" required>
-        </div>
-        <div class="input-box">
-            <input type="password" name="password" placeholder="Password" required>
-        </div>
-        <button type="submit">Continue</button>
-    </form>
-
-    <div class="footer">
-        Don't have an account? <a th:href="@{/register}">Request access</a>
-    </div>
+  <div class="footer">
+    Нет аккаунта? <a th:href="@{/register}">Запросить доступ</a>
+  </div>
 </div>
 
 <script>
-    const blob = document.querySelector('.blob');
-    if (blob) {
-        document.body.addEventListener('mousemove', (e) => {
-            const x = e.clientX;
-            const y = e.clientY;
-            blob.style.transform = `translate(${x - 300}px, ${y - 300}px)`;
-        });
-    }
+  const blob = document.querySelector('.blob');
+  if (blob) {
+    window.addEventListener('mousemove', (e) => {
+      // Теперь работает идеально, так как в CSS прописан translate(-50%, -50%)
+      blob.style.transform = `translate(-50%, -50%) translate(${e.clientX}px, ${e.clientY}px)`;
+    });
+  }
 </script>
 </body>
 </html>

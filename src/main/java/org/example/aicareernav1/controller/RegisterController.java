@@ -4,8 +4,10 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.dto.user.LoginRequestDto;
 import org.example.aicareernav1.dto.user.UserRegistrationDto;
 import org.example.aicareernav1.service.user.UserService;
+import org.example.aicareernav1.service.user.model.AuthenticationResult;
 import org.example.aicareernav1.service.user.model.RegistrationResult;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -66,16 +68,39 @@ public class RegisterController {
       log.info("✅ User registered successfully: {} ({})",
         registrationDto.getName(), registrationDto.getEmail());
 
-      // Перенаправляем на логин с параметром успеха
-      String encodedEmail = URLEncoder.encode(registrationDto.getEmail(), StandardCharsets.UTF_8.toString());
-      return "redirect:/login?registered=true&email=" + encodedEmail;
+      LoginRequestDto loginRequest = new LoginRequestDto();
+      loginRequest.setEmail(registrationDto.getEmail());
+      loginRequest.setPassword(registrationDto.getPassword());
+
+      AuthenticationResult authResult = userService.authenticateUser(loginRequest);
+
+      if (authResult.isSuccess()) {
+        Long userId = authResult.getUser().getId();
+        String userName = authResult.getUser().getName();
+
+        session.setAttribute("user", authResult.getUser());
+        session.setAttribute("userEmail", loginRequest.getEmail());
+        session.setAttribute("authenticated", true);
+        session.setAttribute("userName", userName);
+        session.setAttribute("userId", userId);
+        session.setAttribute("registrationDate", authResult.getUser().getCreatedAt());
+
+        log.info("✅ Auto-login successful for user: {}", registrationDto.getEmail());
+
+        return "redirect:/personal-cabinet";
+      } else {
+        log.error("❌ Auto-login failed after registration for {}: {}",
+            registrationDto.getEmail(), authResult.getErrors());
+        model.addAttribute("errors", authResult.getErrors());
+        model.addAttribute("email", registrationDto.getEmail());
+        return "login";
+      }
     } else {
-      // Если регистрация не удалась, добавляем ошибки в BindingResult
       for (String error : registrationResult.getErrors()) {
         bindingResult.reject("registration.error", error);
       }
       log.error("Registration failed for email: {}. Errors: {}",
-        registrationDto.getEmail(), registrationResult.getErrors());
+          registrationDto.getEmail(), registrationResult.getErrors());
       return "register";
     }
   }
