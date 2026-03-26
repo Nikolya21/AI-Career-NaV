@@ -29,9 +29,6 @@ public class UserEntity {
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
 
-  @Column(name = "wishes")
-  private String wishes;
-
   @Column(name = "vacancy_now")
   private String vacancyNow;
 

@@ -1,0 +1,10 @@
+CREATE SCHEMA IF NOT EXISTS aicareer;
+
+CREATE TABLE IF NOT EXISTS aicareer.user_wishes (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    wishes_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES aicareer.users(id) ON DELETE CASCADE
+);

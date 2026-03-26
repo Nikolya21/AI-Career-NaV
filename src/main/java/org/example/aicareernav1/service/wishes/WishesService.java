@@ -20,13 +20,6 @@ public class WishesService {
   @Transactional
   public WishesResponseDto saveWishes(Long userId, WishesCreateDto dto) {
 
-    if (wishesRepository.existsByUserId(userId)) {
-      return WishesResponseDto.builder()
-              .wishesMessage(dto.getWishesMessage())
-              .nextStepUrl("/wishes/update")
-              .build();
-    }
-
     UserWishes userWishes = UserWishes.builder()
                 .userId(userId)
                 .wishesMessage(dto.getWishesMessage())
@@ -41,6 +34,17 @@ public class WishesService {
             .wishesMessage(saved.getWishesMessage())
             .nextStepUrl("/vacancies/selection")
             .build();
+  }
+
+  @Transactional(readOnly = true)
+  public WishesResponseDto getLastWishesByUserId(Long userId) {
+    UserWishes userWishes = wishesRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+      .orElse(null);
+    return WishesResponseDto.builder()
+      .id(userWishes.getId())
+      .wishesMessage(userWishes.getWishesMessage())
+      .nextStepUrl("/vacancies/selection")
+      .build();
   }
 
   @Transactional
