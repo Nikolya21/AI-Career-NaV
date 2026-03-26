@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.model.courseModel.Week;
-import org.example.aicareernav1.model.roadmap.Roadmap;
 import org.example.aicareernav1.model.roadmap.RoadmapZone;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.roadMapService.RoadMapService;
