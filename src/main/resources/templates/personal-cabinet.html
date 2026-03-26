@@ -1,154 +1,59 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Личный кабинет | AI Career Nav</title>
-    <link href="https://googleapis.com" rel="stylesheet">
-    <style>
-        :root {
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.1);
-            --accent: #007AFF;
-            --success: #34c759;
-            --error: #ff3b30;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background: #000; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-
-        .bg-glow {
-            position: absolute; width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(0, 122, 255, 0.1) 0%, transparent 70%);
-            top: -10%; right: -10%; z-index: -1; filter: blur(60px);
-        }
-
-        .main-container {
-            width: 1000px; height: 650px;
-            background: var(--glass);
-            backdrop-filter: blur(40px);
-            border: 1px solid var(--border);
-            border-radius: 40px;
-            display: flex;
-            box-shadow: 0 40px 100px rgba(0,0,0,0.8);
-        }
-
-        .sidebar {
-            width: 280px; border-right: 1px solid var(--border);
-            padding: 50px 40px; display: flex; flex-direction: column;
-        }
-
-        .user-avatar {
-            width: 70px; height: 70px; background: linear-gradient(45deg, #007AFF, #5856d6);
-            border-radius: 22px; display: flex; align-items: center; justify-content: center;
-            font-size: 28px; font-weight: 600; margin-bottom: 25px;
-        }
-
-        .nav-item { color: rgba(255,255,255,0.4); margin: 15px 0; cursor: pointer; transition: 0.3s; font-size: 15px; text-decoration: none; }
-        .nav-item.active { color: white; font-weight: 600; }
-        .nav-item:hover { color: white; transform: translateX(5px); }
-
-        .content { flex: 1; padding: 60px; overflow-y: auto; }
-        h1 { font-size: 38px; margin-bottom: 10px; font-weight: 600; }
-        .status-text { color: rgba(255,255,255,0.4); margin-bottom: 40px; }
-
-        .upload-zone {
-            background: rgba(255,255,255,0.03);
-            border: 2px dashed var(--border);
-            border-radius: 24px;
-            padding: 40px;
-            text-align: center;
-            transition: 0.3s;
-        }
-        .upload-zone:hover { border-color: var(--accent); background: rgba(0,122,255,0.05); }
-
-        input[type="file"] { display: none; }
-        .file-label { cursor: pointer; color: var(--accent); font-weight: 500; }
-
-        .alert { padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; }
-        .alert-success { background: rgba(52, 199, 89, 0.1); color: var(--success); border: 1px solid rgba(52, 199, 89, 0.2); }
-        .alert-error { background: rgba(255, 59, 48, 0.1); color: var(--error); border: 1px solid rgba(255, 59, 48, 0.2); }
-
-        .resume-badge {
-            display: inline-flex; align-items: center; padding: 10px 16px;
-            background: rgba(255,255,255,0.05); border-radius: 12px; margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Личный кабинет | AI Career Nav</title>
+  <link href="https://googleapis.com" rel="stylesheet">
+  <style>
+    :root { --primary: #fff; --accent: #007AFF; --glass: rgba(255, 255, 255, 0.03); --border: rgba(255, 255, 255, 0.1); --error: #ff3b30; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background: #000; color: white; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .bg-mesh { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(at 0% 0%, rgba(0, 122, 255, 0.12) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(88, 86, 214, 0.1) 0px, transparent 50%); z-index: -1; }
+    .main-container { width: 1050px; height: 700px; background: var(--glass); backdrop-filter: blur(40px) saturate(150%); border: 1px solid var(--border); border-radius: 40px; display: flex; box-shadow: 0 40px 100px rgba(0,0,0,0.6); }
+    .sidebar { width: 280px; border-right: 1px solid var(--border); padding: 50px 40px; display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.01); }
+    .user-avatar { width: 70px; height: 70px; background: linear-gradient(135deg, #007AFF, #5856d6); border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; margin-bottom: 30px; }
+    .nav-item { color: rgba(255,255,255,0.4); margin: 12px 0; cursor: pointer; transition: 0.3s; font-size: 16px; text-decoration: none; display: flex; align-items: center; gap: 12px; }
+    .nav-item.active { color: white; font-weight: 600; }
+    .nav-item:hover { color: white; transform: translateX(5px); }
+    .content { flex: 1; padding: 60px; overflow-y: auto; text-align: left; }
+    h1 { font-size: 38px; margin-bottom: 8px; font-weight: 700; }
+    .status-text { color: rgba(255,255,255,0.4); margin-bottom: 40px; font-size: 14px; }
+    .upload-zone { background: rgba(255,255,255,0.03); border: 2px dashed var(--border); border-radius: 28px; padding: 45px; text-align: center; cursor: pointer; transition: 0.3s; }
+    .upload-zone:hover { border-color: var(--accent); background: rgba(0,122,255,0.08); }
+    .wishes-btn { margin-top: 40px; display: inline-flex; align-items: center; gap: 12px; padding: 18px 32px; background: #fff; color: #000; border-radius: 18px; font-weight: 700; text-decoration: none; transition: 0.3s; }
+    .wishes-btn:hover { background: var(--accent); color: #fff; transform: translateY(-3px); }
+    .resume-badge { display: inline-flex; align-items: center; padding: 12px 20px; background: rgba(255,255,255,0.06); border-radius: 16px; margin-top: 20px; }
+  </style>
 </head>
 <body>
-
-<div class="bg-glow"></div>
-
+<div class="bg-mesh"></div>
 <div class="main-container">
-    <aside class="sidebar">
-        <!-- Первая буква имени из сессии -->
-        <div class="user-avatar"
-             th:text="${session.userName != null ? #strings.toUpperCase(session.userName.substring(0,1)) : 'U'}">
-            U
-        </div>
-        <a th:href="@{/personal-cabinet}" class="nav-item active">Кабинет</a>
-        <a class="nav-item">Анализ резюме</a>
-        <a class="nav-item">Рекомендации</a>
-        <a th:href="@{/logout}" class="nav-item" style="margin-top: auto; color: var(--error)">Выйти</a>
-    </aside>
+  <aside class="sidebar">
+    <div class="user-avatar" th:text="${session.userName != null ? #strings.toUpperCase(session.userName.substring(0,1)) : 'U'}">U</div>
+    <a th:href="@{/personal-cabinet}" class="nav-item active">🏠 Кабинет</a>
+    <a class="nav-item">📊 Анализ</a>
+    <a class="nav-item">💡 Советы</a>
+    <a th:href="@{/logout}" class="nav-item" style="margin-top: auto; color: var(--error)">🚪 Выход</a>
+  </aside>
+  <main class="content">
+    <h1 th:text="'Привет, ' + ${session.userName} + '!'">Привет!</h1>
+    <p class="status-text">Регистрация: <span th:text="${session.registrationDate != null ? #dates.format(session.registrationDate, 'dd.MM.yyyy') : 'н/д'}"></span></p>
 
-    <main class="content">
-        <h1 th:text="'Привет, ' + ${session.userName} + '!'">Привет, Пользователь!</h1>
+    <form th:action="@{/personal-cabinet}" method="POST" enctype="multipart/form-data" id="upf">
+      <div class="upload-zone" onclick="document.getElementById('fi').click()">
+        <p>Загрузите ваше резюме (PDF, DOCX)</p>
+        <input type="file" id="fi" name="resumeFile" onchange="document.getElementById('upf').submit()" hidden>
+      </div>
+    </form>
 
-        <!-- Форматирование даты -->
-        <p class="status-text">
-            Регистрация: <span th:text="${session.registrationDate != null ? #dates.format(session.registrationDate, 'dd.MM.yyyy') : 'н/д'}">01.01.2024</span>
-        </p>
+    <div th:if="${session.resumeUploaded}" class="resume-badge">
+      <span style="margin-right: 12px;">📄</span>
+      <span th:text="${session.resumeFilename}">файл.pdf</span>
+    </div>
 
-        <!-- Уведомления -->
-        <div th:if="${session.uploadSuccess}" class="alert alert-success" th:text="${session.uploadSuccess}"></div>
-        <div th:if="${session.uploadError}" class="alert alert-error" th:text="${session.uploadError}"></div>
-
-        <section>
-            <form th:action="@{/personal-cabinet}" method="POST" enctype="multipart/form-data">
-                <div class="upload-zone">
-                    <p style="margin-bottom: 10px;">Загрузите ваше резюме (PDF, DOCX)</p>
-                    <label class="file-label">
-                        Выберите файл
-                        <input type="file" name="resumeFile" onchange="this.form.submit()">
-                    </label>
-                </div>
-            </form>
-
-            <!-- Блок загруженного резюме -->
-            <div th:if="${session.resumeUploaded}" class="resume-badge">
-                <span style="margin-right: 10px;">📄</span>
-                <div>
-                    <div style="font-size: 14px;" th:text="${session.resumeFilename}">resume.pdf</div>
-                    <div style="font-size: 11px; color: rgba(255,255,255,0.4)">
-                        Загружено: <span th:text="${#dates.format(session.resumeUploadDate, 'dd.MM HH:mm')}">12.05 14:30</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Кнопка для перехода на страницу wishes (стильный вариант) -->
-        <div style="margin-top: 50px; text-align: center;">
-            <a th:href="@{/wishes/form(userId=${session.userId})}" class="btn" style="text-decoration: none;">
-                <div style="
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 32px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        "
-                     onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(102, 126, 234, 0.5)';"
-                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 15px rgba(102, 126, 234, 0.4)';">
-                    <span style="font-size: 24px;">🎯</span>
-                    <span style="color: white; font-weight: 600; font-size: 18px;">Мои пожелания</span>
-                    <span style="font-size: 20px;">→</span>
-                </div>
-            </a>
-        </div>
-    </main>
+    <a th:href="@{/wishes/form(userId=${session.userId})}" class="wishes-btn">🎯 Мои пожелания →</a>
+  </main>
 </div>
-
 </body>
 </html>
