@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Career Chat</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .chat-container { width: 500px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .chat-box { height: 500px; border: 1px solid #eee; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; background: #fafafa; border-radius: 10px; }
+        .message { margin-bottom: 12px; padding: 10px 15px; border-radius: 15px; max-width: 85%; line-height: 1.4; font-size: 15px; }
+        .user { align-self: flex-end; background-color: #007bff; color: white; border-bottom-right-radius: 2px; }
+        .ai { align-self: flex-start; background-color: #e9e9eb; color: #333; border-bottom-left-radius: 2px; }
+        .input-area { margin-top: 15px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; }
+        button { padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-send { background-color: #007bff; color: white; }
+
+        .summary-wrapper { margin-top: 20px; padding-top: 15px; border-top: 2px dashed #eee; }
+        .btn-summary { background-color: #6f42c1; color: white; width: 100%; }
+        .btn-summary:disabled { background-color: #ccc; }
+        #summaryBox { display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 10px; border-left: 5px solid #ffc107; }
+        .btn-finish { background-color: #28a745; color: white; margin-top: 10px; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <a id="backLink" href="/wishes/form" style="text-decoration: none; color: #666; font-size: 14px;">← Назад</a>
+    <h3 style="text-align: center; color: #333;" th:text="${dialogType.name() == 'INFORMATION' ? 'Опрос по целям' : 'Создание плана обучения'}">Чат</h3>
+
+    <div class="chat-box" id="chatBox"></div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Напишите сообщение..." onkeypress="if(event.key==='Enter') sendMessage()">
+        <button class="btn-send" onclick="sendMessage()">➤</button>
+    </div>
+
+    <div class="summary-wrapper">
+        <button id="summarizeBtn" class="btn-summary" onclick="fetchSummary()">
+            ✨ <span th:text="${dialogType.name() == 'INFORMATION' ? 'Сформировать мои желания' : 'Подвести итог для Roadmap'}">Действие</span>
+        </button>
+
+        <div id="summaryBox">
+            <div id="summaryText" style="white-space: pre-wrap; font-size: 14px; color: #333;"></div>
+            <button class="btn-finish" onclick="handleFinish()">
+                <span th:text="${dialogType.name() == 'INFORMATION' ? 'Копировать и вернуться к форме' : 'Посмотреть мой план обучения'}">Далее</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const userId = [[${userId}]];
+    const dialogType = [[${dialogType}]];
+
+    window.onload = async () => {
+        // ОБНОВЛЕНИЕ ССЫЛКИ "НАЗАД"
+        if (userId) {
+            document.getElementById('backLink').href = `/wishes/form?userId=${userId}`;
+        }
+
+        const res = await fetch(`/api/dialogs/history?userId=${userId}&type=${dialogType}`)
+        const history = await res.json();
+
+        if (history.length === 0) {
+            startNewDialog();
+        } else {
+            history.forEach(msg => {
+                const sep = msg.indexOf(': ');
+                if (sep !== -1) {
+                    const sender = msg.substring(0, sep);
+                    const text = msg.substring(sep + 2);
+                    appendMessage(sender === 'AI' ? 'ai' : 'user', text);
+                }
+            });
+        }
+    };
+
+    async function startNewDialog() {
+        const res = await fetch(`/api/dialogs/start?userId=${userId}&type=${dialogType}`, { method: 'POST' });
+        const data = await res.json();
+        appendMessage('ai', data.reply);
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('userInput');
+        const text = input.value.trim();
+        if (!text) return;
+
+        appendMessage('user', text);
+        input.value = '';
+
+        const res = await fetch('/api/dialogs/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, message: text, dialogType })
+        });
+        const data = await res.json();
+        appendMessage('ai', data.reply);
+    }
+
+    function appendMessage(type, text) {
+        const box = document.getElementById('chatBox');
+        const div = document.createElement('div');
+        div.className = `message ${type}`;
+        div.innerText = text;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    async function fetchSummary() {
+        const btn = document.getElementById('summarizeBtn');
+        const box = document.getElementById('summaryBox');
+        const textDisplay = document.getElementById('summaryText');
+
+        btn.disabled = true;
+        btn.innerText = "Минутку, ИИ обрабатывает данные...";
+
+        try {
+            const res = await fetch(`/api/dialogs/summarize?userId=${userId}&type=${dialogType}`);
+            const data = await res.json();
+
+            // Проверяем, не является ли ответ системным предупреждением о нехватке данных
+            const isTooShort = data.summary.includes("Слишком мало данных") ||
+                data.summary.includes("История диалога пуста");
+
+            if (isTooShort) {
+                // Показываем текст предупреждения, но СКРЫВАЕМ блок с кнопкой перехода
+                // (или только саму кнопку перехода)
+                textDisplay.innerHTML = `<span style="color: #856404;">${data.summary}</span>`;
+                box.style.display = "block"; // Показываем желтую плашку с текстом
+
+                // Находим кнопку перехода внутри блока и скрываем её
+                const finishBtn = box.querySelector('button');
+                if (finishBtn) finishBtn.style.display = "none";
+
+                btn.innerText = "Попробовать снова";
+            } else {
+                // Если данных достаточно — показываем всё
+                textDisplay.innerText = data.summary;
+                box.style.display = "block";
+
+                const finishBtn = box.querySelector('button');
+                if (finishBtn) finishBtn.style.display = "block";
+
+                btn.innerText = "Обновить результат";
+            }
+        } catch (e) {
+            alert("Ошибка при создании резюме");
+            btn.innerText = "Попробовать снова";
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function handleFinish() {
+        const text = document.getElementById('summaryText').innerText;
+
+        if (dialogType === 'INFORMATION') {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Резюме скопировано! Сейчас вы вернетесь к форме.");
+                // Добавляем userId и сюда
+                window.location.href = `/wishes/form?userId=${userId}`;
+            });
+        } else {
+            // Для ROADMAP — идем на страницу результата
+            window.location.href = `/roadmap/${userId}`;
+        }
+    }
+</script>
+
+</body>
+</html>

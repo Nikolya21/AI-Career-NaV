@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Реальные вакансии - Career Navigator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    .header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .cabinet-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .cabinet-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 45px;
+      height: 45px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-email {
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 25px;
+      font-size: 0.85rem;
+    }
+
+    .logout-btn {
+      padding: 0.6rem 1.2rem;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      color: #fca5a5;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.4);
+    }
+
+    /* Main Container */
+    .main-container {
+      position: relative;
+      z-index: 5;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Back Button */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: all 0.3s ease;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateX(-5px);
+    }
+
+    /* Test Button - White Style */
+    .test-button-wrapper {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .test-btn-white {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 2rem;
+      background: white;
+      border: none;
+      border-radius: 60px;
+      color: #0f0c29;
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+      letter-spacing: 0.3px;
+    }
+
+    .test-btn-white:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(135deg, #fff, #f8f9ff);
+    }
+
+    .test-btn-white:active {
+      transform: translateY(0);
+    }
+
+    /* Vacancy Card */
+    .vacancy-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .vacancy-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(102, 126, 234, 0.5);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .vacancy-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #fff 0%, #c4b5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .vacancy-salary {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #10b981;
+      margin-bottom: 1rem;
+    }
+
+    .vacancy-details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .detail-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1rem;
+      border-radius: 12px;
+      border-left: 3px solid #667eea;
+    }
+
+    .detail-label {
+      display: block;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+    }
+
+    .detail-value {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .detail-value.company { color: #a5b4fc; }
+    .detail-value.experience { color: #fbbf24; }
+    .detail-value.age { color: #34d399; }
+
+    .requirements-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .requirement-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.75rem 1rem;
+      margin: 0.5rem 0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      border-left: 3px solid #8b5cf6;
+    }
+
+    .vacancy-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .company-info {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .badge-info { background: #3b82f6; color: white; }
+    .badge-warning { background: #f59e0b; color: white; }
+    .badge-success { background: #10b981; color: white; }
+
+    .vacancy-apply-btn {
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .vacancy-apply-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Info Box */
+    .info-box {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .info-box-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .info-box-content h4 {
+      color: #c4b5fd;
+      margin-bottom: 0.25rem;
+    }
+
+    .info-box-content p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.9rem;
+    }
+
+    /* Error & Loader */
+    .error-message {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      color: #fca5a5;
+    }
+
+    .loader-container {
+      text-align: center;
+      padding: 3rem;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-left-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .vacancies-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .vacancies-header h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .vacancy-count {
+      background: #667eea;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    .no-skills {
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+      }
+      .vacancy-details-grid {
+        grid-template-columns: 1fr;
+      }
+      .vacancy-meta {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .test-btn-white {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <a href="/personal-cabinet" class="cabinet-btn">
+      <span>👤</span> Личный кабинет
+    </a>
+  </div>
+  <div class="logo">
+    <div class="logo-icon">🚀</div>
+    <h1>Career Navigator</h1>
+  </div>
+  <div class="user-info">
+    <div class="user-email" id="userEmail">Загрузка...</div>
+    <a href="/logout" class="logout-btn">Выйти</a>
+  </div>
+</div>
+
+<div class="main-container">
+  <a href="/choose-vacancy" class="back-btn">
+    ← Назад к выбору вакансии
+  </a>
+
+  <div class="vacancies-header">
+    <h2>Реальные вакансии</h2>
+    <p id="vacancyInfo"></p>
+  </div>
+
+  <!-- Кнопка перехода к тесту - Белая красивая -->
+  <div class="test-button-wrapper">
+    <a th:href="@{'/quiz-view/' + ${session.userId}}" class="test-btn-white">
+      📝 Пройти тест на профориентацию
+    </a>
+  </div>
+
+  <div class="info-box">
+    <div class="info-box-icon">💼</div>
+    <div class="info-box-content">
+      <h4>Актуальные предложения рынка</h4>
+      <p>Это реальные вакансии с популярных платформ. Изучите требования и зарплатные ожидания для вашей целевой профессии.</p>
+      <p><small>📊 Источник: HeadHunter API | 🔄 Данные обновляются в реальном времени</small></p>
+    </div>
+  </div>
+
+  <div id="vacancies-container">
+    <div class="loader-container">
+      <div class="spinner"></div>
+      <p>Загрузка реальных вакансий...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Получаем выбранную вакансию из URL или sessionStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  let selectedVacancy = urlParams.get('vacancy') || sessionStorage.getItem('selectedVacancy');
+
+  if (!selectedVacancy) {
+    selectedVacancy = "Java Developer";
+  }
+
+  document.getElementById('vacancyInfo').innerHTML = `По профессии: <strong>${selectedVacancy}</strong> <span class="vacancy-count" id="vacancyCount"></span>`;
+  document.getElementById('userEmail').textContent = sessionStorage.getItem('userEmail') || 'Пользователь';
+
+  async function loadRealVacancies() {
+    const container = document.getElementById('vacancies-container');
+
+    try {
+      const response = await fetch(`/api/v1/vacancies?searchText=${encodeURIComponent(selectedVacancy)}&area=1&perPage=10`);
+
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки вакансий');
+      }
+
+      const vacancies = await response.json();
+
+      const countSpan = document.getElementById('vacancyCount');
+      countSpan.textContent = vacancies.length;
+
+      if (vacancies.length === 0) {
+        container.innerHTML = `
+          <div class="error-message">
+            Не удалось найти вакансии по запросу: ${selectedVacancy}<br>
+            Попробуйте изменить название вакансии или уточнить поисковый запрос.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = vacancies.map(v => `
+        <div class="vacancy-card">
+          <div class="vacancy-title">${escapeHtml(v.nameOfVacancy || 'Название не указано')}</div>
+          <div class="vacancy-salary">💰 ${v.salary || 'Зарплата не указана'}</div>
+          <div class="vacancy-details-grid">
+            <div class="detail-item">
+              <span class="detail-label">🏢 Компания</span>
+              <span class="detail-value company">${escapeHtml(v.employer || 'Не указана')}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">📈 Требуемый опыт</span>
+              <span class="detail-value experience">${escapeHtml(v.experience || 'Не указан')}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">🎂 Возраст</span>
+              <span class="detail-value age">${escapeHtml(v.age || 'Не указано')}</span>
+            </div>
+          </div>
+          <div class="requirements-title">🔧 Ключевые навыки и требования</div>
+          ${renderSkills(v.vacancyRequirements)}
+          <div class="vacancy-meta">
+            <div class="company-info">
+              <span class="badge badge-info">HH.ru</span>
+              ${v.experience ? `<span class="badge badge-warning">${escapeHtml(v.experience)}</span>` : ''}
+              ${v.age ? `<span class="badge badge-success">${escapeHtml(v.age)}</span>` : ''}
+            </div>
+            <button class="vacancy-apply-btn" onclick="applyToVacancy('${escapeHtml(v.nameOfVacancy)}')">
+              📝 Откликнуться
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+    } catch (error) {
+      console.error('Error:', error);
+      container.innerHTML = `
+        <div class="error-message">
+          Ошибка при загрузке вакансий: ${error.message}
+        </div>
+      `;
+    }
+  }
+
+  function renderSkills(skills) {
+    if (!skills || skills.length === 0) {
+      return '<div class="no-skills">Навыки не указаны в данной вакансии</div>';
+    }
+    return skills.map((skill, idx) => `
+      <div class="requirement-item">
+        <span class="badge badge-primary" style="background: #667eea; margin-right: 8px;">${idx + 1}</span>
+        ${escapeHtml(skill)}
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function applyToVacancy(vacancyName) {
+    if (confirm(`Вы хотите откликнуться на вакансию "${vacancyName}"?\n\nВ реальной системе здесь будет переход на страницу вакансии на HH.ru`)) {
+      alert(`В реальной системе вы будете перенаправлены на страницу вакансии "${vacancyName}" на HeadHunter.ru`);
+    }
+  }
+
+  loadRealVacancies();
+</script>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 package org.example.aicareernav1.model.roadmap;
 
 
-import com.aicareer.core.model.courseModel.Task;
+import org.example.aicareernav1.model.courseModel.Task;
 import org.example.aicareernav1.model.courseModel.Week;
 import lombok.*;
 

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои пожелания — AI Career Nav</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #6f42c1;
+            --success-color: #28a745;
+            --bg-color: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #e1e4e8;
+            border-radius: 12px;
+            resize: vertical;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+            outline: none;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .button-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:active { transform: scale(0.98); }
+
+        .btn-save {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-ai {
+            background: linear-gradient(135deg, #6f42c1, #8b5cf6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-ai:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(111, 66, 193, 0.4);
+        }
+
+        .btn-back {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 14px;
+            min-height: 40px;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🎯 Чего вы хотите от карьеры?</h2>
+    <p>Опишите ваши цели, желаемый стек или условия работы. Мы используем это для подбора вакансий.</p>
+
+    <textarea id="wishesInput" placeholder="Например: Хочу перейти из системного администрирования в Java-разработку, готов уделять учебе 10 часов в неделю..."></textarea>
+
+    <div class="button-stack">
+        <button class="btn-save" onclick="saveWishes()">💾 Сохранить и продолжить</button>
+        <button class="btn-ai" onclick="startAIConsultation()">
+            ✨ Помощь ИИ-ассистента
+        </button>
+        <button class="btn-back" onclick="goBack()">
+            ← Вернуться в личный кабинет
+        </button>
+    </div>
+
+    <div id="status" class="status"></div>
+</div>
+
+<!-- 1. Добавьте th:inline="javascript" в тег script -->
+<script th:inline="javascript">
+
+    // 2. Используем специальный синтаксис Thymeleaf.
+    // Если сервер пришлет ID, он подставится сюда. Если нет — останется null.
+    const userId = [[${userId}]];
+
+    console.log("=== WISHES PAGE DEBUG ===");
+    console.log("User ID from session:", userId);
+
+    async function saveWishes() {
+        const input = document.getElementById('wishesInput');
+        const statusDiv = document.getElementById('status');
+        const message = input.value.trim();
+
+        if (!message) {
+            statusDiv.className = "status error";
+            statusDiv.innerText = "⚠️ Пожалуйста, введите текст ваших пожеланий.";
+            return;
+        }
+
+        // Проверка авторизации прямо в JS
+        if (!userId) {
+            statusDiv.className = "status error";
+            statusDiv.innerText = "❌ Ошибка: ID пользователя не найден. Перезайдите в систему.";
+            return;
+        }
+
+        statusDiv.className = "status info";
+        statusDiv.innerHTML = '<span class="loader"></span> Сохранение...';
+
+        try {
+            const url = `/api/wishes?userId=${userId}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wishesMessage: message })
+            });
+
+            if (!response.ok) throw new Error("Ошибка сервера при сохранении");
+
+            statusDiv.className = "status success";
+            statusDiv.innerText = "✅ Успешно сохранено! Перенаправляем...";
+            setTimeout(() => window.location.href = "/choose-vacancy", 1500);
+
+        } catch (error) {
+            statusDiv.className = "status error";
+            statusDiv.innerText = "❌ " + error.message;
+        }
+    }
+
+    function startAIConsultation() {
+        if (!userId) {
+            alert("Пожалуйста, войдите в систему");
+            return;
+        }
+        window.location.href = `/dialogs/chat?userId=${userId}&type=INFORMATION`;
+    }
+
+    function goBack() {
+        window.location.href = "/personal-cabinet";
+    }
+</script>
+
+
+</body>
+</html>
