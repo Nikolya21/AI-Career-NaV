@@ -142,16 +142,20 @@ public class DialogVacancyController {
       return "redirect:/login";
     }
 
+    // Получаем вакансии из сессии (установлены через API)
     List<String> suggestedVacancies = (List<String>) session.getAttribute("suggestedVacancies");
+
     if (suggestedVacancies == null || suggestedVacancies.isEmpty()) {
-      return "redirect:/vacancy-discussion";
+      // Если нет в сессии, используем дефолтные
+      suggestedVacancies = Arrays.asList("Java Developer", "Python Developer", "Frontend Developer");
     }
 
     model.addAttribute("suggestedVacancies", suggestedVacancies);
+    model.addAttribute("userEmail", session.getAttribute("userEmail"));
+
     return "ChooseVacancy";
   }
 
-  // Шаг 5: Сохранить выбранную вакансию (POST)
   @PostMapping("/choose-vacancy")
   public String chooseVacancy(@RequestParam("selectedVacancy") String selectedVacancyName,
       HttpSession session) {
@@ -167,27 +171,35 @@ public class DialogVacancyController {
 
   // Шаг 6: Показать реальные вакансии (GET)
   @GetMapping("/real-vacancies")
-  public String showRealVacancies(HttpSession session, Model model) {
+  public String showRealVacancies(@RequestParam(required = false) String vacancy,
+      HttpSession session,
+      Model model) {
     if (session.getAttribute("authenticated") == null) {
       return "redirect:/login";
     }
 
-    String selectedVacancy = (String) session.getAttribute("selectedVacancyName");
+    String selectedVacancy = vacancy;
+
+    // Если параметр не передан, берем из сессии
+    if (selectedVacancy == null) {
+      selectedVacancy = (String) session.getAttribute("selectedVacancyName");
+    }
+
+    // Если всё равно null, перенаправляем на выбор
     if (selectedVacancy == null) {
       return "redirect:/choose-vacancy";
     }
 
-    try {
-      // Вызываем ParserService для получения реальных вакансий
-      List<RealVacancy> realVacancies = parserService.getVacancies(selectedVacancy, "1", 10);
+    // Сохраняем в сессию для последующих запросов
+    session.setAttribute("selectedVacancyName", selectedVacancy);
 
+    try {
+      List<RealVacancy> realVacancies = parserService.getVacancies(selectedVacancy, "1", 10);
       model.addAttribute("selectedVacancy", selectedVacancy);
       model.addAttribute("realVacancies", realVacancies);
-
       log.info("✅ Найдено {} реальных вакансий для: {}", realVacancies.size(), selectedVacancy);
-
     } catch (Exception e) {
-      log.error("Ошибка при получении реальных вакансий: {}", e.getMessage(), e);
+      log.error("Ошибка при получении реальных вакансий", e);
       model.addAttribute("error", "Ошибка при загрузке вакансий: " + e.getMessage());
       model.addAttribute("selectedVacancy", selectedVacancy);
       model.addAttribute("realVacancies", new ArrayList<>());
@@ -262,4 +274,5 @@ public class DialogVacancyController {
 
     return gigaChatService.sendMessage(context.toString());
   }
+
 }
