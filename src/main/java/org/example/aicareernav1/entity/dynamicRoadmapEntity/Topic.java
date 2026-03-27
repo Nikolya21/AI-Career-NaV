@@ -28,5 +28,6 @@ public class Topic {
   private Roadmap roadmap;
 
   @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL)
+  @OrderBy("orderIndex ASC")
   private List<Checkpoint> checkpoints = new ArrayList<>();
 }

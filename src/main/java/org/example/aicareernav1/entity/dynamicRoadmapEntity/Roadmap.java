@@ -33,6 +33,7 @@ public class Roadmap {
   // Связь с блоками (Topic)
   @OneToMany(mappedBy = "roadmap", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
+  @OrderBy("orderIndex ASC")
   private List<Topic> topics = new ArrayList<>();
 
   @PrePersist

@@ -1,0 +1,54 @@
+<div th:fragment="checkpoint-details" xmlns:th="http://www.w3.org/1999/xhtml">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 th:text="${checkpoint.title}">Название</h2>
+        <span class="badge bg-primary" th:text="${checkpoint.status}">Статус</span>
+    </div>
+    <p class="text-muted" th:text="${checkpoint.description}">Описание</p>
+    <hr>
+
+    <div th:if="${#lists.isEmpty(checkpoint.lessons)}" class="text-center p-5 border rounded bg-light">
+        <h5>Контент еще не готов</h5>
+        <button class="btn btn-success mt-3" th:onclick="'generateContent(' + ${checkpoint.id} + ')'">
+            ✨ Создать уроки через ИИ
+        </button>
+    </div>
+
+    <div th:each="lesson : ${checkpoint.lessons}" class="card mb-4 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 text-primary" th:text="${lesson.title}">Урок</h5>
+        </div>
+        <div class="card-body">
+            <div th:each="task : ${lesson.tasks}"
+                 class="task-container mb-3 p-3 border-start border-4 border-info bg-white shadow-sm"
+                 th:attr="data-task-content=${task.content}, data-task-type=${task.type}">
+
+                <div class="d-flex justify-content-between">
+                    <h6 class="fw-bold" th:text="${task.title}">Задание</h6>
+                    <span class="badge bg-light text-secondary" th:text="${task.type}">TYPE</span>
+                </div>
+
+                <div class="task-render-area mt-2">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="mt-5">
+    <div class="deepen-section p-4 border rounded bg-light shadow-sm">
+        <h5 class="text-secondary"><i class="bi bi-search"></i> Недостаточно информации?</h5>
+        <p class="small text-muted">Введите конкретный вопрос или аспект темы, в который хотите погрузиться глубже:</p>
+
+        <div class="input-group">
+            <input type="text" id="deepenRequest" class="form-control"
+                   placeholder="Например: Расскажи подробнее про работу Memory Barrier в Java...">
+            <button class="btn btn-outline-secondary" type="button"
+                    th:onclick="'handleDeepen(' + ${checkpoint.id} + ')'">
+                🚀 Углубиться
+            </button>
+        </div>
+        <div id="deepenLoader" class="text-center mt-2" style="display: none;">
+            <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+            <span class="small ms-2">ИИ анализирует запрос и создает новый этап...</span>
+        </div>
+    </div>
+</div>

@@ -5,9 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.aspectj.weaver.ast.Test;
 import org.example.aicareernav1.enums.CheckpointStatus;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,9 +42,9 @@ public class Checkpoint {
   @OneToMany(mappedBy = "checkpoint", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Lesson> lessons = new ArrayList<>();
 
-  @OneToOne(cascade = CascadeType.ALL) // Связь 1-к-1: у чекпоинта один финальный тест
-  @JoinColumn(name = "test_id") // Создает колонку с ID теста в таблице Checkpoint
-  private Test finalTest;
+//  @OneToOne(cascade = CascadeType.ALL) // Связь 1-к-1: у чекпоинта один финальный тест
+//  @JoinColumn(name = "test_id") // Создает колонку с ID теста в таблице Checkpoint
+//  private Test finalTest;
 
   @Column(name = "parent_checkpoint_id")
   private Long parentCheckpointId;

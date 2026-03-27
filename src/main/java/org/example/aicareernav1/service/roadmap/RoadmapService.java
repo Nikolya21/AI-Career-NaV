@@ -48,7 +48,8 @@ public class RoadmapService {
       .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
 
     String systemPrompt = String.format(Prompts.SKELETON_SYSTEM_PROMPT, roadmap.getTargetJobTitle());
-    String jsonResponse = fetchValidJson(userContext, systemPrompt, 2);
+    String jsonResponse = cleanJsonResponse(fetchValidJson(userContext, systemPrompt, 2));
+
 
     try {
       SkeletonResponse response = objectMapper.readValue(jsonResponse, SkeletonResponse.class);
@@ -151,7 +152,16 @@ public class RoadmapService {
 
     try {
       log.info("Получен ответ от ИИ. Начинаю парсинг JSON для этапа: {}", checkpoint.getTitle());
-      ContentResponse response = objectMapper.readValue(json, ContentResponse.class);
+      // Дополнительная предосторожность перед парсингом
+      String sanitizedJson = cleanJsonResponse(json);
+      log.info("Очищенный JSON для десериализации: {}", sanitizedJson);
+
+      ContentResponse response = objectMapper.readValue(sanitizedJson, ContentResponse.class);
+
+      if (response == null || response.getLessons() == null || response.getLessons().isEmpty()) {
+        log.error("ИИ вернул пустой список уроков или null для Checkpoint {}", checkpointId);
+        return;
+      }
 
       log.info("ИИ сгенерировал {} уроков.", response.getLessons().size());
 
@@ -195,7 +205,7 @@ public class RoadmapService {
    * @return созданный и наполненный контентом новый Checkpoint
    */
   @Transactional
-  public Checkpoint deepenTopic(Long currentCheckpointId, String userRequest) {
+  public Checkpoint deepenTopic(Long currentCheckpointId, String userRequest) { //todo: выдает ошибку - разобраться
     log.info("Запрос на углубление темы после Checkpoint ID: {}. Запрос: '{}'", currentCheckpointId, userRequest);
     Checkpoint current = checkpointRepository.findById(currentCheckpointId)
       .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
@@ -213,7 +223,7 @@ public class RoadmapService {
       });
 
     // 2. Генерация нового "глубокого" этапа через ИИ
-    String json = fetchValidJson(userRequest, Prompts.DEEPEN_TOPIC_SYSTEM_PROMPT, 2);
+    String json = cleanJsonResponse(fetchValidJson(userRequest, Prompts.DEEPEN_TOPIC_SYSTEM_PROMPT, 2));
     try {
       DeepenCheckpointDTO dto = objectMapper.readValue(json, DeepenCheckpointDTO.class);
       Checkpoint deep = checkpointRepository.save(Checkpoint.builder()
@@ -253,14 +263,20 @@ public class RoadmapService {
       log.info("Запрос к ИИ (Попытка {}/{})", i + 1, attempts);
       lastResponse = gigaChatService.chat(systemPrompt, context);
 
-      if (isValidJson(lastResponse)) {
-        log.info("Получен валидный JSON от ИИ.");
-        return lastResponse;
+      // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Очищаем ДО проверки на валидность
+      String cleaned = cleanJsonResponse(lastResponse);
+
+      if (isValidJson(cleaned)) {
+        log.info("Получен валидный JSON от ИИ после очистки.");
+        return cleaned; // Возвращаем уже чистый JSON
       }
 
       log.warn("Попытка {}: ИИ выдал невалидный JSON. Некорректный текст: {}", i + 1, lastResponse);
-      // Уточняем контекст для ИИ на следующую попытку
-      context = "Твой предыдущий ответ был невалидным JSON. Исправь его. \nПредыдущий ответ: " + lastResponse;
+
+      // Улучшаем подсказку для ИИ, требуя "голый" JSON
+      context = "Твой предыдущий ответ был невалидным JSON. Исправь его. " +
+        "ВАЖНО: Выведи только чистый JSON-код без слов ```json или любого другого текста.\n" +
+        "Предыдущий ответ: " + lastResponse;
     }
     log.error("Все {} попыток получить JSON провалены.", attempts);
     return "{}";
@@ -278,6 +294,30 @@ public class RoadmapService {
     }
   }
 
+  private String cleanJsonResponse(String rawResponse) {
+    if (rawResponse == null || rawResponse.isBlank()) return "{}";
+
+    // 1. Пытаемся найти границы JSON объекта, если ИИ добавил лишний текст
+    try {
+      int firstBrace = rawResponse.indexOf('{');
+      int lastBrace = rawResponse.lastIndexOf('}');
+
+      if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+        String jsonPart = rawResponse.substring(firstBrace, lastBrace + 1);
+
+        // 2. Убираем остатки Markdown-разметки внутри найденного куска
+        return jsonPart
+          .replace("```json", "")
+          .replace("```", "")
+          .trim();
+      }
+    } catch (Exception e) {
+      log.warn("Не удалось очистить JSON регуляркой: {}", e.getMessage());
+    }
+
+    return rawResponse.trim();
+  }
+
   /**
    * Находит самый первый этап в самой первой теме Roadmap и делает его доступным для изучения.
    *
@@ -293,5 +333,44 @@ public class RoadmapService {
             fillCheckpointContent(cp.getId());
           });
       });
+  }
+
+  @Transactional(readOnly = true)
+  public Roadmap getRoadmapWithTopics(Long id) {
+    log.info("Получение полной структуры Roadmap ID: {}", id);
+    Roadmap roadmap = roadmapRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
+
+    // Принудительная инициализация ленивых коллекций,
+    // чтобы они были доступны в контроллере/шаблоне
+    roadmap.getTopics().size();
+    roadmap.getTopics().forEach(t -> t.getCheckpoints().size());
+
+    return roadmap;
+  }
+
+
+  @Transactional(readOnly = true)
+  public double calculateProgress(Long roadmapId) {
+    Roadmap roadmap = roadmapRepository.findById(roadmapId)
+      .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
+
+    List<Checkpoint> allCheckpoints = roadmap.getTopics().stream()
+      .flatMap(t -> t.getCheckpoints().stream())
+      .toList();
+
+    if (allCheckpoints.isEmpty()) return 0.0;
+
+    long completedCount = allCheckpoints.stream()
+      .filter(cp -> cp.getStatus() == CheckpointStatus.COMPLETED)
+      .count();
+
+    return (double) completedCount / allCheckpoints.size() * 100;
+  }
+
+  @Transactional(readOnly = true)
+  public Checkpoint getCheckpoint(Long id) {
+    return checkpointRepository.findById(id)
+      .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
   }
 }

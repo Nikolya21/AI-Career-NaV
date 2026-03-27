@@ -1,9 +1,7 @@
 package org.example.aicareernav1.controller.view;
 
 import lombok.RequiredArgsConstructor;
-import org.example.aicareernav1.model.user.entity.UserEntity;
-import org.example.aicareernav1.service.userService.UserService; // Замените на ваш пакет сервиса
-import org.springframework.beans.factory.annotation.Autowired;
+import org.example.aicareernav1.service.userService.UserService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
