@@ -78,6 +78,34 @@ public class RoadmapService {
   }
 
   /**
+   * Анализирует отзыв пользователя о прошедшем этапе и обновляет профиль обучения.
+   * @param roadmapId ID дорожной карты
+   * @param feedbackText текст отзыва от пользователя
+   */
+  @Transactional
+  public void processUserFeedback(Long roadmapId, String feedbackText) {
+    Roadmap roadmap = roadmapRepository.findById(roadmapId)
+      .orElseThrow(() -> new EntityNotFoundException("Roadmap not found"));
+
+    String currentNotes = roadmap.getLearningStyleNotes() != null
+                          ? roadmap.getLearningStyleNotes()
+                          : "Информации пока нет.";
+
+    // Промпт, который заставляет ИИ кратко обновить портрет ученика
+    String systemPrompt = "Ты — аналитик образовательного процесса. Твоя задача — обновить профиль предпочтений студента.\n" +
+      "Текущий профиль: " + currentNotes + "\n" +
+      "Новый отзыв: " + feedbackText + "\n" +
+      "Выдай обновленный список предпочтений кратко, через запятую. Сосредоточься на стиле подачи, сложности и формате заданий.";
+
+    String updatedNotes = gigaChatService.chat(systemPrompt, "Обнови профиль на основе отзыва.");
+
+    roadmap.setLearningStyleNotes(updatedNotes);
+    roadmapRepository.save(roadmap);
+
+    log.info("Профиль обучения обновлен для Roadmap ID {}: {}", roadmapId, updatedNotes);
+  }
+
+  /**
    * Генерирует обучающий контент (уроки и задачи) для конкретной темы.
    * Использует ИИ для создания теории и практических упражнений в зависимости от профессии.
    *
@@ -85,21 +113,54 @@ public class RoadmapService {
    */
   @Transactional
   public void fillCheckpointContent(Long checkpointId) {
-    Checkpoint cp = checkpointRepository.findById(checkpointId)
-      .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
+    log.info("==> [GENERATE CONTENT] Старт генерации для Checkpoint ID: {}", checkpointId);
 
-    if (!cp.getLessons().isEmpty()) return;
+    Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
+      .orElseThrow(() -> {
+        log.error("Checkpoint ID {} не найден в базе данных", checkpointId);
+        return new EntityNotFoundException("Checkpoint не найден");
+      });
 
-    String profession = cp.getTopic().getRoadmap().getTargetJobTitle();
-    String systemPrompt = String.format(Prompts.CONTENT_SYSTEM_PROMPT, profession, cp.getTitle());
-    String json = fetchValidJson(cp.getDescription(), systemPrompt, 3);
+    if (!checkpoint.getLessons().isEmpty()) {
+      log.info("Контент для чекпоинта '{}' уже существует. Генерация пропущена.", checkpoint.getTitle());
+      return;
+    }
+
+    Roadmap roadmap = checkpoint.getTopic().getRoadmap();
+    String profession = roadmap.getTargetJobTitle();
+    String style = (roadmap.getLearningStyleNotes() != null)
+      ? roadmap.getLearningStyleNotes()
+      : "Стандартный подход";
+
+    // 1. Статичные правила
+    String systemPrompt = Prompts.CONTENT_SYSTEM_PROMPT;
+
+    // 2. Динамическое задание
+    String userMsg = String.format(
+      "Создай уроки для специалиста в области: %s.\n" +
+        "Тема: %s.\n" +
+        "Контекст: %s.\n" +
+        "Стиль обучения пользователя: %s",
+      profession, checkpoint.getTitle(), checkpoint.getDescription(), style
+    );
+
+    log.debug("Отправляемый запрос к ИИ (User Message):\n{}", userMsg);
+
+    // Вызов ИИ через механизм Retry
+    String json = fetchValidJson(userMsg, systemPrompt, 3);
 
     try {
+      log.info("Получен ответ от ИИ. Начинаю парсинг JSON для этапа: {}", checkpoint.getTitle());
       ContentResponse response = objectMapper.readValue(json, ContentResponse.class);
+
+      log.info("ИИ сгенерировал {} уроков.", response.getLessons().size());
+
       for (LessonDTO lDto : response.getLessons()) {
         Lesson lesson = new Lesson();
         lesson.setTitle(lDto.getTitle());
-        lesson.setCheckpoint(cp);
+        lesson.setCheckpoint(checkpoint);
+
+        log.debug("Обработка урока: {}. Количество задач: {}", lDto.getTitle(), lDto.getTasks().size());
 
         for (TaskDTO tDto : lDto.getTasks()) {
           Task task = new Task();
@@ -110,12 +171,17 @@ public class RoadmapService {
           task.setLesson(lesson);
           lesson.getTasks().add(task);
         }
-        cp.getLessons().add(lesson);
+        checkpoint.getLessons().add(lesson);
       }
-      checkpointRepository.save(cp);
-      log.info("Контент для этапа '{}' успешно сгенерирован", cp.getTitle());
+
+      checkpointRepository.save(checkpoint);
+      log.info("<== [SUCCESS] Контент для этапа '{}' успешно сохранен в БД", checkpoint.getTitle());
+
     } catch (Exception e) {
-      log.error("Ошибка генерации контента для этапа {}: {}", checkpointId, e.getMessage());
+      log.error("!!! [ERROR] Ошибка при обработке ответа ИИ для этапа {}. \n" +
+          "Ошибка: {} \n" +
+          "Сырой JSON ответа: {}",
+        checkpointId, e.getMessage(), json);
     }
   }
 
@@ -130,15 +196,19 @@ public class RoadmapService {
    */
   @Transactional
   public Checkpoint deepenTopic(Long currentCheckpointId, String userRequest) {
+    log.info("Запрос на углубление темы после Checkpoint ID: {}. Запрос: '{}'", currentCheckpointId, userRequest);
     Checkpoint current = checkpointRepository.findById(currentCheckpointId)
       .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
 
-    // 1. Сдвигаем индексы последующих элементов в текущем топике
     List<Checkpoint> followers = checkpointRepository.findAllByTopicIdOrderByOrderIndexAsc(current.getTopic().getId());
+    log.info("Сдвиг индексов для {} последующих чекпоинтов", followers.size());
+
     followers.stream()
       .filter(cp -> cp.getOrderIndex() > current.getOrderIndex())
       .forEach(cp -> {
-        cp.setOrderIndex(cp.getOrderIndex() + 1);
+        int oldIdx = cp.getOrderIndex();
+        cp.setOrderIndex(oldIdx + 1);
+        log.debug("Checkpoint '{}': index {} -> {}", cp.getTitle(), oldIdx, cp.getOrderIndex());
         checkpointRepository.save(cp);
       });
 
@@ -180,10 +250,19 @@ public class RoadmapService {
   private String fetchValidJson(String context, String systemPrompt, int attempts) {
     String lastResponse = "";
     for (int i = 0; i < attempts; i++) {
+      log.info("Запрос к ИИ (Попытка {}/{})", i + 1, attempts);
       lastResponse = gigaChatService.chat(systemPrompt, context);
-      if (isValidJson(lastResponse)) return lastResponse;
-      log.warn("Попытка {}: ИИ выдал некорректный JSON. Повтор...", i + 1);
+
+      if (isValidJson(lastResponse)) {
+        log.info("Получен валидный JSON от ИИ.");
+        return lastResponse;
+      }
+
+      log.warn("Попытка {}: ИИ выдал невалидный JSON. Некорректный текст: {}", i + 1, lastResponse);
+      // Уточняем контекст для ИИ на следующую попытку
+      context = "Твой предыдущий ответ был невалидным JSON. Исправь его. \nПредыдущий ответ: " + lastResponse;
     }
+    log.error("Все {} попыток получить JSON провалены.", attempts);
     return "{}";
   }
 
