@@ -15,9 +15,12 @@ public class Lesson {
 
   private String title;
 
+  @OneToOne(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Theory theory; // Теперь это объект
+
   @ManyToOne
-  @JoinColumn(name = "checkpoint_id")
-  private Checkpoint checkpoint;
+  @JoinColumn(name = "module_id")
+  private Module module;
 
   @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Task> tasks = new ArrayList<>();

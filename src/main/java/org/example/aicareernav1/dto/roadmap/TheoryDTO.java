@@ -5,6 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class ContentResponse {
-  private List<LessonDTO> lessons;
+public class TheoryDTO {
+  private String text;
+  private List<ResourceDTO> resources;
 }

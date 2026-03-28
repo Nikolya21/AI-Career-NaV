@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.example.aicareernav1.enums.CheckpointStatus;
-import java.util.ArrayList;
-import java.util.List;
 
 
 @Entity // Помечает класс как таблицу в базе данных
@@ -34,13 +32,8 @@ public class Checkpoint {
   private String description; // Тот текст, который ты написал в скобках (например, "Пойми разницу между stack и heap")
   private Integer orderIndex; // Порядок внутри блока
 
-
-  // Связь "Один ко многим": один чекпоинт содержит список уроков
-  // mappedBy: говорит, что за связь отвечает поле "checkpoint" в классе Lesson
-  // cascade: если удалим чекпоинт — удалятся и все его уроки
-  // orphanRemoval: если удалить урок из списка lessons, он удалится и из базы данных
-  @OneToMany(mappedBy = "checkpoint", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Lesson> lessons = new ArrayList<>();
+  @OneToOne(mappedBy = "checkpoint", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Module module;
 
 //  @OneToOne(cascade = CascadeType.ALL) // Связь 1-к-1: у чекпоинта один финальный тест
 //  @JoinColumn(name = "test_id") // Создает колонку с ID теста в таблице Checkpoint

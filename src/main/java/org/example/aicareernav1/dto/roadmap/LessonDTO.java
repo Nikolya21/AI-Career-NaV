@@ -5,7 +5,8 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class LessonDTO { //todo: разобраться с Lesson и Task - ошибки в промптах / моделях => Jackson не может нармально распарсить
+public class LessonDTO {
   private String title;
+  private TheoryDTO theory;
   private List<TaskDTO> tasks;
 }
