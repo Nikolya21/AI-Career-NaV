@@ -8,5 +8,8 @@ import java.util.List;
 
 @Repository
 public interface LessonRepository extends JpaRepository<Lesson, Long> {
-  List<Lesson> findAllByCheckpointId(Long checkpointId);
+  List<Lesson> findAllByModuleId(Long moduleId);
+
+  // Либо поиск через ID чекпоинта (Spring Data JPA пройдет по цепочке Lesson -> Module -> Checkpoint)
+  List<Lesson> findAllByModuleCheckpointId(Long checkpointId);
 }

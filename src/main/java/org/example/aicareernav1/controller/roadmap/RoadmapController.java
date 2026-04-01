@@ -4,10 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
-import org.example.aicareernav1.entity.dynamicRoadmapEntity.Checkpoint;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Контроллер для управления образовательным процессом дорожной карты.
@@ -45,6 +46,11 @@ public class RoadmapController {
       roadmapService.fillCheckpointContent(id);
       response = roadmapService.getModuleByCheckpointId(id);
     }
+
+    if (response == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Не удалось сформировать контент для урока");
+    }
+
     return ResponseEntity.ok(response);
   }
 
@@ -84,5 +90,16 @@ public class RoadmapController {
     log.info("API: Принудительное заполнение контента для Checkpoint ID: {}", id);
     roadmapService.fillCheckpointContent(id);
     return ResponseEntity.ok().build();
+  }
+
+  /**
+   * Возвращает текущий прогресс прохождения дорожной карты в процентах.
+   *
+   * @param id ID дорожной карты
+   * @return процент завершения (0.0 - 100.0)
+   */
+  @GetMapping("/{id}/progress")
+  public ResponseEntity<Double> getProgress(@PathVariable Long id) {
+    return ResponseEntity.ok(roadmapService.calculateProgress(id));
   }
 }

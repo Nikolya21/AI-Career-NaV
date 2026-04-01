@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * Контроллер для отображения визуальных страниц дорожной карты.
- * Работает с шаблонами Thymeleaf.
+ * Контроллер для визуализации интерфейса дорожной карты на Thymeleaf.
+ * Поддерживает интерактивные элементы: формы углубления в тему и блоки обратной связи.
  */
 @Controller
 @RequestMapping("/roadmap")
@@ -23,14 +23,14 @@ public class RoadmapViewController {
   private final RoadmapService roadmapService;
 
   /**
-   * Отображает главную страницу дорожной карты со всеми темами и этапами.
-   *
-   * @param id    ID дорожной карты
-   * @param model модель для передачи данных в шаблон
-   * @return путь к шаблону roadmap-view.html
+   * Отображает общую структуру дорожной карты (дерево тем).
+   * * @param id ID дорожной карты
+   * @param model контейнер данных для шаблона
+   * @return страница общего вида roadmap/view.html
    */
   @GetMapping("/{id}")
   public String viewRoadmap(@PathVariable Long id, Model model) {
+    // Получаем сущность со списком топиков и чекпоинтов
     Roadmap roadmap = roadmapService.getRoadmapWithTopics(id);
     double progress = roadmapService.calculateProgress(id);
 
@@ -38,23 +38,31 @@ public class RoadmapViewController {
     model.addAttribute("progress", Math.round(progress));
     model.addAttribute("jobTitle", roadmap.getTargetJobTitle());
 
-    return "roadmap/view"; // Путь к src/main/resources/templates/roadmap/view.html
+    return "roadmap/view";
   }
 
   /**
-   * Отображает страницу конкретного урока внутри чекпоинта.
+   * Отображает страницу конкретного урока с контентом и формами взаимодействия.
+   * Именно здесь пользователь видит "плашки" для углубления темы и ввода фидбека.
    *
-   * @param checkpointId ID этапа
-   * @param model        модель
-   * @return путь к шаблону lesson-view.html
+   * @param checkpointId ID этапа обучения
+   * @param model модель для Thymeleaf
+   * @return страница урока roadmap/lesson.html
    */
   @GetMapping("/lesson/{checkpointId}")
   public String viewLesson(@PathVariable Long checkpointId, Model model) {
+    // 1. Получаем метаданные чекпоинта (заголовок, описание) через DTO
     CheckpointResponse checkpoint = roadmapService.getCheckpointResponse(checkpointId);
+
+    // 2. Получаем сам образовательный контент (уроки, теорию)
     ModuleResponse module = roadmapService.getModuleByCheckpointId(checkpointId);
 
+    // Передаем данные в модель
     model.addAttribute("checkpoint", checkpoint);
     model.addAttribute("module", module);
+
+    // Передаем ID Roadmap для работы формы фидбека (чтобы знать, какой профиль обновлять)
+    model.addAttribute("roadmapId", checkpoint.getRoadmapId());
 
     return "roadmap/lesson";
   }

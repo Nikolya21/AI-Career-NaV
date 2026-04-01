@@ -18,6 +18,10 @@ public interface CheckpointRepository extends JpaRepository<Checkpoint, Long> {
       @Param("roadmapId") Long roadmapId,
       @Param("status") CheckpointStatus status
     );
+
+    @Query("SELECT cp FROM Checkpoint cp LEFT JOIN FETCH cp.module WHERE cp.id = :id")
+    Optional<Checkpoint> findByIdWithModule(@Param("id") Long id);
+
     List<Checkpoint> findAllByTopicIdOrderByOrderIndexAsc(Long topicId);
 }
 

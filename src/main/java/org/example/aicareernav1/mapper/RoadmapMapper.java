@@ -19,6 +19,7 @@ public interface RoadmapMapper {
 
   TheoryResponse toTheoryResponse(Theory theory);
 
+  @Mapping(target = "roadmapId", source = "topic.roadmap.id")
   CheckpointResponse toCheckpointResponse(Checkpoint checkpoint);
 
   @Mapping(target = "type", expression = "java(resource.getType().name())")

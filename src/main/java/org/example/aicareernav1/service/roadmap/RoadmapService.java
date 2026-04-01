@@ -1,6 +1,5 @@
 package org.example.aicareernav1.service.roadmap;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -90,28 +89,35 @@ public class RoadmapService {
 
 
   /**
-   * Анализирует отзыв пользователя о прошедшем этапе и обновляет профиль обучения.
-   * Результат анализа сохраняется в поле learningStyleNotes для адаптации будущего контента.
+   * Анализирует отзыв пользователя о пройденном этапе и обновляет профиль предпочтений (Learning Style).
+   * Результат сжимается до ключевых тезисов для адаптации будущего контента.
    *
-   * @param roadmapId    ID дорожной карты
-   * @param feedbackText текст отзыва от пользователя
+   * @param roadmapId    идентификатор дорожной карты
+   * @param feedbackText новый текст отзыва от пользователя
    */
   @Transactional
   public void processUserFeedback(Long roadmapId, String feedbackText) {
     Roadmap roadmap = roadmapRepository.findById(roadmapId)
-      .orElseThrow(() -> new EntityNotFoundException("Roadmap not found"));
+      .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
 
-    String currentNotes = roadmap.getLearningStyleNotes() != null
-      ? roadmap.getLearningStyleNotes()
-      : "Информации пока нет.";
+    String currentNotes = (roadmap.getLearningStyleNotes() != null) ? roadmap.getLearningStyleNotes() : "";
 
-    String systemPrompt = "Ты — аналитик образовательного процесса. Твоя задача — обновить профиль предпочтений студента...\n";
-    String updatedNotes = gigaChatService.chat(systemPrompt, "Обнови профиль на основе отзыва.");
+    String userMsg = String.format(Prompts.LEARNING_STYLE_UPDATE_PROMPT, currentNotes, feedbackText);
 
-    roadmap.setLearningStyleNotes(updatedNotes);
-    roadmapRepository.save(roadmap);
+    try {
+      String updatedNotes = gigaChatService.chat(
+        "Ты — система долговременной памяти студента. Ты должен дополнять и уточнять знания о нем, не теряя важного.",
+        userMsg
+      );
 
-    log.info("Профиль обучения обновлен для Roadmap ID {}: {}", roadmapId, updatedNotes);
+      if (updatedNotes != null && !updatedNotes.isBlank()) {
+        roadmap.setLearningStyleNotes(updatedNotes.trim());
+        roadmapRepository.save(roadmap);
+        log.info("Профиль обучения для Roadmap {} обновлен с сохранением контекста.", roadmapId);
+      }
+    } catch (Exception e) {
+      log.error("Ошибка обновления LearningStyle: {}", e.getMessage());
+    }
   }
 
 
@@ -122,7 +128,7 @@ public class RoadmapService {
    * @param checkpointId идентификатор этапа, который нужно наполнить
    */
   @Transactional
-  public void fillCheckpointContent(Long checkpointId) {
+  public void fillCheckpointContent(Long checkpointId) { // todo: никак учитывает userPreference - исправить
     log.info("==> [GENERATE CONTENT] Старт генерации для Checkpoint ID: {}", checkpointId);
 
     Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
@@ -134,16 +140,30 @@ public class RoadmapService {
     }
 
     Roadmap roadmap = checkpoint.getTopic().getRoadmap();
-    String userMsg = String.format(
-      "Создай уроки для специалиста в области: %s.\nТема: %s.\nКонтекст: %s.\nСтиль: %s",
-      roadmap.getTargetJobTitle(), checkpoint.getTitle(),
-      checkpoint.getDescription(), roadmap.getLearningStyleNotes()
-    );
 
-    String json = fetchValidJson(userMsg, Prompts.CONTENT_SYSTEM_PROMPT, 3);
+    // Получаем заметки или ставим дефолт, если профиль еще пуст
+    String learningStyle = (roadmap.getLearningStyleNotes() != null && !roadmap.getLearningStyleNotes().isBlank())
+      ? roadmap.getLearningStyleNotes()
+      : "Стиль обучения еще не определен (используй стандартную подачу).";
+
+    // Формируем структурированный запрос
+      String userMsg = String.format(
+        "ПРОФИЛЬ СТУДЕНТА (Learning Style):\n%s\n\n" +
+          "ЗАДАНИЕ:\n" +
+          "Создай учебный модуль для специалиста: %s.\n" +
+          "Текущая тема: %s.\n" +
+          "Контекст темы: %s.",
+        learningStyle,
+        roadmap.getTargetJobTitle(),
+        checkpoint.getTitle(),
+        checkpoint.getDescription()
+      );
 
     try {
+      // Запрашиваем контент с учетом обновленного системного промпта
+      String json = fetchValidJson(userMsg, Prompts.CONTENT_SYSTEM_PROMPT, 3);
       String sanitizedJson = jsonUtils.cleanJsonResponse(json);
+
       ContentResponse response = objectMapper.readValue(sanitizedJson, ContentResponse.class);
 
       if (response == null || response.getModule() == null) {
@@ -156,10 +176,10 @@ public class RoadmapService {
       checkpoint.setModule(module);
 
       checkpointRepository.save(checkpoint);
-      log.info("<== [SUCCESS] Контент для этапа '{}' успешно сохранен", checkpoint.getTitle());
+      log.info("<== [SUCCESS] Адаптивный контент для '{}' сохранен", checkpoint.getTitle());
 
     } catch (Exception e) {
-      log.error("!!! [ERROR] Ошибка при обработке ответа ИИ: {}", e.getMessage());
+      log.error("!!! [ERROR] Ошибка генерации адаптивного контента: {}", e.getMessage());
     }
   }
 
@@ -238,6 +258,7 @@ public class RoadmapService {
       .filter(cp -> cp.getOrderIndex() > current.getOrderIndex())
       .forEach(cp -> cp.setOrderIndex(cp.getOrderIndex() + 1));
 
+    checkpointRepository.saveAll(followers); //для hibernate
     String json = jsonUtils.cleanJsonResponse(fetchValidJson(userRequest, Prompts.DEEPEN_TOPIC_SYSTEM_PROMPT, 2));
 
     try {
