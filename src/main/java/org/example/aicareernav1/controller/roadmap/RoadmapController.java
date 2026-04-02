@@ -2,8 +2,10 @@ package org.example.aicareernav1.controller.roadmap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,15 +24,14 @@ public class RoadmapController {
   private final RoadmapService roadmapService;
 
   /**
-   * Создает начальную структуру (скелет) дорожной карты.
-   * * @param id      идентификатор дорожной карты
-   * @param context контекст пользователя (цели, текущие навыки)
+   * Полная генерация дорожной карты: создание сущности + генерация структуры через ИИ.
+   * Возвращает ID созданного Roadmap для последующего редиректа.
    */
-  @PostMapping("/{id}/skeleton")
-  public ResponseEntity<Void> createSkeleton(@PathVariable Long id, @RequestBody String context) {
-    log.info("API: Запрос на создание скелета для Roadmap ID: {}", id);
-    roadmapService.createSkeleton(id, context);
-    return ResponseEntity.ok().build();
+  @PostMapping("/generate")
+  public ResponseEntity<Long> generateRoadmap(@RequestBody RoadmapGenerationRequest request) {
+    log.info("API: Запрос на полную генерацию Roadmap для вакансии: {}", request.getJobTitle());
+    Roadmap roadmap = roadmapService.generateFullRoadmap(request);
+    return ResponseEntity.ok(roadmap.getId());
   }
 
   /**

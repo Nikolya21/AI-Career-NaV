@@ -41,49 +41,98 @@ public class RoadmapService {
   private final GigaChatService gigaChatService;
   private final ObjectMapper objectMapper;
 
-  private final JsonUtilsService jsonUtils;
+  private final JsonUtilsService jsonUtilsService;
   private final ContentMapper contentMapper;
   private final RoadmapMapper roadmapMapper;
 
+
+
   /**
-   * Создает базовую структуру (скелет) Roadmap на основе контекста пользователя.
-   * Генерирует список блоков (Topic) и тем (Checkpoint), сохраняя их в БД.
-   * Использует {@link RoadmapMapper} для преобразования DTO в сущности.
+   * Выполняет полный цикл создания персонализированной дорожной карты.
+   * <p>
+   * Метод инкапсулирует три этапа:
+   * 1. Создание базовой сущности {@link Roadmap} с сохранением контекста (требования вакансии и уровень знаний).
+   * 2. Обращение к ИИ для генерации структуры (топиков и чекпоинтов), адаптированной под "пробелы" студента.
+   * 3. Активация первого этапа обучения для немедленного доступа к контенту.
+   * </p>
    *
-   * @param roadmapId   идентификатор созданной заготовки Roadmap
-   * @param userContext описание целей пользователя или текст вакансии
+   * @param request объект, содержащий название вакансии, требования с рынка и результаты входного теста
+   * @return созданная и полностью инициализированная дорожная карта с присвоенным ID
+   * @throws RuntimeException если ИИ вернул некорректный JSON или произошла ошибка при сохранении в БД
    */
   @Transactional
-  public void createSkeleton(Long roadmapId, String userContext) {
-    Roadmap roadmap = roadmapRepository.findById(roadmapId)
-      .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
+  public Roadmap generateFullRoadmap(RoadmapGenerationRequest request) {
+    log.info("Начало полной генерации для: {}", request.getJobTitle());
 
-    String systemPrompt = String.format(Prompts.SKELETON_SYSTEM_PROMPT, roadmap.getTargetJobTitle());
-    String jsonResponse = jsonUtils.cleanJsonResponse(fetchValidJson(userContext, systemPrompt, 2));
+    // 1. Создаем саму сущность Roadmap
+    // Сохраняем требования и результаты теста в поле userContext
+    String context = String.format("Требования: %s. Уровень: %s",
+      request.getRequirements(), request.getTestResult());
 
-    try {
-      SkeletonResponse response = objectMapper.readValue(jsonResponse, SkeletonResponse.class);
-      int topicOrder = 0;
-      for (TopicDTO tDto : response.getTopics()) {
-        Topic topic = roadmapMapper.toEntity(tDto);
-        topic.setOrderIndex(topicOrder++);
-        topic.setRoadmap(roadmap);
-        topicRepository.save(topic);
+    Roadmap roadmap = Roadmap.builder()
+      .targetJobTitle(request.getJobTitle())
+      .userContext(context)
+      .build();
 
-        int cpOrder = 0;
-        if (tDto.getCheckpoints() != null) {
-          for (CheckpointDTO cpDto : tDto.getCheckpoints()) {
-            Checkpoint checkpoint = roadmapMapper.toEntity(cpDto);
-            checkpoint.setOrderIndex(cpOrder++);
-            checkpoint.setTopic(topic);
-            checkpoint.setStatus(CheckpointStatus.LOCKED);
-            checkpointRepository.save(checkpoint);
-          }
-        }
+    roadmap = roadmapRepository.save(roadmap);
+
+    // 2. Генерируем структуру через ИИ
+    generateAndSaveSkeleton(roadmap, request);
+
+    // 3. Активируем первый шаг (чтобы пользователь сразу видел контент первого урока)
+    activateFirstCheckpoint(roadmap.getId());
+
+    return roadmap;
+  }
+
+  /**
+   * Формирует интеллектуальный запрос к нейросети и сохраняет полученную структуру в базу данных.
+   * <p>
+   * Метод подставляет данные пользователя в {@link Prompts#SKELETON_SYSTEM_PROMPT},
+   * десериализует ответ в {@link SkeletonResponse} и выполняет пакетное сохранение
+   * связанных сущностей {@link Topic} и {@link Checkpoint}.
+   * </p>
+   *
+   * @param roadmap объект дорожной карты, к которой будут привязаны создаваемые топики
+   * @param request контекстные данные для формирования персонализированного промпта
+   */
+  private void generateAndSaveSkeleton(Roadmap roadmap, RoadmapGenerationRequest request) {
+    // Подставляем данные в промпт
+    String prompt = Prompts.SKELETON_SYSTEM_PROMPT
+      .replace("{jobTitle}", request.getJobTitle())
+      .replace("{requirements}", request.getRequirements())
+      .replace("{testResult}", request.getTestResult());
+
+    String response = gigaChatService.sendMessage(prompt);
+    log.info("Ответ от GigaChat: {}", response);
+
+    SkeletonResponse skeleton = jsonUtilsService.parseObject(response, SkeletonResponse.class);
+
+    if (skeleton == null || skeleton.getTopics() == null || skeleton.getTopics().isEmpty()) {
+      log.error("ИИ прислал пустую структуру или невалидный JSON. Topics is null.");
+      throw new RuntimeException("Не удалось сгенерировать структуру плана обучения. Попробуйте еще раз.");
+    }
+
+    int topicOrder = 1;
+    for (TopicDTO tDto : skeleton.getTopics()) {
+      Topic topic = Topic.builder()
+        .title(tDto.getTopicTitle())
+        .orderIndex(topicOrder++)
+        .roadmap(roadmap)
+        .build();
+      topicRepository.save(topic);
+
+      int cpOrder = 1;
+      for (CheckpointDTO cpDto : tDto.getCheckpoints()) {
+        Checkpoint cp = Checkpoint.builder()
+          .title(cpDto.getTitle())
+          .description(cpDto.getDescription())
+          .status(CheckpointStatus.LOCKED)
+          .orderIndex(cpOrder++)
+          .topic(topic)
+          .build();
+        checkpointRepository.save(cp);
       }
-      activateFirstCheckpoint(roadmapId);
-    } catch (Exception e) {
-      log.error("Ошибка при создании структуры Roadmap: {}", e.getMessage());
     }
   }
 
@@ -128,7 +177,7 @@ public class RoadmapService {
    * @param checkpointId идентификатор этапа, который нужно наполнить
    */
   @Transactional
-  public void fillCheckpointContent(Long checkpointId) { // todo: никак учитывает userPreference - исправить
+  public void fillCheckpointContent(Long checkpointId) {
     log.info("==> [GENERATE CONTENT] Старт генерации для Checkpoint ID: {}", checkpointId);
 
     Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
@@ -160,26 +209,20 @@ public class RoadmapService {
       );
 
     try {
-      // Запрашиваем контент с учетом обновленного системного промпта
       String json = fetchValidJson(userMsg, Prompts.CONTENT_SYSTEM_PROMPT, 3);
-      String sanitizedJson = jsonUtils.cleanJsonResponse(json);
+      log.info("==> [DEBUG] Сырой ответ от GigaChat: {}", json);
+
+      String sanitizedJson = jsonUtilsService.cleanJsonResponse(json);
+      log.info("==> [DEBUG] Очищенный JSON: {}", sanitizedJson);
 
       ContentResponse response = objectMapper.readValue(sanitizedJson, ContentResponse.class);
 
-      if (response == null || response.getModule() == null) {
-        log.error("ИИ вернул пустой модуль для Checkpoint {}", checkpointId);
-        return;
+      if (response != null && response.getModule() != null) {
+        // ВЫЗЫВАЕМ ОТДЕЛЬНЫЙ ТРАНЗАКЦИОННЫЙ МЕТОД ДЛЯ СОХРАНЕНИЯ
+        saveGeneratedContent(checkpointId, response.getModule());
       }
-
-      Module module = contentMapper.toEntity(response.getModule());
-      module.setCheckpoint(checkpoint);
-      checkpoint.setModule(module);
-
-      checkpointRepository.save(checkpoint);
-      log.info("<== [SUCCESS] Адаптивный контент для '{}' сохранен", checkpoint.getTitle());
-
     } catch (Exception e) {
-      log.error("!!! [ERROR] Ошибка генерации адаптивного контента: {}", e.getMessage());
+      log.error("!!! Ошибка генерации: {}", e.getMessage(), e);
     }
   }
 
@@ -225,14 +268,79 @@ public class RoadmapService {
    * @param checkpointId идентификатор этапа обучения
    * @return {@link ModuleResponse}, содержащий список уроков, теорию и задачи, или null, если контент еще не создан
    */
-  @Transactional(readOnly = true)
   public ModuleResponse getModuleByCheckpointId(Long checkpointId) {
-    return checkpointRepository.findById(checkpointId)
-      .map(Checkpoint::getModule)
-      .map(roadmapMapper::toModuleResponse)
-      .orElse(null);
+    // 1. Ищем чекпоинт
+    Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
+      .orElseThrow(() -> new EntityNotFoundException("Checkpoint not found"));
+
+    // 2. Если модуля нет — запускаем генерацию
+    if (checkpoint.getModule() == null) {
+      // Вызываем твой метод генерации (убедись, что он сохраняет модуль в БД)
+      fillCheckpointContent(checkpointId);
+
+      // Перечитываем чекпоинт, чтобы получить уже созданный модуль
+      checkpoint = checkpointRepository.findById(checkpointId).get();
+    }
+
+    // 3. Маппим в Response
+    return roadmapMapper.toModuleResponse(checkpoint.getModule());
   }
 
+
+  /**
+   * Сохраняет сгенерированный ИИ контент (модуль) в базу данных.
+   * * Метод устанавливает двусторонние связи между всеми вложенными сущностями,
+   * что критично для корректной работы JPA (установки Foreign Keys в БД).
+   * * @param checkpointId ID этапа
+   * @param moduleDto    Данные от ИИ
+   */
+  @Transactional
+  public void saveGeneratedContent(Long checkpointId, ModuleDTO moduleDto) {
+    log.info("==> [DB SAVE] Сохранение модуля для Checkpoint ID: {}", checkpointId);
+
+    // 1. Находим родительский чекпоинт
+    Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
+      .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
+
+    // 2. Маппим DTO в сущность Module
+    Module module = contentMapper.toEntity(moduleDto);
+
+    // 3. Устанавливаем связь Module <-> Checkpoint
+    module.setCheckpoint(checkpoint);
+    checkpoint.setModule(module);
+
+    // 4. Проходим по дереву сущностей и проставляем обратные ссылки (Back-references)
+    if (module.getLessons() != null) {
+      for (Lesson lesson : module.getLessons()) {
+        // Связь Lesson -> Module
+        lesson.setModule(module);
+
+        if (lesson.getTheory() != null) {
+          Theory theory = lesson.getTheory();
+          // Связь Theory -> Lesson
+          theory.setLesson(lesson);
+
+          if (theory.getResources() != null) {
+            for (Resource resource : theory.getResources()) {
+              // Связь Resource -> Theory
+              resource.setTheory(theory);
+            }
+          }
+        }
+
+        // Если у тебя есть задачи (Tasks)
+        if (lesson.getTasks() != null) {
+          lesson.getTasks().forEach(task -> task.setLesson(lesson));
+        }
+      }
+    }
+
+    // 5. Сохраняем чекпоинт. Благодаря CascadeType.ALL в Checkpoint.java,
+    // модуль и все его уроки сохранятся автоматически.
+    checkpointRepository.save(checkpoint);
+
+    log.info("<== [DB SUCCESS] Модуль и уроки успешно зафиксированы в БД");
+  }
 
   /**
    * Реализует функционал адаптивного обучения "Углубиться в тему".
@@ -259,7 +367,7 @@ public class RoadmapService {
       .forEach(cp -> cp.setOrderIndex(cp.getOrderIndex() + 1));
 
     checkpointRepository.saveAll(followers); //для hibernate
-    String json = jsonUtils.cleanJsonResponse(fetchValidJson(userRequest, Prompts.DEEPEN_TOPIC_SYSTEM_PROMPT, 2));
+    String json = jsonUtilsService.cleanJsonResponse(fetchValidJson(userRequest, Prompts.DEEPEN_TOPIC_SYSTEM_PROMPT, 2));
 
     try {
       DeepenCheckpointDTO dto = objectMapper.readValue(json, DeepenCheckpointDTO.class);
@@ -302,9 +410,9 @@ public class RoadmapService {
       log.info("Запрос к ИИ (Попытка {}/{})", i + 1, attempts);
       lastResponse = gigaChatService.chat(systemPrompt, context);
 
-      String cleaned = jsonUtils.cleanJsonResponse(lastResponse);
+      String cleaned = jsonUtilsService.cleanJsonResponse(lastResponse);
 
-      if (jsonUtils.isValidJson(cleaned)) {
+      if (jsonUtilsService.isValidJson(cleaned)) {
         return cleaned;
       }
 

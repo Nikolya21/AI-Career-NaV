@@ -30,6 +30,29 @@ public class JsonUtilsService {
     return rawResponse.trim();
   }
 
+  /**
+   * Универсальный метод: очищает строку и парсит её в объект указанного класса.
+   *
+   * @param rawResponse сырой ответ от нейросети
+   * @param clazz       класс, в который нужно преобразовать JSON
+   * @return объект типа T или null в случае критической ошибки
+   */
+  public <T> T parseObject(String rawResponse, Class<T> clazz) {
+    String cleaned = cleanJsonResponse(rawResponse);
+    try {
+      return objectMapper.readValue(cleaned, clazz);
+    } catch (Exception e) {
+      log.error("Ошибка при десериализации JSON в класс {}: {}", clazz.getSimpleName(), e.getMessage());
+      try {
+        // Пытаемся вернуть пустой объект, чтобы вызывающий код не упал по NullPointerException
+        return clazz.getDeclaredConstructor().newInstance();
+      } catch (Exception ex) {
+        log.error("Не удалось создать пустой экземпляр класса {}", clazz.getSimpleName());
+        return null;
+      }
+    }
+  }
+
   public JsonNode parseTree(String json) {
     try {
       return objectMapper.readTree(json);

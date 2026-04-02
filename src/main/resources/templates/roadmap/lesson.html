@@ -43,42 +43,55 @@
 </div>
 
 <div class="sidebar">
-    <a th:href="@{/roadmap/{id}(id=${roadmapId})}" class="btn-back">
-        <span class="material-icons">arrow_back</span> Назад к карте
+    <a th:href="@{/roadmap/{id}(id=${roadmapId})}" style="text-decoration: none; color: #5F6368; display: flex; align-items: center; margin-bottom: 30px;">
+        <span class="material-icons" style="margin-right: 8px;">arrow_back</span>
+        Назад к плану
     </a>
-    <h3 th:text="${checkpoint.title}">Название темы</h3>
-    <p style="font-size: 14px; color: #70757A;" th:text="${checkpoint.description}"></p>
+    <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.8px; color: #70757A; margin-bottom: 16px;">Этап обучения</h3>
+    <p th:text="${checkpoint.title}" style="font-weight: 500; font-size: 18px; margin: 0;"></p>
+    <p th:text="${checkpoint.description}" style="color: #5F6368; font-size: 14px; margin-top: 8px;"></p>
 </div>
 
 <div class="content">
-    <h1 th:text="${module.title}" style="font-weight: 400; margin-bottom: 32px;">Загрузка...</h1>
 
-    <div th:each="lesson : ${module.lessons}" class="theory-card">
-        <h2 th:text="${lesson.title}" style="margin-top:0;"></h2>
+    <div th:if="${module != null}">
+        <h1 th:text="${module.title}" style="font-size: 32px; font-weight: 400; margin-bottom: 40px; color: #202124;"></h1>
 
-        <div class="theory-content" th:text="${lesson.theory.text}"></div>
+        <div th:each="lesson : ${module.lessons}" class="theory-card">
+            <h2 th:text="${lesson.title}" style="margin-top:0; color: #202124;"></h2>
 
-        <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
-            <p style="font-weight:500; margin-bottom:10px;">Материалы для изучения:</p>
-            <a th:each="res : ${lesson.theory.resources}"
-               th:href="${res.url}" class="resource-link" target="_blank">
-                <span class="material-icons" style="font-size: 18px; margin-right: 8px;">link</span>
-                <span th:text="${res.title}"></span>
-            </a>
+            <div class="theory-content" th:if="${lesson.theory != null}" th:text="${lesson.theory.text}"></div>
+
+            <div th:if="${lesson.theory != null && !#lists.isEmpty(lesson.theory.resources)}"
+                 style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+                <p style="font-weight:500; margin-bottom:10px;">Материалы для изучения:</p>
+                <a th:each="res : ${lesson.theory.resources}"
+                   th:href="${res.url}" class="resource-link" target="_blank">
+                    <span class="material-icons" style="font-size: 18px; margin-right: 8px;">link</span>
+                    <span th:text="${res.title}"></span>
+                </a>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding-bottom: 60px;">
+            <button th:onclick="'requestDeepen(' + ${checkpoint.id} + ')'"
+                    style="background: var(--google-blue); color: white; border: none; padding: 12px 32px; border-radius: 4px; font-weight: 500; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                Хочу узнать подробнее
+            </button>
         </div>
     </div>
 
-    <div style="text-align: center; margin-top: 40px; padding-bottom: 60px;">
-        <button th:onclick="'requestDeepen(' + ${checkpoint.id} + ')'"
-                style="background: var(--google-blue); color: white; border: none; padding: 12px 32px; border-radius: 24px; cursor: pointer; font-size: 16px; box-shadow: 0 2px 6px rgba(26,115,232,0.3);">
-            Хочу изучить эту тему подробнее
-        </button>
+    <div th:if="${module == null}" class="alert-info">
+        <div style="display: flex; align-items: center;">
+            <span class="material-icons" style="margin-right: 15px; font-size: 30px;">auto_awesome</span>
+            <div>
+                <h2 style="margin: 0; font-size: 20px;">Контент в процессе подготовки</h2>
+                <p style="margin: 5px 0 0 0;">Мы как раз генерируем учебные материалы с помощью ИИ. Пожалуйста, обновите страницу через 30-60 секунд.</p>
+            </div>
+        </div>
     </div>
-</div>
 
-<style>
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-</style>
+</div>
 
 </body>
 </html>
