@@ -44,6 +44,8 @@ public interface RoadmapMapper {
   @Mapping(target = "topic", ignore = true)
   @Mapping(target = "module", ignore = true)
   @Mapping(target = "status", constant = "ACTIVE")
+  @Mapping(target = "title", source = "title")
+  @Mapping(target = "description", source = "description") // Явное указание
   Checkpoint toEntity(DeepenCheckpointDTO dto);
 
   @AfterMapping

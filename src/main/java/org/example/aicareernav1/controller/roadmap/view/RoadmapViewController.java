@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @RequestMapping("/roadmap")
 @RequiredArgsConstructor
-public class RoadmapViewController {
+public class RoadmapViewController { //todo: пофиксить логику со статусами Checkpoint, чтобы все корректно отображалось
 
   private final RoadmapService roadmapService;
 

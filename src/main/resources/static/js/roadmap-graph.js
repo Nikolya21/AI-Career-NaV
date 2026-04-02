@@ -96,19 +96,39 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Функция отправки фидбека (глобальная)
-function sendFeedback() {
-    const text = document.getElementById('feedback-text').value;
-    if (!text) return;
+function sendGlobalFeedback() {
+    const feedbackInput = document.getElementById('feedback-text');
+    const feedbackText = feedbackInput.value.trim();
+
+    if (!feedbackText) {
+        alert("Пожалуйста, напишите что-нибудь, чтобы ИИ мог подстроиться.");
+        return;
+    }
+
+    // Блокируем кнопку на время запроса
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = "Обновляю профиль...";
 
     fetch(`/api/v1/roadmap/${window.roadmapData.id}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: text
-    }).then(res => {
-        if (res.ok) {
-            alert("Отзыв отправлен! ИИ адаптирует программу.");
-            document.getElementById('feedback-text').value = '';
-            document.getElementById('feedback-modal').style.display = 'none';
+        body: feedbackText
+    })
+    .then(response => {
+        if (response.ok) {
+            alert("Ваши предпочтения учтены! Следующие уроки будут адаптированы.");
+            feedbackInput.value = ""; // Очищаем поле
+        } else {
+            alert("Произошла ошибка при отправке фидбека.");
         }
+    })
+    .catch(err => {
+        console.error('Feedback error:', err);
+        alert("Не удалось связаться с сервером.");
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerText = "Обновить мой стиль";
     });
 }
