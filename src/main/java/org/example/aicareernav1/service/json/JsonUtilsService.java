@@ -70,4 +70,29 @@ public class JsonUtilsService {
       return false;
     }
   }
+
+  public String checkAndFixFirstSymbolsJson(String content) {
+    if (content == null || content.isBlank()) {
+      return "{}";
+    }
+
+    String trimmed = content.trim();
+
+    // 1. Проверяем, начинается ли строка уже с '{' и заканчивается на '}'
+    // Если да, то скорее всего это уже чистый JSON
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      return trimmed;
+    }
+
+    // 2. Если есть лишний текст, пытаемся вырезать JSON
+    int firstBrace = content.indexOf("{");
+    int lastBrace = content.lastIndexOf("}");
+
+    if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+      return content.substring(firstBrace, lastBrace + 1);
+    }
+
+    // 3. Если скобок вообще нет — возвращаем как есть (Jackson сам кинет ошибку при парсинге)
+    return trimmed;
+  }
 }

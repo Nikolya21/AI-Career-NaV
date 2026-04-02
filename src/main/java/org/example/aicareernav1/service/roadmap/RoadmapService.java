@@ -177,7 +177,9 @@ public class RoadmapService {
    * @param checkpointId идентификатор этапа, который нужно наполнить
    */
   @Transactional
-  public void fillCheckpointContent(Long checkpointId) {
+  public void fillCheckpointContent(Long checkpointId) { //todo: чтобы уроки стали похожи на материалы с Яндекс Практикума, Habr и тп
+                                                        //todo: - нужно сначало разбить урок на маленькие подпункты, которые определят план урока, а потом по каждому подпункту сгенерировать материал
+                                                        //todo: Таким образом, можно побороть "лень" llm
     log.info("==> [GENERATE CONTENT] Старт генерации для Checkpoint ID: {}", checkpointId);
 
     Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
@@ -372,11 +374,18 @@ public class RoadmapService {
     try {
       DeepenCheckpointDTO dto = objectMapper.readValue(json, DeepenCheckpointDTO.class);
 
-      // Используем маппер для создания сущности
       Checkpoint deep = roadmapMapper.toEntity(dto);
+
+      log.info("Маппинг завершен. Title: {}, Desc: {}", deep.getTitle(), deep.getDescription());
+
+      if (deep.getDescription() == null || deep.getDescription().isEmpty()) {
+        log.warn("ВНИМАНИЕ: Description пустой после маппинга! ИИ не поймет контекст.");
+      }
+
       deep.setTopic(current.getTopic());
       deep.setOrderIndex(current.getOrderIndex() + 1);
       deep.setParentCheckpointId(current.getId());
+
 
       checkpointRepository.save(deep);
 
@@ -409,15 +418,22 @@ public class RoadmapService {
     for (int i = 0; i < attempts; i++) {
       log.info("Запрос к ИИ (Попытка {}/{})", i + 1, attempts);
       lastResponse = gigaChatService.chat(systemPrompt, context);
+      String withoutFirstBadSymbols = jsonUtilsService.checkAndFixFirstSymbolsJson(lastResponse);
 
-      String cleaned = jsonUtilsService.cleanJsonResponse(lastResponse);
+      String cleaned = jsonUtilsService.cleanJsonResponse(withoutFirstBadSymbols);
 
       if (jsonUtilsService.isValidJson(cleaned)) {
         return cleaned;
       }
 
       log.warn("Попытка {}: ИИ выдал невалидный JSON", i + 1);
-      context = "Исправь JSON и выведи только чистый код: " + lastResponse;
+      context = "ОШИБКА: Твой предыдущий ответ не является валидным JSON." +
+        " Выведи ТОЛЬКО чистый JSON, без пояснений, комментариев и Markdown-разметки: "
+        + lastResponse;
+      if (i == attempts - 1) {
+        log.warn("НЕ ПОЛУЧИЛОСЬ ОТФОРМАТИРОВАТЬ JSON: " + "\n" + context);
+        log.warn("Последний ответ llm был: " + "\n" + lastResponse);
+      }
     }
     return "{}";
   }
