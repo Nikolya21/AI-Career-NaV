@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
+import org.example.aicareernav1.model.user.entity.UserEntity;
+import org.example.aicareernav1.repository.UserRepository;
+import org.example.aicareernav1.service.userService.UserService;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -27,6 +30,7 @@ public class QuizService {
 
   private final RedisTemplate<String, String> redisTemplate;
   private final ObjectMapper objectMapper;
+  private final UserRepository userRepository;
 
   public List<String> getQuestionsFromSite(String vacancy) {
     List<String> questionsList = new ArrayList<>();
@@ -123,42 +127,44 @@ public class QuizService {
   }
 
   public void saveAnswer(Long userId, String questionText, String answer) {
-    String key = "quiz:answers:" + userId;
-    String existingAnswersJson = redisTemplate.opsForValue().get(key);
+    UserEntity user = userRepository.findById(userId)
+      .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+    Map<String, String> answersMap = new java.util.HashMap<>();
+    String currentTestResult = user.getTestResult();
 
     try {
-      Map<String, String> answersMap;
-      if (existingAnswersJson == null || existingAnswersJson.isEmpty() || existingAnswersJson.equals("{}")) {
-        answersMap = new java.util.HashMap<>();
-      } else {
-        answersMap = objectMapper.readValue(existingAnswersJson, Map.class);
+      if (currentTestResult != null && !currentTestResult.trim().isEmpty() && !currentTestResult.equals("{}")) {
+        answersMap = objectMapper.readValue(currentTestResult, Map.class);
       }
-
       answersMap.put(questionText, answer);
-
-      String updatedJson = objectMapper.writeValueAsString(answersMap);
-      redisTemplate.opsForValue().set(key, updatedJson, 1, TimeUnit.HOURS);
+      String updatedTestResult = objectMapper.writeValueAsString(answersMap);
+      user.setTestResult(updatedTestResult);
+      userRepository.save(user);
+      log.info("Ответ сохранен в поле test_result для пользователя {}", userId);
 
     } catch (JsonProcessingException e) {
-      log.error("Ошибка при сохранении ответа в Redis", e);
+      log.error("Ошибка при сериализации/десериализации test_result для юзера {}", userId, e);
     }
   }
 
   public Map<String, String> getAllAnswers(Long userId) {
-    String key = "quiz:answers:" + userId;
-    String json = redisTemplate.opsForValue().get(key);
+    UserEntity user = userRepository.findById(userId)
+      .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
-    if (json == null || json.isEmpty() || json.equals("{}")) {
+    String currentTestResult = user.getTestResult();
+
+    if (currentTestResult == null || currentTestResult.trim().isEmpty() || currentTestResult.equals("{}")) {
       return Collections.emptyMap();
     }
 
     try {
-      return objectMapper.readValue(json, Map.class);
+      return objectMapper.readValue(currentTestResult, Map.class);
     } catch (JsonProcessingException e) {
-      log.error("Ошибка при чтении ответов из Redis", e);
+      log.error("Ошибка при чтении test_result для юзера {}", userId, e);
       return Collections.emptyMap();
     }
   }
+
   private String buildUrlFromDatabaseString(String vacancyFromDb) {
     if (vacancyFromDb == null || vacancyFromDb.trim().isEmpty()) {
       throw new IllegalArgumentException("Вакансия в базе данных пуста!");
