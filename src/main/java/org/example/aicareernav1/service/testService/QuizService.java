@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.repository.UserRepository;
-import org.example.aicareernav1.service.userService.UserService;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -60,7 +59,16 @@ public class QuizService {
 
       Elements questions = document.select("article h2.text-gray-800");
       for (Element q : questions) {
-        questionsList.add(q.text());
+        String questionText = q.text().trim();
+        if (questionText.equalsIgnoreCase("Есть ли вопрос?")) {
+          log.info("🚫 Пропущен технический заголовок: {}", questionText);
+          continue;
+        }
+        if (questionText.isEmpty()) {
+          continue;
+        }
+
+        questionsList.add(questionText);
       }
 
     } catch (InterruptedException e) {
