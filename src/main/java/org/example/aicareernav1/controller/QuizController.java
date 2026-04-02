@@ -2,10 +2,12 @@ package org.example.aicareernav1.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.testService.QuizService;
+import org.example.aicareernav1.service.userService.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,95 +17,82 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/quiz")
 @RequiredArgsConstructor
+@Slf4j
 public class QuizController {
-  private final QuizService quizService;
-  private final UserRepository userRepository;
 
-  /**
-   * Генерирует тест для пользователя
-   */
-  @PostMapping("/generate/{userId}")
-  public ResponseEntity<List<QuestionDto>> generateTest(@PathVariable Long userId) throws JsonProcessingException {
-    String email = userRepository.findById(userId)
-      .map(UserEntity::getEmail)
-      .orElseThrow(() -> new RuntimeException("User not found"));
+    private final QuizService quizService;
+    private final UserRepository userRepository;
+    private final UserService userService;
 
-    List<QuestionDto> questions = quizService.generateAndSaveQuestions(userId, email);
 
-    // Создаем сессию для хранения ответов
-    quizService.createQuizSession(userId);
+    @PostMapping("/generate/{userId}")
+    public ResponseEntity<List<QuestionDto>> generateTest(@PathVariable Long userId) throws JsonProcessingException {
 
-    return ResponseEntity.ok(questions);
-  }
+        String email = userRepository.findById(userId)
+          .map(UserEntity::getEmail)
+          .orElseThrow(() -> new RuntimeException("User not found"));
 
-  /**
-   * Получить первый вопрос
-   */
-  @GetMapping("/start/{userId}")
-  public ResponseEntity<?> startQuiz(@PathVariable Long userId) {
-    List<QuestionDto> questions = quizService.getQuestions(userId);
-    if (questions == null || questions.isEmpty()) {
-      return ResponseEntity.badRequest().body("Тест не найден. Сначала сгенерируйте вопросы.");
+        String vacancy = userService.getVacancyByEmail(email);
+
+        // Теперь передаем в сервис только userId и саму строку вакансии
+        List<QuestionDto> questions = quizService.generateAndSaveQuestions(userId, vacancy);
+
+        quizService.createQuizSession(userId);
+        return ResponseEntity.ok(questions);
     }
 
-    QuestionDto firstQuestion = questions.stream()
-      .filter(q -> q.getNumber() == 1)
-      .findFirst()
-      .orElse(questions.get(0));
+    @GetMapping("/start/{userId}")
+    public ResponseEntity<?> startQuiz(@PathVariable Long userId) {
+        List<QuestionDto> questions = quizService.getQuestions(userId);
+        if (questions == null || questions.isEmpty()) {
+            return ResponseEntity.badRequest().body("Тест не найден. Сначала сгенерируйте вопросы.");
+        }
 
-    return ResponseEntity.ok(firstQuestion);
-  }
+        QuestionDto firstQuestion = questions.stream()
+          .filter(q -> q.getNumber() == 1)
+          .findFirst()
+          .orElse(questions.get(0));
 
-  /**
-   * Сохранить ответ и получить следующий вопрос
-   */
-  @PostMapping("/answer/{userId}")
-  public ResponseEntity<?> saveAnswer(
-    @PathVariable Long userId,
-    @RequestBody Map<String, String> request) {
-
-    String questionText = request.get("question");
-    String answer = request.get("answer");
-
-    // 1. Просто сохраняем ответ
-    quizService.saveAnswer(userId, questionText, answer);
-
-    // 2. Получаем список вопросов
-    List<QuestionDto> questions = quizService.getQuestions(userId);
-
-    // Если списка нет вообще, просто возвращаем 204 (конец)
-    if (questions == null || questions.isEmpty()) {
-      return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(firstQuestion);
     }
 
-    // 3. Ищем текущий номер
-    int currentNumber = questions.stream()
-      .filter(q -> q.getQuestion().equals(questionText))
-      .findFirst()
-      .map(QuestionDto::getNumber)
-      .orElse(0);
+    @PostMapping("/answer/{userId}")
+    public ResponseEntity<?> saveAnswer(
+      @PathVariable Long userId,
+      @RequestBody Map<String, String> request) {
 
-    // 4. Ищем следующий вопрос
-    QuestionDto nextQuestion = questions.stream()
-      .filter(q -> q.getNumber() == currentNumber + 1)
-      .findFirst()
-      .orElse(null);
+        String questionText = request.get("question");
+        String answer = request.get("answer");
 
-    // 5. Если следующего нет — статус 204 (No Content)
-    if (nextQuestion == null) {
-      return ResponseEntity.noContent().build();
+        quizService.saveAnswer(userId, questionText, answer);
+
+        List<QuestionDto> questions = quizService.getQuestions(userId);
+
+        if (questions == null || questions.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        int currentNumber = questions.stream()
+          .filter(q -> q.getQuestion().equals(questionText))
+          .findFirst()
+          .map(QuestionDto::getNumber)
+          .orElse(0);
+
+        QuestionDto nextQuestion = questions.stream()
+          .filter(q -> q.getNumber() == currentNumber + 1)
+          .findFirst()
+          .orElse(null);
+
+        if (nextQuestion == null) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(nextQuestion);
     }
 
-    return ResponseEntity.ok(nextQuestion);
-  }
-
-
-  /**
-   * Получить все ответы (для отладки)
-   */
-  @GetMapping("/answers/{userId}")
-  public ResponseEntity<?> getAllAnswers(@PathVariable Long userId) {
-    Map<String, String> answers = quizService.getAllAnswers(userId);
-    return ResponseEntity.ok(answers);
-  }
+    @GetMapping("/answers/{userId}")
+    public ResponseEntity<?> getAllAnswers(@PathVariable Long userId) {
+        Map<String, String> answers = quizService.getAllAnswers(userId);
+        return ResponseEntity.ok(answers);
+    }
 }
