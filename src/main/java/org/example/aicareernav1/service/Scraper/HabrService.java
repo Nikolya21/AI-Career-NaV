@@ -6,11 +6,11 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.*;
 
-@Component
+@Service
 public class HabrService implements ParsingSites {
 
     // Тестовая мапа URL -> Язык. Ты можешь добавить сюда другие статьи с такой же версткой.
