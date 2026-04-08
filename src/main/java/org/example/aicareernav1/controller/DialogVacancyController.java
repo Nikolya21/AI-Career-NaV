@@ -308,4 +308,9 @@ public class DialogVacancyController {
     return gigaChatService.sendMessage(context.toString());
   }
 
+  @GetMapping("/ml-interview")
+  public String mlInterview() {
+    return "ml-interview"; // имя HTML-шаблона
+  }
+
 }
