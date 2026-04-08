@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.scraper;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.questionDto.ParsedDataDto;
 import org.example.aicareernav1.repository.ParsingSites;
 import org.jsoup.Jsoup;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+@Slf4j
 @Service
 public class HabrService implements ParsingSites {
 
@@ -28,7 +30,7 @@ public class HabrService implements ParsingSites {
             String url = entry.getKey();
             String targetLanguage = entry.getValue();
 
-            System.out.println("Парсим Хабр напрямую через Jsoup для " + targetLanguage + "...");
+            log.info("Парсим Хабр напрямую через Jsoup для " + targetLanguage + "...");
 
             try {
                 // Jsoup САМ делает запрос на сервер без всякого Selenium!
@@ -40,7 +42,7 @@ public class HabrService implements ParsingSites {
                 // Вызываем твой готовый метод парсинга
                 List<ParsedDataDto> parsedQuestions = parseDynamicDifficultyHtml(doc, targetLanguage);
 
-                System.out.println("Найдено вопросов на странице: " + parsedQuestions.size());
+                log.info("Найдено вопросов на странице: " + parsedQuestions.size());
                 allResults.addAll(parsedQuestions);
 
             } catch (Exception e) {
@@ -64,7 +66,7 @@ public class HabrService implements ParsingSites {
         }
 
         if (articleBody == null) {
-            System.out.println("❌ Не удалось найти тело статьи на Хабре!");
+            log.info("❌ Не удалось найти тело статьи на Хабре!");
             return pageResults;
         }
 
@@ -74,7 +76,7 @@ public class HabrService implements ParsingSites {
         // Вытаскиваем ВСЕ элементы h2, h3 и ol, которые есть внутри статьи,
         // плевать на то, насколько глубоко они зарыты!
         Elements elements = articleBody.select("h2, h3, ol");
-        System.out.println("Найдено заголовков и списков: " + elements.size());
+        log.info("Найдено заголовков и списков: " + elements.size());
 
         for (Element el : elements) {
 
@@ -87,7 +89,7 @@ public class HabrService implements ParsingSites {
                   headerText.equalsIgnoreCase("Senior")) {
 
                     currentDifficulty = headerText;
-                    System.out.println("--- Переключили сложность на: " + currentDifficulty + " ---");
+                    log.info("--- Переключили сложность на: " + currentDifficulty + " ---");
                 }
             }
 
@@ -114,7 +116,7 @@ public class HabrService implements ParsingSites {
             }
         }
 
-        System.out.println("Успешно спарсили вопросов: " + pageResults.size());
+        log.info("Успешно спарсили вопросов: " + pageResults.size());
         return pageResults;
     }
 

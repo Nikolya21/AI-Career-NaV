@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.scraper;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.questionDto.ParsedDataDto;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -12,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 public class PythonItvdnService {
 
@@ -19,7 +21,7 @@ public class PythonItvdnService {
 
     public List<ParsedDataDto> scrape() {
         List<ParsedDataDto> results = new ArrayList<>();
-        System.out.println("🚀 Начинаем парсинг ITVDN для Python...");
+        log.info("🚀 Начинаем парсинг ITVDN для Python...");
 
         try {
             Document doc = Jsoup.connect(URL)
@@ -37,7 +39,7 @@ public class PythonItvdnService {
             }
 
             if (articleBody == null) {
-                System.out.println("❌ Не удалось найти тело статьи на ITVDN для Python!");
+                log.info("❌ Не удалось найти тело статьи на ITVDN для Python!");
                 return results;
             }
 
@@ -45,7 +47,7 @@ public class PythonItvdnService {
             String currentDifficulty = "Unknown";
 
             Elements elements = articleBody.select("h2, p");
-            System.out.println("Найдено элементов (h2 и p) для анализа: " + elements.size());
+            log.info("Найдено элементов (h2 и p) для анализа: " + elements.size());
 
             for (Element el : elements) {
                 String text = el.text().trim();
@@ -57,13 +59,13 @@ public class PythonItvdnService {
 
                     if (lowerText.contains("junior")) {
                         currentDifficulty = "Junior";
-                        System.out.println("--- Уровень установлен: " + currentDifficulty + " ---");
+                        log.info("--- Уровень установлен: " + currentDifficulty + " ---");
                     } else if (lowerText.contains("middle")) {
                         currentDifficulty = "Middle";
-                        System.out.println("--- Уровень установлен: " + currentDifficulty + " ---");
+                        log.info("--- Уровень установлен: " + currentDifficulty + " ---");
                     } else if (lowerText.contains("senior")) {
                         currentDifficulty = "Senior";
-                        System.out.println("--- Уровень установлен: " + currentDifficulty + " ---");
+                        log.info("--- Уровень установлен: " + currentDifficulty + " ---");
                     }
                     continue;
                 }
@@ -81,7 +83,7 @@ public class PythonItvdnService {
                 }
             }
 
-            System.out.println("✅ Успешно спарсили вопросов по Python: " + results.size());
+            log.info("✅ Успешно спарсили вопросов по Python: " + results.size());
 
         } catch (Exception e) {
             System.err.println("❌ Ошибка при парсинге Python: " + e.getMessage());

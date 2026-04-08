@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.scraper;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.questionDto.ParsedDataDto;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -14,6 +15,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 public class NoSqlHabrService {
 
@@ -21,7 +23,7 @@ public class NoSqlHabrService {
 
     public List<ParsedDataDto> scrape() {
         List<ParsedDataDto> results = new ArrayList<>();
-        System.out.println("🚀 Начинаем парсинг Хабра для NoSQL...");
+        log.info("🚀 Начинаем парсинг Хабра для NoSQL...");
 
         try {
             Document doc = Jsoup.connect(URL)
@@ -32,13 +34,13 @@ public class NoSqlHabrService {
             // Ищем контейнер с текстом статьи на Хабре
             Element articleBody = doc.selectFirst(".article-formatted-body");
             if (articleBody == null) {
-                System.out.println("❌ Не удалось найти тело статьи на Хабре!");
+                log.info("❌ Не удалось найти тело статьи на Хабре!");
                 return results;
             }
 
             // Находим все теги h4, в которых лежат вопросы
             Elements questionElements = articleBody.select("h4");
-            System.out.println("Найдено потенциальных вопросов (h4): " + questionElements.size());
+            log.info("Найдено потенциальных вопросов (h4): " + questionElements.size());
 
             for (Element q : questionElements) {
                 String text = q.text().trim();
@@ -77,7 +79,7 @@ public class NoSqlHabrService {
                 results.add(new ParsedDataDto(questionText, difficulty, tags));
             }
 
-            System.out.println("✅ Успешно спарсили вопросов по NoSQL: " + results.size());
+            log.info("✅ Успешно спарсили вопросов по NoSQL: " + results.size());
 
         } catch (Exception e) {
             System.err.println("❌ Ошибка при парсинге NoSQL: " + e.getMessage());

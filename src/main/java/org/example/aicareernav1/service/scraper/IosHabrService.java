@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.scraper;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.questionDto.ParsedDataDto;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -14,6 +15,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 public class IosHabrService {
 
@@ -21,7 +23,7 @@ public class IosHabrService {
 
     public List<ParsedDataDto> scrape() {
         List<ParsedDataDto> results = new ArrayList<>();
-        System.out.println("🚀 Начинаем парсинг Хабра для iOS...");
+        log.info("🚀 Начинаем парсинг Хабра для iOS...");
 
         try {
             Document doc = Jsoup.connect(URL)
@@ -31,13 +33,13 @@ public class IosHabrService {
 
             Element articleBody = doc.selectFirst(".article-formatted-body");
             if (articleBody == null) {
-                System.out.println("❌ Не удалось найти тело статьи на Хабре!");
+                log.info("❌ Не удалось найти тело статьи на Хабре!");
                 return results;
             }
 
             // Находим все теги h3, так как именно в них лежат вопросы
             Elements questions = articleBody.select("h3");
-            System.out.println("Найдено потенциальных вопросов (h3): " + questions.size());
+            log.info("Найдено потенциальных вопросов (h3): " + questions.size());
 
             for (Element q : questions) {
                 String text = q.text().trim();
@@ -76,7 +78,7 @@ public class IosHabrService {
                 results.add(new ParsedDataDto(questionText, difficulty, tags));
             }
 
-            System.out.println("✅ Успешно спарсили вопросов по iOS: " + results.size());
+            log.info("✅ Успешно спарсили вопросов по iOS: " + results.size());
 
         } catch (Exception e) {
             System.err.println("❌ Ошибка при парсинге iOS: " + e.getMessage());

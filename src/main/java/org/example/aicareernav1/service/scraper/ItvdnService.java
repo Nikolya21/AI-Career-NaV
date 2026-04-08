@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.scraper;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.questionDto.ParsedDataDto;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+@Slf4j
 @Service
 public class ItvdnService {
 
@@ -31,7 +33,7 @@ public class ItvdnService {
             String url = entry.getKey();
             String languageTag = entry.getValue();
 
-            System.out.println("🚀 Начинаем парсинг ITVDN для стека [" + languageTag + "]...");
+            log.info("🚀 Начинаем парсинг ITVDN для стека [" + languageTag + "]...");
 
             try {
                 Document doc = Jsoup.connect(url)
@@ -45,7 +47,7 @@ public class ItvdnService {
 
                 Element articleBody = doc.selectFirst(".article-text");
                 if (articleBody == null) {
-                    System.out.println("❌ Не нашли тело статьи на: " + url);
+                    log.info("❌ Не нашли тело статьи на: " + url);
                     continue; // Пропускаем эту ссылку и идем к следующей
                 }
 
@@ -83,14 +85,14 @@ public class ItvdnService {
                     }
                 }
 
-                System.out.println("✅ Успешно спарсили " + countForThisUrl + " вопросов по тегу [" + languageTag + "]");
+                log.info("✅ Успешно спарсили " + countForThisUrl + " вопросов по тегу [" + languageTag + "]");
 
             } catch (Exception e) {
                 System.err.println("❌ Ошибка при парсинге URL [" + url + "]: " + e.getMessage());
             }
         }
 
-        System.out.println("🏁 Глобальный парсинг ITVDN завершен! Всего собрано вопросов: " + allResults.size());
+        log.info("🏁 Глобальный парсинг ITVDN завершен! Всего собрано вопросов: " + allResults.size());
         return allResults;
     }
 }

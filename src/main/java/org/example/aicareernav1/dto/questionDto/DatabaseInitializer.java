@@ -1,6 +1,7 @@
 package org.example.aicareernav1.dto.questionDto;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.repository.ParsingSites;
 import org.example.aicareernav1.repository.QuestionRepository;
 import org.example.aicareernav1.service.scraper.*;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class DatabaseInitializer implements CommandLineRunner {
@@ -20,6 +22,7 @@ public class DatabaseInitializer implements CommandLineRunner {
     private final MachineLearningLabexService machineLearningLabexService;
     private final NoSqlHabrService noSqlHabrService;
     private final IosHabrService iosHabrService;
+    private final KataGoService kataGoService;
     // Внедряем ВСЕ зависимости через один конструктор (лучшая практика Spring)
 
     @Override
@@ -27,15 +30,15 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         // ПРОВЕРКА: Если в базе УЖЕ есть хоть один вопрос — выходим.
         if (questionRepository.count() > 0) {
-            System.out.println(">>> База данных уже заполнена! Парсинг больше не требуется. <<<");
+            log.info(">>> База данных уже заполнена! Парсинг больше не требуется. <<<");
             return;
         }
 
-        System.out.println(">>> База абсолютно пуста. Начинаем глобальный парсинг всех сайтов... <<<");
+        log.info(">>> База абсолютно пуста. Начинаем глобальный парсинг всех сайтов... <<<");
 
         // 1. Запускаем стандартные парсеры (HabrService и др.), которые реализуют ParsingSites
         for (ParsingSites scraper : scrapers) {
-            System.out.println("Запуск парсера: " + scraper.getClass().getSimpleName());
+            log.info("Запуск парсера: " + scraper.getClass().getSimpleName());
 
             var data = scraper.scrape();
 
@@ -43,27 +46,31 @@ public class DatabaseInitializer implements CommandLineRunner {
         }
 
         // 2. Запускаем наш автономный комбайн для ITVDN
-        System.out.println("Запуск парсера: ItvdnService (автономный)");
+        log.info("Запуск парсера: ItvdnService (автономный)");
         var itvdnData = itvdnService.scrape();
 
         questionService.saveQuestions(itvdnData);
 
-        System.out.println("Запуск парсера: PythonItvdnService");
+        log.info("Запуск парсера: PythonItvdnService");
         var pythonData = pythonItvdnService.scrape();
         questionService.saveQuestions(pythonData);
 
-        System.out.println("Запуск парсера: MachineLearningLabexService");
+        log.info("Запуск парсера: MachineLearningLabexService");
         var mlData = machineLearningLabexService.scrape();
         questionService.saveQuestions(mlData);
 
-        System.out.println("Запуск парсера: NoSqlHabrService");
+        log.info("Запуск парсера: NoSqlHabrService");
         var nosqlData = noSqlHabrService.scrape();
         questionService.saveQuestions(nosqlData);
 
-        System.out.println("Запуск парсера: NoSqlHabrService");
+        log.info("Запуск парсера: Ios/Swift");
         var iosData = iosHabrService.scrape();
         questionService.saveQuestions(iosData);
 
-        System.out.println(">>> Глобальный парсинг успешно завершен! База заполнена. <<<");
+        log.info("Запуск парсера: GoService");
+        var goDevelop = kataGoService.scrape();
+        questionService.saveQuestions(goDevelop);
+
+        log.info(">>> Глобальный парсинг успешно завершен! База заполнена. <<<");
     }
 }
