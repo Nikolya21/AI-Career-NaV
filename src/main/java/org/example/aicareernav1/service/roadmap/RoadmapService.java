@@ -20,9 +20,11 @@ import org.example.aicareernav1.repository.roadmap.TopicRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.roadmap.prompt.Prompts;
 import org.example.aicareernav1.service.json.JsonUtilsService;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -171,61 +173,94 @@ public class RoadmapService {
 
 
   /**
-   * Генерирует обучающий контент (уроки и задачи) для конкретной темы.
-   * Использует {@link ContentMapper} для автоматического создания иерархии объектов Module -> Lesson -> Theory/Task.
+   * Заполняет контрольную точку (Checkpoint) контентом, генерируя его через ИИ.
+   * Процесс разделен на два этапа: планирование структуры модуля и итеративная генерация каждого урока.
    *
-   * @param checkpointId идентификатор этапа, который нужно наполнить
+   * @param checkpointId ID контрольной точки, для которой генерируется контент
+   * @throws EntityNotFoundException если контрольная точка не найдена
    */
+  @Async("aiGenerationExecutor")
   @Transactional
-  public void fillCheckpointContent(Long checkpointId) { //todo: чтобы уроки стали похожи на материалы с Яндекс Практикума, Habr и тп
-                                                        //todo: - нужно сначало разбить урок на маленькие подпункты, которые определят план урока, а потом по каждому подпункту сгенерировать материал
-                                                        //todo: Таким образом, можно побороть "лень" llm
-    log.info("==> [GENERATE CONTENT] Старт генерации для Checkpoint ID: {}", checkpointId);
+  public void fillCheckpointContent(Long checkpointId) {
+    log.info("==> [START] Начало генерации контента для Checkpoint ID: {}", checkpointId);
 
     Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
       .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
 
-    if (checkpoint.getModule() != null && !checkpoint.getModule().getLessons().isEmpty()) {
-      log.info("Контент для чекпоинта '{}' уже существует. Генерация пропущена.", checkpoint.getTitle());
-      return;
-    }
+    // 1. Ставим статус "В процессе"
+    checkpoint.setStatus(CheckpointStatus.GENERATING);
+    checkpointRepository.save(checkpoint);
 
     Roadmap roadmap = checkpoint.getTopic().getRoadmap();
-
-    // Получаем заметки или ставим дефолт, если профиль еще пуст
-    String learningStyle = (roadmap.getLearningStyleNotes() != null && !roadmap.getLearningStyleNotes().isBlank())
-      ? roadmap.getLearningStyleNotes()
-      : "Стиль обучения еще не определен (используй стандартную подачу).";
-
-    // Формируем структурированный запрос
-      String userMsg = String.format(
-        "ПРОФИЛЬ СТУДЕНТА (Learning Style):\n%s\n\n" +
-          "ЗАДАНИЕ:\n" +
-          "Создай учебный модуль для специалиста: %s.\n" +
-          "Текущая тема: %s.\n" +
-          "Контекст темы: %s.",
-        learningStyle,
-        roadmap.getTargetJobTitle(),
-        checkpoint.getTitle(),
-        checkpoint.getDescription()
-      );
+    String learningStyle = (roadmap.getLearningStyleNotes() != null) ? roadmap.getLearningStyleNotes() : "Стандартный";
 
     try {
-      String json = fetchValidJson(userMsg, Prompts.CONTENT_SYSTEM_PROMPT, 3);
-      log.info("==> [DEBUG] Сырой ответ от GigaChat: {}", json);
+      // ЭТАП 1: Планирование структуры модуля (Заголовки уроков)
+      String plannerContext = String.format("Тема: %s. Описание: %s", checkpoint.getTitle(), checkpoint.getDescription());
+      String planJson = fetchValidJson(plannerContext, Prompts.PLANNER_SYSTEM_PROMPT, 3);
+      LessonPlanDTO plan = objectMapper.readValue(planJson, LessonPlanDTO.class);
 
-      String sanitizedJson = jsonUtilsService.cleanJsonResponse(json);
-      log.info("==> [DEBUG] Очищенный JSON: {}", sanitizedJson);
+      // ЭТАП 2: Итеративная генерация каждого урока в отдельном методе
+      List<LessonDTO> lessons = generateLessons(plan, learningStyle, roadmap.getTargetJobTitle());
 
-      ContentResponse response = objectMapper.readValue(sanitizedJson, ContentResponse.class);
+      // Сборка итогового объекта
+      ModuleDTO finalModule = new ModuleDTO();
+      finalModule.setTitle(plan.getModuleTitle());
+      finalModule.setLessons(lessons);
 
-      if (response != null && response.getModule() != null) {
-        // ВЫЗЫВАЕМ ОТДЕЛЬНЫЙ ТРАНЗАКЦИОННЫЙ МЕТОД ДЛЯ СОХРАНЕНИЯ
-        saveGeneratedContent(checkpointId, response.getModule());
-      }
+      // ЭТАП 3: Сохранение в БД
+      saveGeneratedContent(checkpointId, finalModule);
+      log.info("==> [SUCCESS] Контент успешно сохранен для Checkpoint ID: {}", checkpointId);
+
+      // 2. Успех!
+      checkpoint.setStatus(CheckpointStatus.ACTIVE);
+      checkpointRepository.save(checkpoint);
+
     } catch (Exception e) {
-      log.error("!!! Ошибка генерации: {}", e.getMessage(), e);
+      log.error("!!! [ERROR] Критическая ошибка при генерации модуля: {}", e.getMessage(), e);
+      checkpoint.setStatus(CheckpointStatus.ERROR);
+      checkpointRepository.save(checkpoint);
     }
+  }
+
+  /**
+   * Итеративно генерирует детальный контент для каждого урока на основе плана.
+   * Каждый урок запрашивается у ИИ отдельным запросом для обеспечения максимальной глубины текста.
+   *
+   * @param plan           план модуля, содержащий заголовки уроков
+   * @param learningStyle  персонализированный стиль обучения пользователя
+   * @param targetJob      целевая вакансия пользователя для адаптации примеров
+   * @return список заполненных LessonDTO с теорией и задачами
+   */
+  private List<LessonDTO> generateLessons(LessonPlanDTO plan, String learningStyle, String targetJob) {
+    List<LessonDTO> generatedLessons = new ArrayList<>();
+
+    for (String lessonTitle : plan.getLessonOutlines()) {
+      log.info("--> [GEN] Генерация контента для раздела: {}", lessonTitle);
+
+      String writerPrompt = Prompts.getSectionWriterPrompt(
+        lessonTitle,
+        plan.getModuleTitle(),
+        learningStyle,
+        targetJob
+      );
+
+      try {
+        // Запрос контента для конкретного урока
+        String lessonJson = fetchValidJson("Сгенерируй детальный урок: " + lessonTitle, writerPrompt, 3);
+        LessonDTO lessonData = objectMapper.readValue(lessonJson, LessonDTO.class);
+
+        // Устанавливаем заголовок из плана, так как ИИ в теории может его исказить
+        lessonData.setTitle(lessonTitle);
+        generatedLessons.add(lessonData);
+
+      } catch (Exception e) {
+        log.error("!!! [SKIP] Не удалось сгенерировать урок '{}': {}", lessonTitle, e.getMessage());
+        // Здесь можно решить: либо пропускать, либо выбрасывать исключение дальше
+      }
+    }
+
+    return generatedLessons;
   }
 
 
@@ -264,6 +299,20 @@ public class RoadmapService {
   }
 
   /**
+   * Получает текущий статус чекпоинта из репозитория.
+   *
+   * @param id ID чекпоинта
+   * @return статус из перечисления {@link CheckpointStatus}
+   * @throws EntityNotFoundException если чекпоинт не найден
+   */
+  @Transactional(readOnly = true)
+  public CheckpointStatus getCheckpointStatus(Long id) {
+    return checkpointRepository.findById(id)
+      .map(Checkpoint::getStatus)
+      .orElseThrow(() -> new EntityNotFoundException("Чекпоинт с ID " + id + " не найден"));
+  }
+
+  /**
    * Получает детальный образовательный контент (модуль) для конкретного этапа.
    * Выполняет автоматический маппинг сущности Module и вложенных уроков в иерархию DTO.
    *
@@ -290,57 +339,26 @@ public class RoadmapService {
 
 
   /**
-   * Сохраняет сгенерированный ИИ контент (модуль) в базу данных.
-   * * Метод устанавливает двусторонние связи между всеми вложенными сущностями,
-   * что критично для корректной работы JPA (установки Foreign Keys в БД).
-   * * @param checkpointId ID этапа
-   * @param moduleDto    Данные от ИИ
+   * Преобразует сгенерированный DTO в сущности и сохраняет их в базу данных.
+   * Также связывает созданный модуль с соответствующей контрольной точкой.
+   *
+   * @param checkpointId ID контрольной точки
+   * @param moduleDTO    сгенерированные данные модуля
    */
   @Transactional
-  public void saveGeneratedContent(Long checkpointId, ModuleDTO moduleDto) {
-    log.info("==> [DB SAVE] Сохранение модуля для Checkpoint ID: {}", checkpointId);
-
-    // 1. Находим родительский чекпоинт
+  private void saveGeneratedContent(Long checkpointId, ModuleDTO moduleDTO) {
     Checkpoint checkpoint = checkpointRepository.findById(checkpointId)
       .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
 
-    // 2. Маппим DTO в сущность Module
-    Module module = contentMapper.toEntity(moduleDto);
+    // Маппинг DTO -> Entity
+    Module moduleEntity = contentMapper.toEntity(moduleDTO);
 
-    // 3. Устанавливаем связь Module <-> Checkpoint
-    module.setCheckpoint(checkpoint);
-    checkpoint.setModule(module);
+    // Установка связей (Manual linking)
+    moduleEntity.setCheckpoint(checkpoint);
+    contentMapper.linkRelations(moduleEntity);
 
-    // 4. Проходим по дереву сущностей и проставляем обратные ссылки (Back-references)
-    if (module.getLessons() != null) {
-      for (Lesson lesson : module.getLessons()) {
-        // Связь Lesson -> Module
-        lesson.setModule(module);
-
-        if (lesson.getTheory() != null) {
-          Theory theory = lesson.getTheory();
-          // Связь Theory -> Lesson
-          theory.setLesson(lesson);
-
-          if (theory.getResources() != null) {
-            for (Resource resource : theory.getResources()) {
-              // Связь Resource -> Theory
-              resource.setTheory(theory);
-            }
-          }
-        }
-
-        // Если у тебя есть задачи (Tasks)
-        if (lesson.getTasks() != null) {
-          lesson.getTasks().forEach(task -> task.setLesson(lesson));
-        }
-      }
-    }
-
-    // 5. Сохраняем чекпоинт. Благодаря CascadeType.ALL в Checkpoint.java,
-    // модуль и все его уроки сохранятся автоматически.
+    checkpoint.setModule(moduleEntity);
     checkpointRepository.save(checkpoint);
-
     log.info("<== [DB SUCCESS] Модуль и уроки успешно зафиксированы в БД");
   }
 

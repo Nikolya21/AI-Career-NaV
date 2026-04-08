@@ -2,10 +2,12 @@ package org.example.aicareernav1.controller.roadmap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.dto.roadmap.CheckpointStatusDTO;
 import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
+import org.example.aicareernav1.enums.CheckpointStatus;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -88,9 +90,9 @@ public class RoadmapController {
    */
   @PostMapping("/checkpoint/{id}/fill-content")
   public ResponseEntity<Void> fillContent(@PathVariable Long id) {
-    log.info("API: Принудительное заполнение контента для Checkpoint ID: {}", id);
+    log.info("API: Запрос принят, запускаем фоновую генерацию для ID: {}", id);
     roadmapService.fillCheckpointContent(id);
-    return ResponseEntity.ok().build();
+    return ResponseEntity.accepted().build();
   }
 
   /**
@@ -102,5 +104,23 @@ public class RoadmapController {
   @GetMapping("/{id}/progress")
   public ResponseEntity<Double> getProgress(@PathVariable Long id) {
     return ResponseEntity.ok(roadmapService.calculateProgress(id));
+  }
+
+  /**
+   * Возвращает текущий статус этапа обучения (Checkpoint).
+   * <p>
+   * Метод используется фронтендом для реализации механизма опроса (polling).
+   * Это позволяет динамически обновлять интерфейс (например, скрывать лоадер),
+   * когда асинхронный процесс генерации контента через ИИ завершен.
+   * </p>
+   *
+   * @param id уникальный идентификатор чекпоинта
+   * @return {@link ResponseEntity} содержащая Map со статусом, например: {@code {"status": "ACTIVE"}}
+   * @see org.example.aicareernav1.enums.CheckpointStatus
+   */
+  @GetMapping("/checkpoint/{id}/status")
+  public ResponseEntity<CheckpointStatusDTO> getStatus(@PathVariable Long id) {
+    CheckpointStatus status = roadmapService.getCheckpointStatus(id);
+    return ResponseEntity.ok(new CheckpointStatusDTO(status.name()));
   }
 }

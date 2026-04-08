@@ -15,6 +15,13 @@ public class JsonUtilsService {
 
   public String cleanJsonResponse(String rawResponse) {
     if (rawResponse == null || rawResponse.isBlank()) return "{}";
+
+    String cleaned = rawResponse.trim();
+
+    // Удаляем обертки markdown ```json ... ```
+    cleaned = cleaned.replaceAll("(?s)```json(.*?)```", "$1");
+    cleaned = cleaned.replaceAll("(?s)```(.*?)```", "$1");
+
     try {
       int firstBrace = rawResponse.indexOf('{');
       int lastBrace = rawResponse.lastIndexOf('}');
@@ -63,6 +70,7 @@ public class JsonUtilsService {
   }
 
   public boolean isValidJson(String json) {
+    if (json == null || json.isBlank()) return false;
     try {
       objectMapper.readTree(json);
       return true;

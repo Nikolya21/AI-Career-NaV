@@ -82,14 +82,24 @@
     </div>
 
     <div th:if="${module == null}" class="alert-info">
-        <div style="display: flex; align-items: center;">
-            <span class="material-icons" style="margin-right: 15px; font-size: 30px;">auto_awesome</span>
-            <div>
-                <h2 style="margin: 0; font-size: 20px;">Контент в процессе подготовки</h2>
-                <p style="margin: 5px 0 0 0;">Мы как раз генерируем учебные материалы с помощью ИИ. Пожалуйста, обновите страницу через 30-60 секунд.</p>
-            </div>
+        <div style="display: flex; align-items: center; flex-direction: column; padding: 20px;">
+            <span class="material-icons rotating" style="font-size: 48px; color: var(--google-blue);">autorenew</span>
+            <h2 style="margin-top: 20px;">ИИ готовит ваш персонализированный урок...</h2>
+            <p>Обычно это занимает около минуты. Страница обновится автоматически.</p>
         </div>
     </div>
+
+    <style>
+        /* Анимация вращения */
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .rotating {
+            display: inline-block;
+            animation: rotate 2s linear infinite;
+        }
+    </style>
 
 </div>
 
