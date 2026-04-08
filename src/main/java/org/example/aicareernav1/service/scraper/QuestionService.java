@@ -1,7 +1,7 @@
-package org.example.aicareernav1.service.Scraper;
+package org.example.aicareernav1.service.scraper;
 
 import org.example.aicareernav1.dto.questionDto.ParsedDataDto;
-import org.example.aicareernav1.model.dataBaseQuestion.Question;
+import org.example.aicareernav1.model.dataBaseQuestion.QuestionEntity;
 import org.example.aicareernav1.model.dataBaseQuestion.Tag;
 import org.example.aicareernav1.repository.QuestionRepository;
 import org.example.aicareernav1.repository.TagRepository; // Тебе тоже нужно будет его создать
@@ -32,7 +32,7 @@ public class QuestionService {
             }
 
             // Создаем сущность вопроса
-            Question question = new Question();
+            QuestionEntity question = new QuestionEntity();
             question.setText(dto.getText());
             question.setDifficulty(dto.getDifficulty());
 

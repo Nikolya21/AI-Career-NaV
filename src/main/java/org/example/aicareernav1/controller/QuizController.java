@@ -24,17 +24,13 @@ public class QuizController {
     private final UserRepository userRepository;
     private final UserService userService;
 
-
     @PostMapping("/generate/{userId}")
     public ResponseEntity<List<QuestionDto>> generateTest(@PathVariable Long userId) throws JsonProcessingException {
-
         String email = userRepository.findById(userId)
           .map(UserEntity::getEmail)
           .orElseThrow(() -> new RuntimeException("User not found"));
 
         String vacancy = userService.getVacancyByEmail(email);
-
-        // Теперь передаем в сервис только userId и саму строку вакансии
         List<QuestionDto> questions = quizService.generateAndSaveQuestions(userId, vacancy);
 
         quizService.createQuizSession(userId);
@@ -44,55 +40,35 @@ public class QuizController {
     @GetMapping("/start/{userId}")
     public ResponseEntity<?> startQuiz(@PathVariable Long userId) {
         List<QuestionDto> questions = quizService.getQuestions(userId);
-        if (questions == null || questions.isEmpty()) {
+        if (questions.isEmpty()) {
             return ResponseEntity.badRequest().body("Тест не найден. Сначала сгенерируйте вопросы.");
         }
-
-        QuestionDto firstQuestion = questions.stream()
-          .filter(q -> q.getNumber() == 1)
-          .findFirst()
-          .orElse(questions.get(0));
-
-        return ResponseEntity.ok(firstQuestion);
+        return ResponseEntity.ok(questions.get(0));
     }
 
     @PostMapping("/answer/{userId}")
-    public ResponseEntity<?> saveAnswer(
-      @PathVariable Long userId,
-      @RequestBody Map<String, String> request) {
-
+    public ResponseEntity<?> saveAnswer(@PathVariable Long userId, @RequestBody Map<String, String> request) {
         String questionText = request.get("question");
         String answer = request.get("answer");
 
         quizService.saveAnswer(userId, questionText, answer);
 
         List<QuestionDto> questions = quizService.getQuestions(userId);
-
-        if (questions == null || questions.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-
         int currentNumber = questions.stream()
           .filter(q -> q.getQuestion().equals(questionText))
           .findFirst()
           .map(QuestionDto::getNumber)
           .orElse(0);
 
-        QuestionDto nextQuestion = questions.stream()
+        return questions.stream()
           .filter(q -> q.getNumber() == currentNumber + 1)
           .findFirst()
-          .orElse(null);
-
-        if (nextQuestion == null) {
-            return ResponseEntity.noContent().build();
-        }
-
-        return ResponseEntity.ok(nextQuestion);
+          .map(ResponseEntity::ok)
+          .orElse(ResponseEntity.noContent().build());
     }
 
     @GetMapping("/answers/{userId}")
     public ResponseEntity<?> getAllAnswers(@PathVariable Long userId) {
-        Map<String, String> answers = quizService.getAllAnswers(userId);
-        return ResponseEntity.ok(answers);
+        return ResponseEntity.ok(quizService.getAllAnswers(userId));
     }
 }

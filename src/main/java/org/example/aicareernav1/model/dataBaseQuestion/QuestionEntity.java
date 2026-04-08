@@ -14,7 +14,7 @@ import java.util.Set;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Question {
+public class QuestionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -32,7 +32,7 @@ public class Question {
     )
     private Set<Tag> tags = new HashSet<>();
 
-    public Question(String text, String difficulty) {
+    public QuestionEntity(String text, String difficulty) {
         this.text = text;
         this.difficulty = difficulty;
     }

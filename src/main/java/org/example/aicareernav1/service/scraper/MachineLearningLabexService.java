@@ -1,4 +1,4 @@
-package org.example.aicareernav1.service.Scraper;
+package org.example.aicareernav1.service.scraper;
 
 import org.example.aicareernav1.dto.questionDto.ParsedDataDto;
 import org.jsoup.Jsoup;

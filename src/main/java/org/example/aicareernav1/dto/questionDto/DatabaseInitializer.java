@@ -3,7 +3,7 @@ package org.example.aicareernav1.dto.questionDto;
 import lombok.AllArgsConstructor;
 import org.example.aicareernav1.repository.ParsingSites;
 import org.example.aicareernav1.repository.QuestionRepository;
-import org.example.aicareernav1.service.Scraper.*;
+import org.example.aicareernav1.service.scraper.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 

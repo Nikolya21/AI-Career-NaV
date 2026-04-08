@@ -1,263 +1,178 @@
 package org.example.aicareernav1.service.testService;
 
+import chat.giga.client.GigaChatClient;
+import chat.giga.model.ModelName;
+import chat.giga.model.completion.ChatMessage;
+import chat.giga.model.completion.ChatMessageRole;
+import chat.giga.model.completion.CompletionRequest;
+import chat.giga.model.completion.CompletionResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.model.dataBaseQuestion.QuestionEntity;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
 import org.example.aicareernav1.model.user.entity.UserEntity;
+import org.example.aicareernav1.repository.QuestionRepository;
 import org.example.aicareernav1.repository.UserRepository;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
+import org.example.aicareernav1.service.promptService.QuizPromptService;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class QuizService {
 
-  private static final String BASE_URL = "https://easyoffer.ru/";
-  private static final String REDIS_QUIZ_PREFIX = "quiz:user:";
-  private static final String REDIS_ANSWERS_PREFIX = "quiz:answers:";
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final QuestionRepository questionRepository;
+    private final UserRepository userRepository;
+    private final GigaChatClient gigaChatClient;
+    private final QuizPromptService quizPromptService;
+    private final ObjectMapper objectMapper;
 
-  private static final Map<String, String> VACANCY_URLS_MAPPING;
-  static {
-    Map<String, String> map = new HashMap<>();
-    map.put("qa тестировщик", "qa-testirovshik");
-    map.put("aqa / automation", "qa-automation");
-    map.put("data science", "data-scientist");
-    map.put("бизнес аналитик", "business-analyst");
-    map.put("системный аналитик", "system-analyst");
-    map.put("аналитик данных", "data-analyst");
-    map.put("продуктовый аналитик", "product-analyst");
-    map.put("менеджер проектов", "it-project-manager");
-    map.put("продукт менеджер", "it-product-manger");
-    map.put("1с программист", "1c-developer");
-    map.put("ios / swift", "ios-developer");
-    map.put("c#", "c-sharp-developer");
-    VACANCY_URLS_MAPPING = Collections.unmodifiableMap(map);
-  }
+    public List<QuestionDto> generateAndSaveQuestions(Long userId, String vacancyNow) {
+        String userGrade = extractGrade(vacancyNow.toLowerCase());
+        String profession = extractProfession(vacancyNow.toLowerCase(), userGrade);
 
-  private final RedisTemplate<String, String> redisTemplate;
-  private final ObjectMapper objectMapper;
-  private final UserRepository userRepository;
+        // 1. Сначала ищем в БД
+        List<QuestionDto> finalQuestions = getQuestionsFromDb(profession, userGrade);
 
-  public List<String> getQuestionsFromSite(String vacancy) {
-    String url = buildUrlFromDatabaseString(vacancy);
-    ChromeDriver chromeDriver = createSilentHeadlessDriver();
+        // 2. Если в БД пусто — запускаем цикл запросов к нейронке (до 100 попыток)
+        if (finalQuestions.isEmpty()) {
+            log.info("🔍 В БД пусто для {}, запускаем цикл генерации через GigaChat...", profession);
+            String prompt = quizPromptService.buildQuizPrompt(profession, userGrade);
 
-    try {
-      log.info("🤖 Selenium открывает страницу: {}", url);
-      chromeDriver.get(url);
+            int maxRetries = 100;
+            int attempt = 0;
 
-      log.info("⏳ Ждем 5 секунд, пока прогрузится JS...");
-      Thread.sleep(5000);
+            while (attempt < maxRetries && finalQuestions.isEmpty()) {
+                attempt++;
+                try {
+                    log.info("🚀 Попытка AI №{} из {}", attempt, maxRetries);
 
-      String pageSource = chromeDriver.getPageSource();
-      log.info("📄 Длина скачанной страницы: {} символов.", pageSource.length());
+                    CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
+                      .model(ModelName.GIGA_CHAT)
+                      .message(ChatMessage.builder()
+                        .content(prompt)
+                        .role(ChatMessageRole.USER)
+                        .build())
+                      .build());
 
-      return extractAndFilterQuestions(pageSource);
+                    String content = response.choices().get(0).message().content();
 
-    } catch (InterruptedException e) {
-      log.error("Поток прерван!", e);
-      Thread.currentThread().interrupt();
-      return Collections.emptyList();
-    } finally {
-      log.info("🛑 Закрываем фоновый браузер.");
-      chromeDriver.quit();
-    }
-  }
+                    // Логируем сырой ответ, если парсинг не удался (для отладки)
+                    finalQuestions = quizPromptService.parseQuizResponse(content);
 
-  public List<QuestionDto> generateAndSaveQuestions(Long userId, String vacancy) throws JsonProcessingException {
-    List<String> parsedQuestions = getQuestionsFromSite(vacancy);
+                    if (finalQuestions.isEmpty()) {
+                        log.warn("⚠️ Попытка №{} вернула пустой результат (ошибка парсинга JSON)", attempt);
+                        // Небольшая пауза, чтобы не спамить
+                        Thread.sleep(150);
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Ошибка на попытке №{}: {}", attempt, e.getMessage());
+                    try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+                }
+            }
+        }
 
-    if (parsedQuestions.isEmpty()) {
-      throw new RuntimeException("Не удалось спарсить вопросы с сайта.");
-    }
+        // Если даже после 100 попыток пусто — бросаем исключение
+        if (finalQuestions.isEmpty()) {
+            log.error("🛑 Не удалось получить вопросы после 100 попыток генерации.");
+            throw new RuntimeException("Нейросеть временно не может сформировать корректный тест. Попробуйте позже.");
+        }
 
-    Collections.shuffle(parsedQuestions);
+        // 3. Сохранение в Redis
+        String redisKey = "quiz:user:" + userId;
+        redisTemplate.opsForValue().set(redisKey, finalQuestions, 1, TimeUnit.HOURS);
 
-    List<QuestionDto> dtoList = createLimitedQuestionDtoList(parsedQuestions, 12);
-
-    String redisKey = REDIS_QUIZ_PREFIX + userId;
-    String jsonQuestions = objectMapper.writeValueAsString(dtoList);
-    redisTemplate.opsForValue().set(redisKey, jsonQuestions, 1, TimeUnit.HOURS);
-
-    log.info("Для пользователя {} успешно сохранено {} вопросов в Redis", userId, dtoList.size());
-    return dtoList;
-  }
-
-  public void createQuizSession(Long userId) {
-    String key = REDIS_ANSWERS_PREFIX + userId;
-    redisTemplate.opsForValue().set(key, "{}", 1, TimeUnit.HOURS);
-    log.info("Создана сессия ответов для пользователя {}", userId);
-  }
-
-  public List<QuestionDto> getQuestions(Long userId) {
-    String redisKey = REDIS_QUIZ_PREFIX + userId;
-    String json = redisTemplate.opsForValue().get(redisKey);
-
-    if (json == null || json.isEmpty()) {
-      return Collections.emptyList();
+        return finalQuestions;
     }
 
-    try {
-      return objectMapper.readValue(json,
-        objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionDto.class));
-    } catch (JsonProcessingException e) {
-      log.error("Ошибка десериализации вопросов из Redis", e);
-      return Collections.emptyList();
-    }
-  }
-
-  public void saveAnswer(Long userId, String questionText, String answer) {
-    UserEntity user = findUserById(userId);
-    String currentTestResult = user.getTestResult();
-
-    try {
-      Map<String, String> answersMap = deserializeAnswers(currentTestResult);
-      answersMap.put(questionText, answer);
-
-      user.setTestResult(objectMapper.writeValueAsString(answersMap));
-      userRepository.save(user);
-      log.info("Ответ сохранен в поле test_result для пользователя {}", userId);
-
-    } catch (JsonProcessingException e) {
-      log.error("Ошибка при сериализации/десериализации test_result для юзера {}", userId, e);
-    }
-  }
-
-  public Map<String, String> getAllAnswers(Long userId) {
-    UserEntity user = findUserById(userId);
-    String currentTestResult = user.getTestResult();
-
-    if (currentTestResult == null || currentTestResult.trim().isEmpty() || "{}".equals(currentTestResult)) {
-      return Collections.emptyMap();
+    public void createQuizSession(Long userId) {
+        UserEntity user = userRepository.findById(userId)
+          .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setTestResult("{}");
+        userRepository.save(user);
+        log.info("Очищены старые ответы для пользователя {}", userId);
     }
 
-    try {
-      return objectMapper.readValue(currentTestResult, Map.class);
-    } catch (JsonProcessingException e) {
-      log.error("Ошибка при чтении test_result для юзера {}", userId, e);
-      return Collections.emptyMap();
-    }
-  }
+    public List<QuestionDto> getQuestions(Long userId) {
+        String redisKey = "quiz:user:" + userId;
+        Object cached = redisTemplate.opsForValue().get(redisKey);
+        if (cached == null) return Collections.emptyList();
 
-  private ChromeDriver createSilentHeadlessDriver() {
-    ChromeOptions chromeOptions = new ChromeOptions();
-    chromeOptions.addArguments("--headless");
-    chromeOptions.addArguments("--disable-gpu");
-    chromeOptions.addArguments("--window-size=1920,1080");
-
-    System.setProperty("webdriver.chrome.silentOutput", "true");
-    return new ChromeDriver(chromeOptions);
-  }
-
-  private List<String> extractAndFilterQuestions(String pageSource) {
-    List<String> questionsList = new ArrayList<>();
-    Document document = Jsoup.parse(pageSource);
-    Elements questions = document.select("article h2.text-gray-800");
-
-    for (Element q : questions) {
-      String questionText = q.text().trim();
-
-      if (!questionText.isEmpty() && !containsInvalidKeyword(questionText)) {
-        questionsList.add(questionText);
-      }
-    }
-    return questionsList;
-  }
-
-  private boolean containsInvalidKeyword(String questionText) {
-    String[] wordsInQuestion = questionText.toLowerCase().split("\\s+");
-    for (String word : wordsInQuestion) {
-      if (word.contains("вопрос")) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private List<QuestionDto> createLimitedQuestionDtoList(List<String> parsedQuestions, int maxLimit) {
-    int limit = Math.min(maxLimit, parsedQuestions.size());
-    List<String> selectedQuestions = parsedQuestions.subList(0, limit);
-
-    List<QuestionDto> dtoList = new ArrayList<>();
-    for (int i = 0; i < selectedQuestions.size(); i++) {
-      QuestionDto dto = new QuestionDto();
-      dto.setNumber(i + 1);
-      dto.setQuestion(selectedQuestions.get(i));
-      dtoList.add(dto);
-    }
-    return dtoList;
-  }
-
-  private UserEntity findUserById(Long userId) {
-    return userRepository.findById(userId)
-      .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-  }
-
-  private Map<String, String> deserializeAnswers(String currentTestResult) throws JsonProcessingException {
-    if (currentTestResult != null && !currentTestResult.trim().isEmpty() && !"{}".equals(currentTestResult)) {
-      return objectMapper.readValue(currentTestResult, Map.class);
-    }
-    return new java.util.HashMap<>();
-  }
-
-  private String buildUrlFromDatabaseString(String vacancyFromDb) {
-    if (vacancyFromDb == null || vacancyFromDb.trim().isEmpty()) {
-      throw new IllegalArgumentException("Вакансия в базе данных пуста!");
+        return objectMapper.convertValue(cached,
+          objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionDto.class));
     }
 
-    String cleaned = vacancyFromDb.trim().toLowerCase();
-    String grade = extractGrade(cleaned);
-    String profession = extractProfession(cleaned, grade);
-
-    String easyOfferPath = getEasyOfferPath(profession, cleaned);
-    String url = BASE_URL + easyOfferPath + "/questions";
-
-    if (!"all".equals(grade) && !VACANCY_URLS_MAPPING.containsKey(profession)) {
-      url = url + "/" + grade;
+    public void saveAnswer(Long userId, String questionText, String answer) {
+        UserEntity user = userRepository.findById(userId)
+          .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            Map<String, String> answersMap = new HashMap<>();
+            if (user.getTestResult() != null && !user.getTestResult().isEmpty() && !user.getTestResult().equals("{}")) {
+                answersMap = objectMapper.readValue(user.getTestResult(), Map.class);
+            }
+            answersMap.put(questionText, answer);
+            user.setTestResult(objectMapper.writeValueAsString(answersMap));
+            userRepository.save(user);
+        } catch (JsonProcessingException e) {
+            log.error("Ошибка сохранения ответа", e);
+        }
     }
 
-    log.info("🎯 Сформирован точный URL для EasyOffer: {}", url);
-    return url;
-  }
-
-  private String extractGrade(String cleaned) {
-    String firstWord = cleaned.split("\\s+")[0];
-    if (firstWord.equals("senior") || firstWord.equals("middle") || firstWord.equals("junior")) {
-      return firstWord;
-    }
-    return "all";
-  }
-
-  private String extractProfession(String cleaned, String grade) {
-    if (!"all".equals(grade)) {
-      return cleaned.substring(grade.length()).trim();
-    }
-    return cleaned;
-  }
-
-  private String getEasyOfferPath(String profession, String cleaned) {
-    if (VACANCY_URLS_MAPPING.containsKey(profession)) {
-      return VACANCY_URLS_MAPPING.get(profession);
+    public Map<String, String> getAllAnswers(Long userId) {
+        UserEntity user = userRepository.findById(userId)
+          .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            if (user.getTestResult() == null || user.getTestResult().isEmpty()) return Collections.emptyMap();
+            return objectMapper.readValue(user.getTestResult(), Map.class);
+        } catch (JsonProcessingException e) {
+            return Collections.emptyMap();
+        }
     }
 
-    String techName = profession.split("\\s+")[0];
-    if (techName.contains("c++") || techName.contains("c/c++")) {
-      techName = "c-plus";
+    private List<QuestionDto> getQuestionsFromDb(String tag, String userGrade) {
+        var juniors = questionRepository.findAllByTagNameAndDifficulty(tag, "Junior");
+        var middles = questionRepository.findAllByTagNameAndDifficulty(tag, "Middle");
+        var seniors = questionRepository.findAllByTagNameAndDifficulty(tag, "Senior");
+
+        if (juniors.isEmpty() && middles.isEmpty() && seniors.isEmpty()) return Collections.emptyList();
+
+        List<QuestionDto> pool = new ArrayList<>();
+        switch (userGrade) {
+            case "senior" -> { pool.addAll(pickRandom(juniors, 4)); pool.addAll(pickRandom(middles, 6)); pool.addAll(pickRandom(seniors, 2)); }
+            case "middle" -> { pool.addAll(pickRandom(middles, 6)); pool.addAll(pickRandom(juniors, 6)); }
+            default -> { pool.addAll(pickRandom(juniors, 8)); pool.addAll(pickRandom(middles, 4)); }
+        }
+        Collections.shuffle(pool);
+        for (int i = 0; i < pool.size(); i++) pool.get(i).setNumber(i + 1);
+        return pool;
     }
 
-    String suffix = cleaned.contains("engineer") ? "engineer" : "developer";
-    return techName + "-" + suffix;
-  }
+    private List<QuestionDto> pickRandom(List<QuestionEntity> list, int count) {
+        if (list == null || list.isEmpty()) return Collections.emptyList();
+        List<QuestionEntity> copy = new ArrayList<>(list);
+        Collections.shuffle(copy);
+        return copy.stream().limit(count).map(q -> {
+            QuestionDto dto = new QuestionDto();
+            dto.setQuestion(q.getText());
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+    private String extractGrade(String cleaned) {
+        if (cleaned.contains("senior")) return "senior";
+        if (cleaned.contains("middle")) return "middle";
+        return "junior";
+    }
+
+    private String extractProfession(String cleaned, String grade) {
+        return cleaned.replace(grade, "").trim();
+    }
 }
