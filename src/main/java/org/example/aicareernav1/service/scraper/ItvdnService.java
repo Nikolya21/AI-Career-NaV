@@ -12,14 +12,15 @@ import java.util.*;
 @Service
 public class ItvdnService {
 
-    // Карта: Ключ = URL статьи, Значение = Тег для этой статьи
     private static final Map<String, String> URLS_TO_PARSE = Map.of(
       "https://itvdn.com/ru/blog/article/250-questions-java", "Java",
       "https://itvdn.com/ru/blog/article/400-about-cplspls", "C++",
       "https://itvdn.com/ru/blog/article/250-questions-qa", "QA",
       "https://itvdn.com/ru/blog/article/250-about-android", "Android-разработчик",
-      "https://itvdn.com/ru/blog/article/300-js", "JavaScript"
-      // Сюда можно через запятую дописывать любые другие статьи с ITVDN
+      "https://itvdn.com/ru/blog/article/300-js", "JavaScript",
+      "https://itvdn.com/ru/blog/article/ruby-500-questions", "Ruby",
+      "https://itvdn.com/ru/blog/article/300-devops", "Devops",
+      "https://itvdn.com/ru/blog/article/150-questions-net-developer", ".NET"
     );
 
     public List<ParsedDataDto> scrape() {
