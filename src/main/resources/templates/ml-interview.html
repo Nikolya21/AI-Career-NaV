@@ -10,7 +10,6 @@
       padding: 0;
       box-sizing: border-box;
     }
-
     body {
       background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -20,9 +19,8 @@
       justify-content: center;
       padding: 24px;
     }
-
     .interview-card {
-      max-width: 800px;
+      max-width: 1000px;
       width: 100%;
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(20px);
@@ -30,9 +28,7 @@
       border-radius: 40px;
       padding: 32px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-      text-align: center;
     }
-
     h1 {
       font-size: 2rem;
       font-weight: 700;
@@ -41,13 +37,11 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-
     .sub {
       color: rgba(255, 255, 255, 0.6);
       margin-bottom: 2rem;
       font-size: 0.95rem;
     }
-
     .video-container {
       background: #000;
       border-radius: 28px;
@@ -57,14 +51,12 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       position: relative;
     }
-
     video {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scaleX(-1); /* зеркальное отображение для естественного вида */
+      transform: scaleX(-1);
     }
-
     .placeholder {
       display: flex;
       align-items: center;
@@ -76,16 +68,15 @@
       flex-direction: column;
       gap: 12px;
     }
-
     .controls {
       display: flex;
       justify-content: center;
       gap: 20px;
       margin-top: 10px;
+      flex-wrap: wrap;
     }
-
     button {
-      padding: 14px 32px;
+      padding: 14px 28px;
       border-radius: 40px;
       font-weight: 600;
       font-size: 1rem;
@@ -97,23 +88,19 @@
       backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.2);
     }
-
     button.primary {
       background: linear-gradient(135deg, #007AFF, #5856d6);
       border: none;
       box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);
     }
-
     button.primary:hover {
       transform: translateY(-3px);
       box-shadow: 0 12px 28px rgba(0, 122, 255, 0.4);
     }
-
     button:hover {
       background: rgba(255, 255, 255, 0.2);
       transform: translateY(-2px);
     }
-
     .status-message {
       margin-top: 20px;
       font-size: 0.85rem;
@@ -123,17 +110,61 @@
       border-radius: 40px;
       display: inline-block;
     }
-
+    .recording-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 8px 18px;
+      border-radius: 40px;
+    }
+    .recording-dot {
+      width: 12px;
+      height: 12px;
+      background-color: #ff3b30;
+      border-radius: 50%;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
     .error {
       color: #ff6b6b;
     }
+    .question-block {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 24px;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid #007AFF;
+    }
+    .question-text {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .answer-result {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #a5b4fc;
+    }
+    .final-summary {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 24px;
+      text-align: center;
+    }
   </style>
 </head>
-<body>
+<body th:data-user-id="${session.userId}">
 
 <div class="interview-card">
   <h1>🤖 ML‑собеседование</h1>
-  <div class="sub">Включите камеру и микрофон. ИИ‑ассистент задаст вам вопросы.</div>
+  <div class="sub">Включите камеру, затем нажмите «Начать интервью» — ответьте на 3 вопроса голосом.</div>
 
   <div class="video-container" id="videoContainer">
     <video id="localVideo" autoplay playsinline muted></video>
@@ -147,71 +178,246 @@
     <button id="startInterviewBtn" class="primary" disabled>🚀 Начать интервью</button>
   </div>
 
+  <div id="questionsArea"></div>
   <div id="statusMessage" class="status-message">⚠️ Нажмите «Включить камеру» и разрешите доступ.</div>
 </div>
 
 <script>
   (function() {
+    // --- IT вопросы (можно заменить) ---
+    const questionsList = [
+      "Расскажите о вашем опыте работы с Java. Какие проекты вы делали?",
+      "Что такое SOLID принципы? Приведите пример использования одного из них.",
+      "Как бы вы объяснили не техническому человеку, что такое REST API?"
+    ];
+
+    let currentQuestionIndex = 0;
+    let answersData = []; // храним { text, emotions } для каждого ответа
+
+    // DOM элементы
     const video = document.getElementById('localVideo');
     const startCamBtn = document.getElementById('startCamBtn');
     const startInterviewBtn = document.getElementById('startInterviewBtn');
     const statusDiv = document.getElementById('statusMessage');
-    const placeholder = document.getElementById('videoPlaceholder');
-    let stream = null;
-    let cameraActive = false;
+    const questionsArea = document.getElementById('questionsArea');
 
-    // Запрос доступа к камере
+    let videoStream = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let audioStream = null;
+    let isRecording = false;
+
+    // --- 1. Включение камеры ---
     async function enableCamera() {
       try {
-        if (stream) {
-          stopTracks();
-        }
-        const constraints = { video: true, audio: true }; // запрашиваем и микрофон (для будущего использования)
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = stream;
+        if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        video.srcObject = videoStream;
+        document.getElementById('videoPlaceholder').style.display = 'none';
         video.style.display = 'block';
-        placeholder.style.display = 'none';
-        cameraActive = true;
         statusDiv.innerHTML = '✅ Камера готова. Нажмите «Начать интервью».';
         startInterviewBtn.disabled = false;
         startCamBtn.textContent = '🔄 Сменить камеру';
       } catch (err) {
-        console.error('Ошибка доступа к камере:', err);
-        statusDiv.innerHTML = '❌ Не удалось получить доступ к камере/микрофону. Проверьте разрешения.';
+        console.error(err);
+        let errorMsg = err.name === 'NotAllowedError' ? '❌ Доступ к камере запрещён.' : '❌ Камера не найдена.';
+        statusDiv.innerHTML = errorMsg;
+        statusDiv.classList.add('error');
         startInterviewBtn.disabled = true;
-        cameraActive = false;
-        video.style.display = 'none';
-        placeholder.style.display = 'flex';
       }
     }
 
-    function stopTracks() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-    }
-
-    // Начать интервью — переход на страницу вопросов или запуск диалога
-    function startInterview() {
-      if (!cameraActive) {
+    // --- 2. Начать интервью (показываем первый вопрос и начинаем запись) ---
+    async function startInterview() {
+      if (!videoStream) {
         statusDiv.innerHTML = '⚠️ Сначала включите камеру.';
         return;
       }
-      // Здесь можно отправить видеопоток на сервер или перейти к следующему этапу
-      statusDiv.innerHTML = '🎙️ Интервью началось. ИИ задаёт первый вопрос...';
-      // Пример: перенаправление на страницу диалога через 1 секунду
-      setTimeout(() => {
-        // Переход на страницу диалога (можно передать параметры)
-        window.location.href = '/ml-interview/start';
-      }, 1000);
+      // Очищаем предыдущие вопросы и ответы
+      questionsArea.innerHTML = '';
+      answersData = [];
+      currentQuestionIndex = 0;
+      showCurrentQuestion();
+      // Запрашиваем микрофон и начинаем запись
+      await requestMicrophoneAndStartRecording();
     }
 
+    function showCurrentQuestion() {
+      if (currentQuestionIndex >= questionsList.length) {
+        // Все вопросы заданы, показываем итог
+        showFinalSummary();
+        return;
+      }
+      const questionDiv = document.createElement('div');
+      questionDiv.className = 'question-block';
+      questionDiv.id = `q${currentQuestionIndex}`;
+      questionDiv.innerHTML = `
+        <div class="question-text">❓ ${questionsList[currentQuestionIndex]}</div>
+        <div class="answer-result" id="result${currentQuestionIndex}">⏳ Ожидание ответа...</div>
+      `;
+      questionsArea.appendChild(questionDiv);
+      statusDiv.innerHTML = `🎙️ Вопрос ${currentQuestionIndex+1} из ${questionsList.length}. Говорите...`;
+    }
+
+    async function requestMicrophoneAndStartRecording() {
+      try {
+        if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        startRecording();
+      } catch (err) {
+        console.error(err);
+        statusDiv.innerHTML = '❌ Нет доступа к микрофону.';
+        statusDiv.classList.add('error');
+      }
+    }
+
+    function startRecording() {
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(audioStream);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        sendAudioToServer(audioBlob, currentQuestionIndex);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      addRecordingIndicator();
+
+      // Автоматическая остановка через 30 секунд
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          stopRecording();
+        }
+      }, 30000);
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        isRecording = false;
+        if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+        audioStream = null;
+        removeRecordingIndicator();
+        statusDiv.innerHTML = '⏳ Обработка ответа...';
+      }
+    }
+
+    // --- 3. Отправка аудио на сервер (через Java-прокси) ---
+    async function sendAudioToServer(audioBlob, qIndex) {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, `answer_${qIndex}.webm`);
+
+      try {
+        const response = await fetch('/api/process-audio', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Сохраняем результат
+          answersData[qIndex] = { text: data.text, emotions: data.emotions };
+          // Обновляем блок ответа для этого вопроса
+          const resultDiv = document.getElementById(`result${qIndex}`);
+          if (resultDiv) {
+            resultDiv.innerHTML = `📝 Распознано: "${data.text}"<br>😊 Эмоции: ${formatEmotions(data.emotions)}`;
+          }
+          // Переходим к следующему вопросу
+          currentQuestionIndex++;
+          if (currentQuestionIndex < questionsList.length) {
+            showCurrentQuestion();
+            // Запрашиваем микрофон снова для следующего вопроса
+            await requestMicrophoneAndStartRecording();
+          } else {
+            // Все вопросы завершены
+            showFinalSummary();
+          }
+        } else {
+          statusDiv.innerHTML = `❌ Ошибка распознавания: ${data.error}`;
+        }
+      } catch (error) {
+        console.error(error);
+        statusDiv.innerHTML = '❌ Не удалось отправить аудио на сервер.';
+      }
+    }
+
+    function formatEmotions(emotions) {
+      if (!emotions) return 'нет данных';
+      return Object.entries(emotions).map(([k, v]) => `${k}: ${(v*100).toFixed(1)}%`).join(', ');
+    }
+
+    // --- 4. После всех ответов — анализ в GigaChat ---
+    function showFinalSummary() {
+      // Собираем тексты ответов
+      const answerTexts = answersData.map(item => item.text).filter(t => t && t.trim());
+      const combinedText = answerTexts.join('\n\n');   // разделитель — два перевода строки
+
+      questionsArea.innerHTML = `
+        <div class="final-summary">
+          <h3>✅ Интервью завершено</h3>
+          <p>Спасибо за ответы!</p>
+          <div id="analysisResult" style="margin: 16px 0; padding: 12px; background: rgba(0,0,0,0.4); border-radius: 16px;"></div>
+          <button id="restartBtn" class="primary">🔄 Пройти заново</button>
+        </div>
+      `;
+
+      document.getElementById('restartBtn')?.addEventListener('click', () => {
+        questionsArea.innerHTML = '';
+        answersData = [];
+        currentQuestionIndex = 0;
+        startInterview();
+      });
+
+      // Отправляем объединённые ответы на анализ (без дополнительной кнопки)
+      sendAnswersForAnalysis(combinedText);
+    }
+
+    async function sendAnswersForAnalysis(answersText) {
+      const userId = document.body.getAttribute('data-user-id') || sessionStorage.getItem('userId') || '1';
+      const resultDiv = document.getElementById('analysisResult');
+      if (!resultDiv) return;
+      resultDiv.innerHTML = '⏳ Анализ ответов GigaChat...';
+
+      try {
+        const response = await fetch('/api/analyze-answers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userId, answers: answersText })
+        });
+        const data = await response.json();
+        if (data.success) {
+          resultDiv.innerHTML = `
+            <strong>🎯 Шансы на прохождение собеседования:</strong> ${data.probability}%<br>
+            <strong>📝 Комментарий:</strong><br> ${data.comments}
+          `;
+        } else {
+          resultDiv.innerHTML = `<span style="color: #ff6b6b;">❌ Ошибка: ${data.error}</span>`;
+        }
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = `<span style="color: #ff6b6b;">❌ Не удалось отправить ответы на сервер.</span>`;
+      }
+    }
+
+    // Индикатор записи
+    function addRecordingIndicator() {
+      let ind = document.getElementById('recordingIndicator');
+      if (ind) return;
+      ind = document.createElement('div');
+      ind.id = 'recordingIndicator';
+      ind.className = 'recording-indicator';
+      ind.innerHTML = '<div class="recording-dot"></div><span>Запись...</span>';
+      startInterviewBtn.parentNode.insertBefore(ind, startInterviewBtn.nextSibling);
+    }
+    function removeRecordingIndicator() {
+      const ind = document.getElementById('recordingIndicator');
+      if (ind) ind.remove();
+    }
+
+    // Обработчики кнопок
     startCamBtn.addEventListener('click', enableCamera);
     startInterviewBtn.addEventListener('click', startInterview);
-
-    // При загрузке страницы пробуем включить камеру автоматически (опционально)
-    // enableCamera(); // раскомментировать, если нужно сразу запрашивать
   })();
 </script>
 </body>
