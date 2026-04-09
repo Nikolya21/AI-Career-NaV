@@ -15,9 +15,11 @@ import org.example.aicareernav1.dto.testDto.QuestionDto;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.repository.QuestionRepository;
 import org.example.aicareernav1.repository.UserRepository;
+import org.example.aicareernav1.service.promptService.QuizAnalysisPromptService;
 import org.example.aicareernav1.service.promptService.QuizPromptService;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +36,7 @@ public class QuizService {
     private final GigaChatClient gigaChatClient;
     private final QuizPromptService quizPromptService;
     private final ObjectMapper objectMapper;
+    private final QuizAnalysisPromptService quizAnalysisPromptService;
 
     public List<QuestionDto> generateAndSaveQuestions(Long userId, String vacancyNow) {
         String userGrade = extractGrade(vacancyNow.toLowerCase());
@@ -97,8 +100,9 @@ public class QuizService {
         UserEntity user = userRepository.findById(userId)
           .orElseThrow(() -> new RuntimeException("User not found"));
         user.setTestResult("{}");
+        user.setTestAnalysis(null); // Добавьте эту строку для очистки старого анализа
         userRepository.save(user);
-        log.info("Очищены старые ответы для пользователя {}", userId);
+        log.info("Очищены старые ответы и анализ для пользователя {}", userId);
     }
 
     public List<QuestionDto> getQuestions(Long userId) {
@@ -110,19 +114,40 @@ public class QuizService {
           objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionDto.class));
     }
 
+    @Transactional
     public void saveAnswer(Long userId, String questionText, String answer) {
         UserEntity user = userRepository.findById(userId)
           .orElseThrow(() -> new RuntimeException("User not found"));
+
         try {
-            Map<String, String> answersMap = new HashMap<>();
-            if (user.getTestResult() != null && !user.getTestResult().isEmpty() && !user.getTestResult().equals("{}")) {
-                answersMap = objectMapper.readValue(user.getTestResult(), Map.class);
+            // 1. Инициализируем карту
+            Map<String, String> answersMap;
+
+            // 2. Проверяем содержимое testResult
+            String currentResult = user.getTestResult();
+            if (currentResult == null || currentResult.isEmpty() || currentResult.equals("{}")) {
+                answersMap = new HashMap<>();
+            } else {
+                // Используем TypeReference для точного маппинга типов
+                answersMap = objectMapper.readValue(currentResult,
+                  new com.fasterxml.jackson.core.type.TypeReference<HashMap<String, String>>() {});
             }
+
+            // 3. Добавляем новый ответ (или обновляем существующий)
             answersMap.put(questionText, answer);
-            user.setTestResult(objectMapper.writeValueAsString(answersMap));
+
+            // 4. Сериализуем обратно в JSON
+            String jsonResult = objectMapper.writeValueAsString(answersMap);
+            user.setTestResult(jsonResult);
+
+            // 5. Сохраняем пользователя
             userRepository.save(user);
-        } catch (JsonProcessingException e) {
-            log.error("Ошибка сохранения ответа", e);
+
+            log.info("✅ Ответ сохранен для пользователя {}. Всего ответов: {}", userId, answersMap.size());
+
+        } catch (Exception e) {
+            log.error("❌ Критическая ошибка при сохранении ответа в JSON для пользователя {}", userId, e);
+            throw new RuntimeException("Не удалось сохранить ответ в базу данных");
         }
     }
 
@@ -175,4 +200,53 @@ public class QuizService {
     private String extractProfession(String cleaned, String grade) {
         return cleaned.replace(grade, "").trim();
     }
+
+    @Transactional
+    public String runFullQuizAnalysis(Long userId) {
+        // 1. Обязательно находим пользователя ЗАНОВО, чтобы сбросить кэш
+        UserEntity user = userRepository.findById(userId)
+          .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String vacancy = user.getVacancyNow();
+        String answersJson = user.getTestResult();
+
+        if (answersJson == null || answersJson.equals("{}")) {
+            return "Анализ невозможен: ответов нет.";
+        }
+
+        String prompt = quizAnalysisPromptService.buildAnalysisPrompt(vacancy, answersJson);
+
+        try {
+            log.info("🚀 Отправляем тест юзера {} на финальную проверку AI...", userId);
+
+            CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
+              .model(ModelName.GIGA_CHAT)
+              .message(ChatMessage.builder()
+                .content(prompt)
+                .role(ChatMessageRole.USER)
+                .build())
+              .build());
+
+            String aiAnalysisResult = response.choices().get(0).message().content();
+
+            // ЛОГ ДЛЯ ПРОВЕРКИ: Ты должен увидеть это в консоли IDEA!
+            log.info("📝 Получен ответ от AI (первые 50 симв): {}",
+              aiAnalysisResult.substring(0, Math.min(50, aiAnalysisResult.length())));
+
+            // 2. Устанавливаем значение
+            user.setTestAnalysis(aiAnalysisResult);
+
+            // 3. ЖЕСТКОЕ СОХРАНЕНИЕ
+            userRepository.saveAndFlush(user);
+
+            log.info("✅ saveAndFlush выполнен для пользователя {}", userId);
+
+            return aiAnalysisResult;
+        } catch (Exception e) {
+            log.error("❌ Ошибка при AI анализе: {}", e.getMessage());
+            return "Ошибка анализа.";
+        }
+    }
+
+
 }

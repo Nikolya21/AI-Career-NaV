@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.repository.UserRepository;
+import org.example.aicareernav1.service.promptService.QuizAnalysisPromptService;
 import org.example.aicareernav1.service.testService.QuizService;
 import org.example.aicareernav1.service.userService.UserService;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +52,7 @@ public class QuizController {
         String questionText = request.get("question");
         String answer = request.get("answer");
 
+        // 1. Сохраняем текущий ответ
         quizService.saveAnswer(userId, questionText, answer);
 
         List<QuestionDto> questions = quizService.getQuestions(userId);
@@ -60,15 +62,36 @@ public class QuizController {
           .map(QuestionDto::getNumber)
           .orElse(0);
 
-        return questions.stream()
+        // Ищем следующий вопрос
+        var nextQuestion = questions.stream()
           .filter(q -> q.getNumber() == currentNumber + 1)
-          .findFirst()
-          .map(ResponseEntity::ok)
-          .orElse(ResponseEntity.noContent().build());
+          .findFirst();
+
+        if (nextQuestion.isPresent()) {
+            return ResponseEntity.ok(nextQuestion.get());
+        } else {
+            // 2. ВОПРОСОВ БОЛЬШЕ НЕТ -> ЗАПУСКАЕМ АНАЛИЗ ПРЯМО ЗДЕСЬ
+            log.info("🏁 Последний вопрос отвечен. Автоматический запуск анализа для ID: {}", userId);
+
+            // Запускаем анализ (метод в Service у нас уже готов и делает saveAndFlush)
+            quizService.runFullQuizAnalysis(userId);
+
+            return ResponseEntity.noContent().build(); // Возвращаем 204 фронту
+        }
     }
 
     @GetMapping("/answers/{userId}")
     public ResponseEntity<?> getAllAnswers(@PathVariable Long userId) {
         return ResponseEntity.ok(quizService.getAllAnswers(userId));
+    }
+    @PostMapping("/analyze/{userId}")
+    public ResponseEntity<String> analyze(@PathVariable Long userId) {
+        log.info("📥 Получен запрос на AI-анализ для пользователя: {}", userId);
+
+        // Вызываем метод из QuizService, который мы подготовили ранее
+        String analysisResult = quizService.runFullQuizAnalysis(userId);
+
+        log.info("✅ Анализ завершен и сохранен в БД для пользователя: {}", userId);
+        return ResponseEntity.ok(analysisResult);
     }
 }
