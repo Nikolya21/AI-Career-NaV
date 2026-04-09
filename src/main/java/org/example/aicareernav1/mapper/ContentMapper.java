@@ -27,7 +27,7 @@ public interface ContentMapper {
 
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "lesson", ignore = true)
-  @Mapping(target = "content", expression = "java(dto.getContent().toString())")
+  @Mapping(target = "content", expression = "java(dto.getContent() != null && !dto.getContent().isNull() ? dto.getContent().toString() : null)") // null в toString() - ошибка NullPointerException (NPE)
   Task toEntity(TaskDTO dto);
 
   @AfterMapping

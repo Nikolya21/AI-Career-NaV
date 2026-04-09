@@ -2,6 +2,8 @@ package org.example.aicareernav1.controller.roadmap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.dto.roadmap.AnswerCheckResult;
+import org.example.aicareernav1.dto.roadmap.AnswerRequest;
 import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
@@ -102,5 +104,28 @@ public class RoadmapController {
   @GetMapping("/{id}/progress")
   public ResponseEntity<Double> getProgress(@PathVariable Long id) {
     return ResponseEntity.ok(roadmapService.calculateProgress(id));
+  }
+
+
+  /**
+   * Проверяет ответ пользователя на задачу.
+   * <p>
+   * Для детерминированных типов (SINGLE_CHOICE, TRUE_FALSE, MATCHING, FILL_BLANK, ORDERING)
+   * проверка выполняется локально без обращения к ИИ.
+   * Для OPEN_QUESTION — ответ оценивается через GigaChat.
+   * Для PRACTICE и CODE_SNIPPET — возвращается подтверждение без оценки (ручная проверка).
+   * </p>
+   *
+   * @param taskId  ID задачи
+   * @param request объект с ответом пользователя
+   * @return результат проверки с флагом {@code correct} и текстом объяснения
+   */
+  @PostMapping("/task/{taskId}/check")
+  public ResponseEntity<AnswerCheckResult> checkAnswer(
+      @PathVariable Long taskId,
+      @RequestBody AnswerRequest request) {
+    log.info("API: Проверка ответа для Task ID: {}", taskId);
+    AnswerCheckResult result = roadmapService.checkAnswer(taskId, request);
+    return ResponseEntity.ok(result);
   }
 }
