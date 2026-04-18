@@ -30,6 +30,15 @@ public class QuizPromptService {
     );
   }
 
+  public String buildCompilerCheckPrompt(String questionsJson) {
+    return "Ты — эксперт по Java. Твоя задача: пометить вопросы, которые требуют написания кода. " +
+      "КРИТЕРИЙ: Если вопрос просит 'Написать метод', 'Реализовать паттерн', 'Привести пример кода' или 'Написать класс' — ставь true. " +
+      "Если вопрос теоретический ('Что такое...', 'В чем отличие...') — ставь false. " +
+      "ВАЖНО: Ты должен вернуть ТОЛЬКО JSON массив из 12 элементов boolean. " +
+      "Никаких пояснений, только [true, false, ...]. " +
+      "ВОПРОСЫ: " + questionsJson;
+  }
+
   public List<QuestionDto> parseQuizResponse(String content) {
     try {
       int start = content.indexOf("[");
