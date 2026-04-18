@@ -14,7 +14,4 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
   // Либо поиск через ID чекпоинта (Spring Data JPA пройдет по цепочке Lesson -> Module -> Checkpoint)
   List<Lesson> findAllByModuleCheckpointId(Long checkpointId);
-
-  @Query("SELECT l.module.checkpoint.topic.roadmap.learningStyleNotes FROM Lesson l WHERE l.id = :lessonId")
-  String findRoadmapNotesByLessonId(@Param("lessonId") Long lessonId);
 }

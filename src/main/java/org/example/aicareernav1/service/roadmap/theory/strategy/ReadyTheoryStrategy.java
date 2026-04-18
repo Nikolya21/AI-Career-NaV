@@ -10,6 +10,7 @@ import org.example.aicareernav1.enums.ResourceType;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class ReadyTheoryStrategy implements TheoryProcessingStrategy {
     public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson) {
         Theory theory = Theory.builder()
                 .text(response.getContent())
+                .tags(List.of("FINISH IT"))
                 .lesson(lesson)
                 .resources(new ArrayList<>())
                 .build();

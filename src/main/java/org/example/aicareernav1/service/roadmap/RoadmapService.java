@@ -5,6 +5,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.*;
+import org.example.aicareernav1.dto.roadmap.checkpoint.CheckpointDTO;
+import org.example.aicareernav1.dto.roadmap.checkpoint.CheckpointSkeletonDTO;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.ContentResponse;
 import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
@@ -12,18 +14,21 @@ import org.example.aicareernav1.dto.roadmap.response.SkeletonResponse;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.*;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Module;
 import org.example.aicareernav1.enums.CheckpointStatus;
+import org.example.aicareernav1.enums.CheckpointType;
 import org.example.aicareernav1.mapper.ContentMapper;
 import org.example.aicareernav1.mapper.RoadmapMapper;
 import org.example.aicareernav1.repository.roadmap.CheckpointRepository;
 import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.repository.roadmap.TopicRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
-import org.example.aicareernav1.service.roadmap.prompt.Prompts;
-import org.example.aicareernav1.service.json.JsonUtilsService;
+import org.example.aicareernav1.service.roadmap.prompt.GeneralPrompts;
+import org.example.aicareernav1.service.util.JsonUtilsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 /**
  * Сервис для управления жизненным циклом дорожной карты обучения (Roadmap).
@@ -88,7 +93,7 @@ public class RoadmapService {
   /**
    * Формирует интеллектуальный запрос к нейросети и сохраняет полученную структуру в базу данных.
    * <p>
-   * Метод подставляет данные пользователя в {@link Prompts#SKELETON_SYSTEM_PROMPT},
+   * Метод подставляет данные пользователя в {@link GeneralPrompts#SKELETON_SYSTEM_PROMPT},
    * десериализует ответ в {@link SkeletonResponse} и выполняет пакетное сохранение
    * связанных сущностей {@link Topic} и {@link Checkpoint}.
    * </p>
@@ -98,7 +103,7 @@ public class RoadmapService {
    */
   private void generateAndSaveSkeleton(Roadmap roadmap, RoadmapGenerationRequest request) {
     // Подставляем данные в промпт
-    String prompt = Prompts.SKELETON_SYSTEM_PROMPT
+    String prompt = GeneralPrompts.SKELETON_SYSTEM_PROMPT
       .replace("{jobTitle}", request.getJobTitle())
       .replace("{requirements}", request.getRequirements())
       .replace("{testResult}", request.getTestResult());
@@ -151,7 +156,7 @@ public class RoadmapService {
 
     String currentNotes = (roadmap.getLearningStyleNotes() != null) ? roadmap.getLearningStyleNotes() : "";
 
-    String userMsg = String.format(Prompts.LEARNING_STYLE_UPDATE_PROMPT, currentNotes, feedbackText);
+    String userMsg = String.format(GeneralPrompts.LEARNING_STYLE_UPDATE_PROMPT, currentNotes, feedbackText);
 
     try {
       String updatedNotes = gigaChatService.chat(
@@ -211,7 +216,7 @@ public class RoadmapService {
       );
 
     try {
-      String json = fetchValidJson(userMsg, Prompts.CONTENT_SYSTEM_PROMPT, 3);
+      String json = fetchValidJson(userMsg, GeneralPrompts.CONTENT_SYSTEM_PROMPT, 3);
       log.info("==> [DEBUG] Сырой ответ от GigaChat: {}", json);
 
       String sanitizedJson = jsonUtilsService.cleanJsonResponse(json);
@@ -357,51 +362,46 @@ public class RoadmapService {
    * @throws RuntimeException если произошла ошибка при парсинге ответа ИИ или сохранении данных
    */
   @Transactional
-  public CheckpointResponse deepenTopic(Long currentCheckpointId, String userRequest) {
-    log.info("Запрос на углубление темы после Checkpoint ID: {}", currentCheckpointId);
-    Checkpoint current = checkpointRepository.findById(currentCheckpointId)
-      .orElseThrow(() -> new EntityNotFoundException("Checkpoint не найден"));
+  public CheckpointResponse deepenTopic(Long checkpointId, String userRequest) {
+    // 1. Находим текущий контекст
+    Checkpoint parent = checkpointRepository.findById(checkpointId)
+            .orElseThrow(() -> new EntityNotFoundException("Checkpoint not found"));
+    Roadmap roadmap = parent.getTopic().getRoadmap();
 
-    // Сдвигаем индексы последующих этапов в этом топике
-    List<Checkpoint> followers = checkpointRepository.findAllByTopicIdOrderByOrderIndexAsc(current.getTopic().getId());
-    followers.stream()
-      .filter(cp -> cp.getOrderIndex() > current.getOrderIndex())
-      .forEach(cp -> cp.setOrderIndex(cp.getOrderIndex() + 1));
+    // 2. Адаптируем запрос (Шаг 3 твоего плана)
+    String adaptedRequest = adaptUserRequest(userRequest, roadmap.getConfig());
 
-    checkpointRepository.saveAll(followers); //для hibernate
-    String json = jsonUtilsService.cleanJsonResponse(fetchValidJson(userRequest, Prompts.DEEPEN_TOPIC_SYSTEM_PROMPT, 2));
+    // 3. Запрос к ИИ для получения скелета
+    CheckpointSkeletonDTO skeletonDto = gigaChatService.generateSkeleton(adaptedRequest, DEEPEN_TOPIC_SYSTEM_PROMPT);
 
-    try {
-      DeepenCheckpointDTO dto = objectMapper.readValue(json, DeepenCheckpointDTO.class);
+    // 4. Создаем сущность чекпоинта с типом DEEPEN
+    Checkpoint newCheckpoint = Checkpoint.builder()
+            .title(skeletonDto.getTitle())
+            .description(skeletonDto.getDescription())
+            .type(CheckpointType.DEEPEN)
+            .status(CheckpointStatus.ACTIVE) // Сразу активен
+            .parentCheckpoint(parent)
+            .topic(parent.getTopic())
+            .build();
 
-      Checkpoint deep = roadmapMapper.toEntity(dto);
+    // 5. Создаем скелет модуля и уроков (Шаг Б)
+    Module module = Module.builder()
+            .title(newCheckpoint.getTitle())
+            .checkpoint(newCheckpoint)
+            .build();
 
-      log.info("Маппинг завершен. Title: {}, Desc: {}", deep.getTitle(), deep.getDescription());
+    List<Lesson> lessons = skeletonDto.getLessonTitles().stream()
+            .map(title -> contentMapper.toSkeletonLesson(title, module))
+            .collect(Collectors.toList());
 
-      if (deep.getDescription() == null || deep.getDescription().isEmpty()) {
-        log.warn("ВНИМАНИЕ: Description пустой после маппинга! ИИ не поймет контекст.");
-      }
+    module.setLessons(lessons);
+    newCheckpoint.setModule(module);
 
-      deep.setTopic(current.getTopic());
-      deep.setOrderIndex(current.getOrderIndex() + 1);
-      deep.setParentCheckpointId(current.getId());
-
-
-      checkpointRepository.save(deep);
-
-      // Помечаем текущий как выполненный (так как мы пошли вглубь)
-      current.setStatus(CheckpointStatus.COMPLETED);
-      checkpointRepository.save(current);
-
-      // Сразу генерируем контент для нового этапа
-      fillCheckpointContent(deep.getId());
-
-      return roadmapMapper.toCheckpointResponse(deep);
-    } catch (Exception e) {
-      log.error("Ошибка при создании углубленного этапа: {}", e.getMessage());
-      throw new RuntimeException("Не удалось создать углубление темы");
-    }
+    checkpointRepository.save(newCheckpoint);
+    return roadmapMapper.toCheckpointResponse(newCheckpoint);
   }
+
+
 
 
   /**

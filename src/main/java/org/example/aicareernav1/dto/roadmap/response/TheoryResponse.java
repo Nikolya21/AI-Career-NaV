@@ -9,5 +9,6 @@ import java.util.List;
 @Builder
 public class TheoryResponse {
   private String text;
+  private List<String> tags;
   private List<ResourceResponse> resources;
 }

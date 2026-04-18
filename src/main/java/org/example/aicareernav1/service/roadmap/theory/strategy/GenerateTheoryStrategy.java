@@ -1,30 +1,40 @@
 package org.example.aicareernav1.service.roadmap.theory.strategy;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.example.aicareernav1.dto.external.pythonRAG.ChunkResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.GatewayResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.SaveRequest;
 import org.example.aicareernav1.dto.external.pythonRAG.SearchRequest;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Lesson;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Theory;
-import org.example.aicareernav1.repository.roadmap.LessonRepository;
+
+import org.example.aicareernav1.mapper.RagIntegrationMapper;
+import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.integration.PythonIntegrationService;
-import org.example.aicareernav1.service.roadmap.theory.prompt.Prompts;
+import org.example.aicareernav1.service.roadmap.RoadmapConfigService;
+import org.example.aicareernav1.service.roadmap.prompt.TheoryPrompts;
+import org.example.aicareernav1.service.util.LlmResponseParserService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
 
     private final PythonIntegrationService pythonClient;
-    private  final LessonRepository lessonRepository;
     // Предположим, тут ваш сервис для работы с LLM (GigaChat/GPT/Claude)
     private final GigaChatService llmService;
+    private final LlmResponseParserService llmParser;
+    private final RagIntegrationMapper ragMapper;
+    private final RoadmapConfigService configService;
+    private final RoadmapRepository roadmapRepository;
 
     @Override
     public boolean supports(String status) {
@@ -33,48 +43,44 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
 
     @Override
     public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson) {
-        String learningStyle = lessonRepository.findRoadmapNotesByLessonId(lesson.getId());
-        if (learningStyle == null) {
-            learningStyle = "Standard technical documentation style";
-        }
-        // 1. Адаптируем запрос для поиска (Query Expansion)
-        String refinedQuery = queryAdaptation(request.getQuery(), learningStyle);
+        // Достаем профиль из роадмапа (связь @OneToOne)
+        RoadmapConfig config = roadmapRepository.findConfigByLessonId(lesson.getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "RoadmapConfig not found for lesson with ID: " + lesson.getId()
+                ));
+        //todo: когда все проеверю, заменить:
+        //  RoadmapConfig config = roadmapRepository.findConfigByLessonId(lesson.getId())
+        //      .orElseGet(() -> configService.createDefaultConfig());
 
-        // 2. Генерируем теорию через LLM на основе чанков из RAG, используя эти же настройки стиля
-        String generatedMarkdown = generateLessonFromChunks(response.getChunks(), refinedQuery, learningStyle);
+        // 1. Формируем единую строку контекста (теги + стиль + тон)
+        String fullLearningContext = configService.getFullContextString(config);
 
-        // 2. Создание SaveRequest для Python RAG
-        SaveRequest saveRequest = SaveRequest.builder()
-                .query(request.getQuery())
-                .content(generatedMarkdown)
-                .contentType("finished_lesson")
-                .tags(request.getTags())
-                .resources(new ArrayList<>()) // Можно извлечь ссылки из сгенерированного текста
-                .metadata(Map.of("lesson_id", lesson.getId()))
-                .build();
+        // 3. Генерируем теорию через LLM на основе чанков из RAG, используя эти же настройки стиля
+        String rawLlmResponse = generateLessonFromChunks(response.getChunks(), request.getQuery(), fullLearningContext, config.getMainDomain());
 
-        // 3. Асинхронное сохранение в Python
-        pythonClient.saveProcessedContent(saveRequest);
+        LlmResponseParserService.ParsedLlmContent cleanGeneratedMarkdown = llmParser.parseTheoryResponse(rawLlmResponse);
 
-        // 4. Создание и привязка сущности Theory
         Theory theory = Theory.builder()
-                .text(generatedMarkdown)
+                .text(cleanGeneratedMarkdown.getContent())
+                .tags(cleanGeneratedMarkdown.getTags())
                 .lesson(lesson)
                 .build();
+
+        // 4. Создание SaveRequest для Python RAG
+        SaveRequest saveRequest = ragMapper.toSaveRequest(theory, lesson, cleanGeneratedMarkdown.getTags(), request.getQuery());
+
+        // 5. Асинхронное сохранение в Python
+        pythonClient.saveProcessedContent(saveRequest);
 
         lesson.setTheory(theory);
         return theory;
     }
 
-    private String generateLessonFromChunks(List<ChunkResponse> chunks, String userQuery, String userTags) {
-        StringBuilder chunksText = new StringBuilder();
-        for (ChunkResponse chunk : chunks) {
-            chunksText.append(chunk.getContent()).append("\n---\n");
-        }
-        return Prompts.getGenerateTheoryPrompt(userQuery, chunksText.toString(), userTags);
-    }
+    private String generateLessonFromChunks(List<ChunkResponse> chunks, String userQuery, String contextLearning, String mainDomain) {
+        String chunksText = chunks.stream()
+                .map(ChunkResponse::getContent)
+                .collect(Collectors.joining("\n---\n"));
 
-    private String queryAdaptation(String userQuery, String userTags) {
-        return llmService.sendMessage(Prompts.getQueryAdaptationForSearchPrompt(userQuery, userTags));
+        return llmService.sendMessage(TheoryPrompts.getGenerateTheoryPrompt(userQuery, chunksText, contextLearning, mainDomain));
     }
 }

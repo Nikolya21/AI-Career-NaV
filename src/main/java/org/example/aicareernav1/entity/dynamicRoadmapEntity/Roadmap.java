@@ -28,8 +28,9 @@ public class Roadmap {
 
   private String targetJobTitle; // Название профессии (например, "Java Developer")
 
-  @Column(columnDefinition = "TEXT")
-  private String learningStyleNotes; // Здесь будет лежать что-то вроде: "Предпочитает практику, избегает длинных текстов, любит юмор - в тегах"
+  @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+  @JoinColumn(name = "config_id", referencedColumnName = "id")
+  private RoadmapConfig config;
 
   @Column(columnDefinition = "TEXT")
   private String userContext; // результаты теста + требования к вакансии

@@ -2,8 +2,8 @@ package org.example.aicareernav1.mapper;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.aicareernav1.dto.roadmap.CheckpointDTO;
-import org.example.aicareernav1.dto.roadmap.DeepenCheckpointDTO;
+import org.example.aicareernav1.dto.roadmap.checkpoint.CheckpointDTO;
+import org.example.aicareernav1.dto.roadmap.checkpoint.DeepenCheckpointDTO;
 import org.example.aicareernav1.dto.roadmap.TopicDTO;
 import org.example.aicareernav1.dto.roadmap.response.*;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.*;

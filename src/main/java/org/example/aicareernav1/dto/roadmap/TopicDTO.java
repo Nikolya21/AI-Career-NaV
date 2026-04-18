@@ -1,6 +1,7 @@
 package org.example.aicareernav1.dto.roadmap;
 
 import lombok.Data;
+import org.example.aicareernav1.dto.roadmap.checkpoint.CheckpointDTO;
 
 import java.util.List;
 
