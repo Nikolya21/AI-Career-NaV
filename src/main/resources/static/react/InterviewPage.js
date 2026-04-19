@@ -108,7 +108,7 @@ const InterviewPage = ({ userId, vacancyNow }) => {
         <div className={`interview-layout ${isCompilerVisible ? 'with-compiler' : 'standard-view'}`}>
             <div className="interview-main">
                 <div className="interview-header">
-                    <div className="brand">AI Career Nav <span className="badge">Beta</span></div>
+                    <div className="brand">AI Career Navigator</div>
                     <div className="progress-info">Step {currentNumber} of 12</div>
                 </div>
 
