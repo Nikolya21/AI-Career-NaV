@@ -9,56 +9,34 @@ const InterviewPage = ({ userId, vacancyNow }) => {
     const [codeOutput, setCodeOutput] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Вычисляем видимость компилятора
     const isCompilerVisible = activeLanguage !== 'none' &&
         (currentQuestion?.compilerRequired === true || String(currentQuestion?.compilerRequired) === 'true');
 
-    // ЛОГ ДЛЯ ОТЛАДКИ: Срабатывает при каждом изменении состояния
-    useEffect(() => {
-        if (currentQuestion) {
-            console.group("🖥️ Статус компилятора");
-            console.log("Вакансия:", vacancyNow);
-            console.log("Определенный язык (activeLanguage):", activeLanguage);
-            console.log("Вопрос требует компилятор (compilerRequired):", currentQuestion?.compilerRequired);
-            console.log("Итоговая видимость (isCompilerVisible):", isCompilerVisible);
-            console.groupEnd();
-        }
-    }, [currentQuestion, activeLanguage, isCompilerVisible]);
-
     useEffect(() => {
         const init = async () => {
-            // Проверяем, что вакансия — это реальная строка, а не undefined
             if (vacancyNow && vacancyNow !== "undefined") {
                 await detectLanguage();
                 await loadFirstQuestion();
             }
         };
         init();
-    }, [vacancyNow]); // Эффект перезапустится, когда vacancyNow обновится
+    }, [vacancyNow]);
 
     const detectLanguage = async () => {
-        console.log("🔍 Запрос на определение языка для:", vacancyNow);
         try {
             const res = await fetch(`/api/v1/compiler/detect?vacancy=${encodeURIComponent(vacancyNow)}`);
             const lang = await res.text();
-
-            // Чистим ответ на случай, если GigaChat прислал лишние пробелы или кавычки
             const cleanLang = lang.trim().toLowerCase();
-            console.log("🤖 GigaChat определил язык как:", cleanLang);
-
             setActiveLanguage(cleanLang);
 
             const templates = {
                 java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World!");\n    }\n}',
                 python: 'print("Hello World!")',
                 javascript: 'console.log("Hello World!");',
-                cpp: '#include <iostream>\nint main() {\n    std::cout << "Hello World!";\n    return 0;\n}',
-                csharp: 'using System;\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello World!");\n    }\n}',
-                php: '<?php\necho "Hello World!";'
+                cpp: '#include <iostream>\nint main() {\n    std::cout << "Hello World!";\n    return 0;\n}'
             };
-            setCode(templates[cleanLang] || '// Напишите ваш код здесь');
+            setCode(templates[cleanLang] || '// Write your code here...');
         } catch (e) {
-            console.error("❌ Ошибка определения языка:", e);
             setActiveLanguage('none');
         }
     };
@@ -66,18 +44,14 @@ const InterviewPage = ({ userId, vacancyNow }) => {
     const loadFirstQuestion = async () => {
         try {
             setIsLoading(true);
-            // Генерируем квиз, если это первый вход
             await fetch(`/api/v1/quiz/generate/${userId}`, { method: 'POST' });
-
             const response = await fetch(`/api/v1/quiz/start/${userId}`);
-            if (!response.ok) throw new Error("Квиз не найден");
-
+            if (!response.ok) throw new Error("Quiz not found");
             const data = await response.json();
-            console.log("📥 Получен вопрос из БД:", data);
             setCurrentQuestion(data);
             setCurrentNumber(data.number || 1);
         } catch (error) {
-            console.error("❌ Ошибка загрузки вопроса:", error);
+            console.error("Error loading question:", error);
         } finally {
             setIsLoading(false);
         }
@@ -101,13 +75,11 @@ const InterviewPage = ({ userId, vacancyNow }) => {
             }
 
             const nextData = await response.json();
-            console.log("📥 Следующий вопрос:", nextData);
             setCurrentQuestion(nextData);
             setCurrentNumber(nextData.number);
             setAnswer('');
             setCodeOutput('');
         } catch (err) {
-            console.error("❌ Ошибка перехода:", err);
             window.location.href = `/dialogs/chat?userId=${userId}&type=ROADMAP`;
         } finally {
             setIsLoading(false);
@@ -115,39 +87,36 @@ const InterviewPage = ({ userId, vacancyNow }) => {
     };
 
     const handleRunCode = async () => {
-        setCodeOutput("Запуск...");
+        setCodeOutput("> Running compilation...");
         try {
             const res = await fetch('/api/v1/compiler/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code: code,
-                    vacancy: vacancyNow
-                })
+                body: JSON.stringify({ code, vacancy: vacancyNow })
             });
             const result = await res.json();
-            console.log("🚀 Результат выполнения:", result);
-
-            if (result.isTimeout) setCodeOutput("⚠️ Превышено время (15 сек)");
-            else setCodeOutput(result.stderr ? `❌ Ошибка:\n${result.stderr}` : `✅ Результат:\n${result.stdout}`);
+            if (result.isTimeout) setCodeOutput("⚠️ Timeout: execution exceeded 15s");
+            else setCodeOutput(result.stderr ? `❌ Error:\n${result.stderr}` : `✅ Output:\n${result.stdout}`);
         } catch (err) {
-            setCodeOutput("❌ Ошибка сервера");
+            setCodeOutput("❌ Server error");
         }
     };
 
-    if (isLoading) return <div className="loader">Загрузка данных интервью...</div>;
+    if (isLoading) return <div className="loader-container"><div className="loader"></div><p>Preparing Interview...</p></div>;
 
     return (
         <div className={`interview-layout ${isCompilerVisible ? 'with-compiler' : 'standard-view'}`}>
             <div className="interview-main">
+                <div className="interview-header">
+                    <div className="brand">AI Career Nav <span className="badge">Beta</span></div>
+                    <div className="progress-info">Step {currentNumber} of 12</div>
+                </div>
+
                 <div className="progress-container">
                     <div className="progress-fill" style={{ width: `${(currentNumber / 12) * 100}%` }} />
                 </div>
 
                 <div className="question-card">
-                    <div className="question-header">
-                        <span className="q-number">Вопрос №{currentNumber}</span>
-                    </div>
                     <h2 className="question-title">{currentQuestion?.question}</h2>
 
                     {!isCompilerVisible ? (
@@ -155,18 +124,18 @@ const InterviewPage = ({ userId, vacancyNow }) => {
                             className="answer-input"
                             value={answer}
                             onChange={(e) => setAnswer(e.target.value)}
-                            placeholder="Напишите развернутый ответ..."
+                            placeholder="Type your detailed answer here..."
                         />
                     ) : (
                         <div className="compiler-hint">
-                            💻 Для этого вопроса доступен компилятор <strong>{activeLanguage.toUpperCase()}</strong>.
-                            Решите задачу в окне справа.
+                            <span className="hint-icon">💡</span>
+                            This is a coding task. Please use the IDE on the right to implement your solution in <strong>{activeLanguage.toUpperCase()}</strong>.
                         </div>
                     )}
 
                     <div className="actions">
                         <button className="next-button" onClick={handleNext}>
-                            {currentNumber >= 12 ? 'Завершить интервью' : 'Далее →'}
+                            {currentNumber >= 12 ? 'Finish Interview' : 'Next Question →'}
                         </button>
                     </div>
                 </div>
@@ -174,18 +143,30 @@ const InterviewPage = ({ userId, vacancyNow }) => {
 
             {isCompilerVisible && (
                 <div className="compiler-section">
-                    <div className="compiler-header">
-                        <div className="lang-badge">{activeLanguage.toUpperCase()}</div>
-                        <button className="run-button" onClick={handleRunCode}>Запустить код</button>
-                    </div>
-                    <textarea
-                        className="code-editor"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        spellCheck="false"
-                    />
-                    <div className="console-output">
-                        <pre>{codeOutput || "Консоль: результат появится здесь..."}</pre>
+                    <div className="ide-window">
+                        <div className="ide-header">
+                            <div className="mac-dots">
+                                <span className="dot red"></span>
+                                <span className="dot yellow"></span>
+                                <span className="dot green"></span>
+                            </div>
+                            <div className="tab active">solution.{activeLanguage === 'python' ? 'py' : activeLanguage === 'java' ? 'java' : 'js'}</div>
+                            <button className="run-button" onClick={handleRunCode}>
+                                <span className="play-icon">▶</span> RUN
+                            </button>
+                        </div>
+                        <div className="editor-wrapper">
+                             <textarea
+                                 className="code-editor"
+                                 value={code}
+                                 onChange={(e) => setCode(e.target.value)}
+                                 spellCheck="false"
+                             />
+                        </div>
+                        <div className="terminal">
+                            <div className="terminal-header">Terminal</div>
+                            <pre className="console-output">{codeOutput || "$ Ready for execution..."}</pre>
+                        </div>
                     </div>
                 </div>
             )}
