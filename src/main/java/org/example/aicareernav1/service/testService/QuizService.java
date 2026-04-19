@@ -172,6 +172,9 @@ public class QuizService {
         var middles = questionRepository.findAllByTagNameAndDifficulty(tag, "Middle");
         var seniors = questionRepository.findAllByTagNameAndDifficulty(tag, "Senior");
 
+        log.info("📊 Поиск для тега [{}]: Найдено Jun: {}, Mid: {}, Sen: {}",
+          tag, juniors.size(), middles.size(), seniors.size());
+
         if (juniors.isEmpty() && middles.isEmpty() && seniors.isEmpty()) return Collections.emptyList();
 
         List<QuestionDto> pool = new ArrayList<>();
