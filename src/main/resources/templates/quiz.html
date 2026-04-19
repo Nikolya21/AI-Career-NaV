@@ -14,13 +14,14 @@
   <style>
     body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #fff; }
     #root { width: 100%; height: 100%; }
+    .loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 1.2rem; color: #666; }
   </style>
 </head>
 <body>
 
 <div id="root">
-  <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-    Загрузка интерфейса...
+  <div class="loading-screen">
+    Загрузка интерфейса интервью...
   </div>
 </div>
 
@@ -28,21 +29,38 @@
 
 <script type="text/babel" th:inline="javascript">
   const { useState, useEffect } = React;
-  // Используем безопасную подстановку для IDEA
+
+  // Данные из Spring Model
   const userId = [[${userId}]];
+  const vacancyNow = [[${vacancyNow}]]; // Тот самый фикс, которого не хватало
+
+  console.log("Spring Boot Context:", { userId, vacancyNow });
 
   const renderApp = () => {
     const rootElement = document.getElementById('root');
-    if (!window.InterviewPage) {
-      // Если Babel еще не скомпилировал файл, подождем 100мс
+
+    // Проверяем, загрузился ли компонент InterviewPage из внешнего файла
+    if (typeof window.InterviewPage === 'undefined') {
+      console.warn("InterviewPage component not loaded yet, retrying...");
       setTimeout(renderApp, 100);
       return;
     }
+
     const root = ReactDOM.createRoot(rootElement);
-    root.render(<InterviewPage userId={userId} />);
+    // Передаем и ID, и Вакансию
+    root.render(
+            <React.StrictMode>
+              <InterviewPage userId={userId} vacancyNow={vacancyNow} />
+            </React.StrictMode>
+    );
   };
 
-  renderApp();
+  // Запускаем рендер после загрузки DOM
+  if (document.readyState === 'complete') {
+    renderApp();
+  } else {
+    window.addEventListener('load', renderApp);
+  }
 </script>
 </body>
 </html>

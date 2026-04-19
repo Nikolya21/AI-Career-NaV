@@ -10,4 +10,5 @@ public class CodeExecutionResult {
     private String stderr; // Ошибки компиляции или выполнения
     private int exitCode;  // 0 если всё ок
     private boolean isTimeout; // Превышено ли время выполнения
+    private String detectedLanguage;
 }
