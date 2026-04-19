@@ -13,4 +13,6 @@ import java.io.Serializable;
 public class QuestionDto implements Serializable {
   private int number;
   private String question;
+  private String questionType;
+  private boolean compilerRequired;
 }

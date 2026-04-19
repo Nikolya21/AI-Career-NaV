@@ -1,334 +1,233 @@
 package org.example.aicareernav1.service.testService;
 
+import chat.giga.client.GigaChatClient;
+import chat.giga.model.ModelName;
+import chat.giga.model.completion.ChatMessage;
+import chat.giga.model.completion.ChatMessageRole;
+import chat.giga.model.completion.CompletionRequest;
+import chat.giga.model.completion.CompletionResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aicareernav1.model.dataBaseQuestion.QuestionEntity;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
-import org.example.aicareernav1.dto.testDto.QuizSessionDto;
+import org.example.aicareernav1.model.user.entity.UserEntity;
+import org.example.aicareernav1.repository.QuestionRepository;
 import org.example.aicareernav1.repository.UserRepository;
-import org.example.aicareernav1.service.gigachat.GigaChatService;
-import org.example.aicareernav1.service.promptService.TestPrompt;
+import org.example.aicareernav1.service.promptService.QuizAnalysisPromptService;
+import org.example.aicareernav1.service.promptService.QuizPromptService;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-@Slf4j
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class QuizService {
-  private final ObjectMapper objectMapper;
-  private final RedisTemplate<String, Object> redisTemplate;
-  private final GigaChatService gigaChatService;
-  private final TestPrompt testPrompt;
-  private final UserRepository userRepository;
-  private final AnalysisService analysisService;
 
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final QuestionRepository questionRepository;
+    private final UserRepository userRepository;
+    private final GigaChatClient gigaChatClient;
+    private final QuizPromptService quizPromptService;
+    private final ObjectMapper objectMapper;
+    private final QuizAnalysisPromptService quizAnalysisPromptService;
 
-  private static final String QUESTIONS_KEY = "user_quiz:questions:";
-  private static final String SESSION_KEY = "user_quiz:session:";
+    public List<QuestionDto> generateAndSaveQuestions(Long userId, String vacancyNow) {
+        String userGrade = extractGrade(vacancyNow.toLowerCase());
+        String profession = extractProfession(vacancyNow.toLowerCase(), userGrade);
 
-  /**
-   * Генерирует и сохраняет вопросы для пользователя
-   */
+        // 1. Сбор вопросов (БД или AI)
+        List<QuestionDto> finalQuestions = getQuestionsFromDb(profession, userGrade);
 
-  public List<QuestionDto> generateAndSaveQuestions(Long userId, String email) throws JsonProcessingException {
-    String prompt = testPrompt.buildOpenTestPrompt(email);
-    List<QuestionDto> questions = generateWithRetry(prompt, 1);
-    saveQuestions(userId, questions);
-    return questions;
-  }
-
-  /**
-   * Генерирует вопросы с повторными попытками при ошибке парсинга
-   */
-  public List<QuestionDto> generateWithRetry(String prompt, int attempt) throws JsonProcessingException {
-    log.info("Попытка генерации вопросов #{}", attempt);
-
-    // 1. Получаем сырой ответ от нейронки
-    String rawResponse = gigaChatService.sendMessage(prompt);
-
-    // 2. Извлекаем JSON из ответа
-    String extractedJson = extractJson(rawResponse);
-
-    // 3. Восстанавливаем поврежденный JSON (если нужно)
-    String fixedJson = repairMalformedJson(extractedJson);
-
-    try {
-      // 4. Пробуем парсить
-      return objectMapper.readValue(fixedJson, new TypeReference<List<QuestionDto>>() {});
-    } catch (Exception e) {
-      log.error("Ошибка парсинга на попытке {}: {}", attempt, e.getMessage());
-      log.debug("Проблемный JSON: {}", fixedJson);
-
-      if (attempt < 3) {
-        // Рекурсия: пробуем еще раз
-        return generateWithRetry(prompt, attempt + 1);
-      } else {
-        // Последняя попытка - пробуем ручной парсинг
-        try {
-          return manualParse(fixedJson);
-        } catch (Exception ex) {
-          throw new RuntimeException("AI не смог выдать валидный JSON после 3 попыток. Последний ответ: " + fixedJson, ex);
+        if (finalQuestions.isEmpty()) {
+            finalQuestions = generateAiQuestions(profession, userGrade);
         }
-      }
-    }
-  }
 
-  /**
-   * Сохраняет вопросы в Redis
-   */
-  public void saveQuestions(Long userId, List<QuestionDto> questions) {
-    String key = QUESTIONS_KEY + userId;
-    redisTemplate.opsForValue().set(key, questions, Duration.ofMinutes(30));
-  }
+        // 2. ОПРЕДЕЛЕНИЕ НЕОБХОДИМОСТИ КОМПИЛЯТОРА (Наш новый шаг)
+        enrichQuestionsWithCompilerFlag(finalQuestions);
 
-  /**
-   * Получает вопросы из Redis
-   */
-  public List<QuestionDto> getQuestions(Long userId) {
-    String key = QUESTIONS_KEY + userId;
-    Object data = redisTemplate.opsForValue().get(key);
-    if (data == null) return null;
-    return objectMapper.convertValue(data, new TypeReference<List<QuestionDto>>() {});
-  }
+        // 3. Сохранение в Redis
+        String redisKey = "quiz:user:" + userId;
+        redisTemplate.opsForValue().set(redisKey, finalQuestions, 1, TimeUnit.HOURS);
 
-  public void createQuizSession(Long userId) {
-    String key = SESSION_KEY + userId;
-    QuizSessionDto session = new QuizSessionDto();
-    session.setUserId(userId);
-    session.setAnswers(new ConcurrentHashMap<>()); // Используем ConcurrentHashMap для потокобезопасности
-    redisTemplate.opsForValue().set(key, session, Duration.ofHours(2));
-  }
-
-  public void saveAnswer(Long userId, String questionText, String answer) {
-    String key = SESSION_KEY + userId;
-    QuizSessionDto session = (QuizSessionDto) redisTemplate.opsForValue().get(key);
-
-    if (session == null) {
-      session = new QuizSessionDto();
-      session.setUserId(userId);
-      session.setAnswers(new ConcurrentHashMap<>());
+        return finalQuestions;
     }
 
-    session.getAnswers().put(questionText, answer);
-    redisTemplate.opsForValue().set(key, session, Duration.ofHours(2));
+    private void enrichQuestionsWithCompilerFlag(List<QuestionDto> questions) {
+        try {
+            log.info("🔍 Запрос к AI для определения необходимости компилятора для 12 вопросов...");
+            String questionsJson = objectMapper.writeValueAsString(questions);
+            String prompt = quizPromptService.buildCompilerCheckPrompt(questionsJson);
 
-    // ДОБАВЛЕНО: Проверяем, не завершен ли тест
-    checkAndCompleteTest(userId);
-  }
+            CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
+              .model(ModelName.GIGA_CHAT)
+              .message(ChatMessage.builder()
+                .content(prompt)
+                .role(ChatMessageRole.USER)
+                .build())
+              .build());
 
+            String content = response.choices().get(0).message().content();
 
-  public Map<String, String> getAllAnswers(Long userId) {
-    String key = SESSION_KEY + userId;
-    QuizSessionDto session = (QuizSessionDto) redisTemplate.opsForValue().get(key);
+            // Парсим ответ [true, false, ...]
+            int start = content.indexOf("[");
+            int end = content.lastIndexOf("]") + 1;
+            if (start != -1 && end != 0) {
+                String jsonArray = content.substring(start, end).toLowerCase()
+                  .replace("да", "true").replace("нет", "false"); // На всякий случай, если AI ответит по-русски
 
-    if (session == null) {
-      return new HashMap<>();
+                List<Boolean> flags = objectMapper.readValue(jsonArray, new TypeReference<List<Boolean>>() {});
+
+                log.info("🎯 Ответы AI по компилятору: {}", flags);
+
+                for (int i = 0; i < questions.size() && i < flags.size(); i++) {
+                    questions.get(i).setCompilerRequired(flags.get(i));
+                }
+                log.info("✅ Флаги компилятора успешно расставлены");
+            }
+        } catch (Exception e) {
+            log.error("❌ Не удалось определить необходимость компилятора: {}", e.getMessage());
+            // По умолчанию оставляем false (уже задано в DTO)
+        }
     }
 
-    return session.getAnswers();
-  }
+    private List<QuestionDto> generateAiQuestions(String profession, String userGrade) {
+        String prompt = quizPromptService.buildQuizPrompt(profession, userGrade);
+        List<QuestionDto> questions = new ArrayList<>();
+        int attempt = 0;
 
-  public String getAnswerByQuestion(Long userId, String questionText) {
-    Map<String, String> answers = getAllAnswers(userId);
-    return answers.get(questionText);
-  }
-
-  private void checkAndCompleteTest(Long userId) {
-    List<QuestionDto> questions = getQuestions(userId);
-    Map<String, String> answers = getAllAnswers(userId);
-
-    if (questions != null && answers != null && answers.size() == questions.size()) {
-      log.info("Пользователь {} ответил на все {} вопросов. Автоматическое завершение теста.",
-        userId, questions.size());
-      completeTest(userId);
-    }
-  }
-
-  public boolean isQuizCompleted(Long userId) {
-    List<QuestionDto> questions = getQuestions(userId);
-    Map<String, String> answers = getAllAnswers(userId);
-
-    if (questions == null || answers == null) {
-      return false;
+        while (attempt < 35 && questions.isEmpty()) {
+            attempt++;
+            try {
+                CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
+                  .model(ModelName.GIGA_CHAT)
+                  .message(ChatMessage.builder().content(prompt).role(ChatMessageRole.USER).build())
+                  .build());
+                questions = quizPromptService.parseQuizResponse(response.choices().get(0).message().content());
+                if (questions.isEmpty()) Thread.sleep(150);
+            } catch (Exception e) {
+                log.warn("Attempt {} failed", attempt);
+            }
+        }
+        return questions;
     }
 
-    // Проверяем, что количество ответов равно количеству вопросов
-    return answers.size() == questions.size();
-  }
-
-  /**
-   * Извлекает JSON из ответа AI
-   */
-  private String extractJson(String response) {
-    if (response == null) return null;
-
-    // Удаляем markdown обертки
-    if (response.contains("```")) {
-      String cleaned = response.replaceAll("(?s)```json\\s*", "")
-        .replaceAll("(?s)```\\s*", "")
-        .trim();
-      return cleaned;
-    }
-    return response.trim();
-  }
-
-  /**
-   * Восстанавливает поврежденный JSON
-   */
-  private String repairMalformedJson(String json) {
-    if (json == null) return null;
-
-    log.debug("Исходный JSON для восстановления: {}", json);
-
-    String fixed = json;
-
-    // 1. Удаляем лишние запятые
-    fixed = fixed.replaceAll(",\\s*]", "]")
-      .replaceAll(",\\s*}", "}");
-
-    // 2. Исправляем незакрытые объекты
-    fixed = fixed.replaceAll("\\}\\s*\\{", "},{");
-
-    // 3. Добавляем недостающие закрывающие скобки
-    fixed = balanceBrackets(fixed);
-
-    // 4. Убеждаемся, что это массив
-    if (!fixed.trim().startsWith("[")) {
-      fixed = "[" + fixed;
-    }
-    if (!fixed.trim().endsWith("]")) {
-      fixed = fixed + "]";
+    public void createQuizSession(Long userId) {
+        UserEntity user = userRepository.findById(userId)
+          .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setTestResult("{}");
+        user.setTestAnalysis(null);
+        userRepository.save(user);
     }
 
-    log.debug("Восстановленный JSON: {}", fixed);
+    public List<QuestionDto> getQuestions(Long userId) {
+        String redisKey = "quiz:user:" + userId;
+        Object cached = redisTemplate.opsForValue().get(redisKey);
+        if (cached == null) return Collections.emptyList();
 
-    return fixed;
-  }
-
-  public void clearAllQuizData(Long userId) {
-    String questionsKey = QUESTIONS_KEY + userId;
-    String sessionKey = SESSION_KEY + userId;
-    redisTemplate.delete(questionsKey);
-    redisTemplate.delete(sessionKey);
-    log.debug("Очищены данные теста для пользователя: {}", userId);
-  }
-
-  /**
-   * Балансирует скобки в JSON
-   */
-  private String balanceBrackets(String json) {
-    int openBraces = 0;
-    int openBrackets = 0;
-
-    for (char c : json.toCharArray()) {
-      if (c == '{') openBraces++;
-      else if (c == '}') openBraces--;
-      else if (c == '[') openBrackets++;
-      else if (c == ']') openBrackets--;
+        return objectMapper.convertValue(cached,
+          objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionDto.class));
     }
 
-    StringBuilder sb = new StringBuilder(json);
-    while (openBraces > 0) {
-      sb.append("}");
-      openBraces--;
-    }
-    while (openBrackets > 0) {
-      sb.append("]");
-      openBrackets--;
-    }
-
-    return sb.toString();
-  }
-
-  /**
-   * Ручной парсинг JSON, если обычный не сработал
-   */
-  private List<QuestionDto> manualParse(String json) throws JsonProcessingException {
-    log.info("Пробуем ручной парсинг JSON");
-
-    // Пробуем найти все объекты вопросов
-    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
-      "\\{\\s*\"number\"\\s*:\\s*(\\d+)\\s*,\\s*\"question\"\\s*:\\s*\"([^\"]*)\"\\s*\\}"
-    );
-    java.util.regex.Matcher matcher = pattern.matcher(json);
-
-    java.util.List<QuestionDto> questions = new java.util.ArrayList<>();
-    while (matcher.find()) {
-      QuestionDto dto = new QuestionDto();
-      dto.setNumber(Integer.parseInt(matcher.group(1)));
-      dto.setQuestion(matcher.group(2));
-      questions.add(dto);
+    @Transactional
+    public void saveAnswer(Long userId, String questionText, String answer) {
+        UserEntity user = userRepository.findById(userId)
+          .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            Map<String, String> answersMap;
+            String currentResult = user.getTestResult();
+            if (currentResult == null || currentResult.isEmpty() || currentResult.equals("{}")) {
+                answersMap = new HashMap<>();
+            } else {
+                answersMap = objectMapper.readValue(currentResult, new TypeReference<HashMap<String, String>>() {});
+            }
+            answersMap.put(questionText, answer);
+            user.setTestResult(objectMapper.writeValueAsString(answersMap));
+            userRepository.save(user);
+        } catch (Exception e) {
+            throw new RuntimeException("Save answer failed");
+        }
     }
 
-    if (questions.isEmpty()) {
-      throw new JsonProcessingException("Не удалось распарсить вопросы вручную") {};
+    public Map<String, String> getAllAnswers(Long userId) {
+        UserEntity user = userRepository.findById(userId)
+          .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            if (user.getTestResult() == null || user.getTestResult().isEmpty()) return Collections.emptyMap();
+            return objectMapper.readValue(user.getTestResult(), Map.class);
+        } catch (JsonProcessingException e) {
+            return Collections.emptyMap();
+        }
     }
 
-    return questions;
-  }
+    private List<QuestionDto> getQuestionsFromDb(String tag, String userGrade) {
+        var juniors = questionRepository.findAllByTagNameAndDifficulty(tag, "Junior");
+        var middles = questionRepository.findAllByTagNameAndDifficulty(tag, "Middle");
+        var seniors = questionRepository.findAllByTagNameAndDifficulty(tag, "Senior");
 
-  /**
-   * Простая обработка без retry (для обратной совместимости)
-   */
-  public List<QuestionDto> processAndSave(Long userId, String gigaChatResponse) throws JsonProcessingException {
-    String cleanJson = extractJson(gigaChatResponse);
-    List<QuestionDto> questions = objectMapper.readValue(cleanJson,
-      new TypeReference<List<QuestionDto>>() {});
-    saveQuestions(userId, questions);
-    return questions;
-  }
+        log.info("📊 Поиск для тега [{}]: Найдено Jun: {}, Mid: {}, Sen: {}",
+          tag, juniors.size(), middles.size(), seniors.size());
 
-  public void deleteQuestions(Long userId) {
-    String key = "user_quiz:" + userId;
-    redisTemplate.delete(key);
-  }
+        if (juniors.isEmpty() && middles.isEmpty() && seniors.isEmpty()) return Collections.emptyList();
 
-  public void completeTest(Long userId) {
-    log.info("Завершение теста для пользователя: {}", userId);
-
-    try {
-      // 1. Получаем все ответы пользователя
-      Map<String, String> answers = getAllAnswers(userId);
-
-      if (answers == null || answers.isEmpty()) {
-        log.error("Нет ответов для анализа у пользователя: {}", userId);
-        throw new RuntimeException("Нет ответов для анализа");
-      }
-
-      // 2. Получаем вопросы, чтобы проверить полноту
-      List<QuestionDto> questions = getQuestions(userId);
-      if (questions == null) {
-        log.error("Нет вопросов для пользователя: {}", userId);
-        throw new RuntimeException("Нет вопросов для анализа");
-      }
-
-      log.info("Получено {} ответов из {} вопросов", answers.size(), questions.size());
-
-      // 3. Анализируем ответы
-      String analysisResult = analysisService.analyzeWithRetry(answers, 1);
-
-      // 4. Форматируем результат
-      String formattedResult = analysisService.formatAnalysis(analysisResult);
-
-      // 5. Сохраняем результат в БД
-      userRepository.updateTestResult(userId, formattedResult);
-      log.info("Результат анализа сохранен в БД для пользователя: {}", userId);
-
-      // 6. Очищаем Redis
-      clearAllQuizData(userId);
-      log.info("Данные теста удалены из Redis для пользователя: {}", userId);
-
-    } catch (Exception e) {
-      log.error("Ошибка при завершении теста для пользователя {}: {}", userId, e.getMessage(), e);
-      throw new RuntimeException("Не удалось завершить тест: " + e.getMessage(), e);
+        List<QuestionDto> pool = new ArrayList<>();
+        switch (userGrade) {
+            case "senior" -> { pool.addAll(pickRandom(juniors, 4)); pool.addAll(pickRandom(middles, 6)); pool.addAll(pickRandom(seniors, 2)); }
+            case "middle" -> { pool.addAll(pickRandom(middles, 6)); pool.addAll(pickRandom(juniors, 6)); }
+            default -> { pool.addAll(pickRandom(juniors, 8)); pool.addAll(pickRandom(middles, 4)); }
+        }
+        Collections.shuffle(pool);
+        for (int i = 0; i < pool.size(); i++) pool.get(i).setNumber(i + 1);
+        return pool;
     }
-  }
+
+    private List<QuestionDto> pickRandom(List<QuestionEntity> list, int count) {
+        if (list == null || list.isEmpty()) return Collections.emptyList();
+        List<QuestionEntity> copy = new ArrayList<>(list);
+        Collections.shuffle(copy);
+        return copy.stream().limit(count).map(q -> {
+            QuestionDto dto = new QuestionDto();
+            dto.setQuestion(q.getText());
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+    private String extractGrade(String cleaned) {
+        if (cleaned.contains("senior")) return "senior";
+        if (cleaned.contains("middle")) return "middle";
+        return "junior";
+    }
+
+    private String extractProfession(String cleaned, String grade) {
+        return cleaned.replace(grade, "").trim();
+    }
+
+    @Transactional
+    public String runFullQuizAnalysis(Long userId) {
+        UserEntity user = userRepository.findById(userId).orElseThrow();
+        String vacancy = user.getVacancyNow();
+        String answersJson = user.getTestResult();
+        if (answersJson == null || answersJson.equals("{}")) return "Нет ответов.";
+
+        String prompt = quizAnalysisPromptService.buildAnalysisPrompt(vacancy, answersJson);
+        try {
+            CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
+              .model(ModelName.GIGA_CHAT)
+              .message(ChatMessage.builder().content(prompt).role(ChatMessageRole.USER).build())
+              .build());
+            String result = response.choices().get(0).message().content();
+            user.setTestAnalysis(result);
+            userRepository.saveAndFlush(user);
+            return result;
+        } catch (Exception e) {
+            return "Ошибка анализа.";
+        }
+    }
 }
