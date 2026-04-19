@@ -154,7 +154,7 @@
     .final-summary {
       margin-top: 30px;
       padding: 20px;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(179, 172, 172, 0.57);
       border-radius: 24px;
       text-align: center;
     }
@@ -184,7 +184,7 @@
 
 <script>
   (function() {
-    // --- IT вопросы (можно заменить) ---
+    // --- Вопросы ---
     const questionsList = [
       "Расскажите о вашем опыте работы с Java. Какие проекты вы делали?",
       "Что такое SOLID принципы? Приведите пример использования одного из них.",
@@ -192,7 +192,7 @@
     ];
 
     let currentQuestionIndex = 0;
-    let answersData = []; // храним { text, emotions } для каждого ответа
+    let answersData = [];
 
     // DOM элементы
     const video = document.getElementById('localVideo');
@@ -201,20 +201,25 @@
     const statusDiv = document.getElementById('statusMessage');
     const questionsArea = document.getElementById('questionsArea');
 
-    let videoStream = null;
+    // Переменные для аудиозаписи
     let mediaRecorder = null;
     let audioChunks = [];
     let audioStream = null;
     let isRecording = false;
 
-    // --- 1. Включение камеры ---
+    // Переменные для отправки кадров на Python
+    let frameInterval = null;
+    let frameProcessingActive = false;
+
+    // --- Запуск камеры (только для отображения) ---
+    let videoStreamFromCam = null;
     async function enableCamera() {
       try {
-        if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        video.srcObject = videoStream;
-        document.getElementById('videoPlaceholder').style.display = 'none';
+        if (videoStreamFromCam) videoStreamFromCam.getTracks().forEach(t => t.stop());
+        videoStreamFromCam = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        video.srcObject = videoStreamFromCam;
         video.style.display = 'block';
+        document.getElementById('videoPlaceholder').style.display = 'none';
         statusDiv.innerHTML = '✅ Камера готова. Нажмите «Начать интервью».';
         startInterviewBtn.disabled = false;
         startCamBtn.textContent = '🔄 Сменить камеру';
@@ -227,38 +232,56 @@
       }
     }
 
-    // --- 2. Начать интервью (показываем первый вопрос и начинаем запись) ---
-    async function startInterview() {
-      if (!videoStream) {
-        statusDiv.innerHTML = '⚠️ Сначала включите камеру.';
-        return;
-      }
-      // Очищаем предыдущие вопросы и ответы
-      questionsArea.innerHTML = '';
-      answersData = [];
-      currentQuestionIndex = 0;
-      showCurrentQuestion();
-      // Запрашиваем микрофон и начинаем запись
-      await requestMicrophoneAndStartRecording();
+    // --- Отправка кадров на Python для анализа морганий и касаний ---
+    function startFrameCapture(questionId) {
+      if (frameInterval) clearInterval(frameInterval);
+      frameProcessingActive = true;
+      frameInterval = setInterval(() => captureAndSendFrame(questionId), 100); // 10 кадров/сек
     }
 
-    function showCurrentQuestion() {
-      if (currentQuestionIndex >= questionsList.length) {
-        // Все вопросы заданы, показываем итог
-        showFinalSummary();
-        return;
+    function stopFrameCapture() {
+      frameProcessingActive = false;
+      if (frameInterval) {
+        clearInterval(frameInterval);
+        frameInterval = null;
       }
-      const questionDiv = document.createElement('div');
-      questionDiv.className = 'question-block';
-      questionDiv.id = `q${currentQuestionIndex}`;
-      questionDiv.innerHTML = `
-        <div class="question-text">❓ ${questionsList[currentQuestionIndex]}</div>
-        <div class="answer-result" id="result${currentQuestionIndex}">⏳ Ожидание ответа...</div>
-      `;
-      questionsArea.appendChild(questionDiv);
-      statusDiv.innerHTML = `🎙️ Вопрос ${currentQuestionIndex+1} из ${questionsList.length}. Говорите...`;
     }
 
+    async function captureAndSendFrame(questionId) {
+      if (!frameProcessingActive) return;
+      if (!video || video.paused || video.ended || video.readyState < 2) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('image', blob, 'frame.jpg');
+        formData.append('question_id', questionId);
+        try {
+          await fetch('http://localhost:5000/process-frame', {
+            method: 'POST',
+            body: formData
+          });
+        } catch (err) {
+          console.warn('Failed to send frame:', err);
+        }
+      }, 'image/jpeg', 0.6);
+    }
+
+    async function fetchStats(questionId) {
+      try {
+        const response = await fetch(`http://localhost:5000/get-stats?question_id=${questionId}`);
+        const data = await response.json();
+        return { blinks: data.blinks, touchDuration: data.touch_duration };
+      } catch (err) {
+        console.warn('Failed to fetch stats:', err);
+        return { blinks: 0, touchDuration: 0 };
+      }
+    }
+
+    // --- Аудиозапись ---
     async function requestMicrophoneAndStartRecording() {
       try {
         if (audioStream) audioStream.getTracks().forEach(t => t.stop());
@@ -284,8 +307,9 @@
       mediaRecorder.start();
       isRecording = true;
       addRecordingIndicator();
-
-      // Автоматическая остановка через 30 секунд
+      // Начинаем отправку кадров для текущего вопроса
+      startFrameCapture(currentQuestionIndex);
+      // Автоостановка через 30 секунд
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           stopRecording();
@@ -293,22 +317,27 @@
       }, 30000);
     }
 
-    function stopRecording() {
+    async function stopRecording() {
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
         isRecording = false;
-        if (audioStream) audioStream.getTracks().forEach(t => t.stop());
-        audioStream = null;
+        if (audioStream) {
+          audioStream.getTracks().forEach(t => t.stop());
+          audioStream = null;
+        }
         removeRecordingIndicator();
         statusDiv.innerHTML = '⏳ Обработка ответа...';
+        // Останавливаем отправку кадров
+        stopFrameCapture();
+        // Получаем статистику с Python
+        const stats = await fetchStats(currentQuestionIndex);
+        window.pendingStats = stats; // сохраним для использования в sendAudioToServer
       }
     }
 
-    // --- 3. Отправка аудио на сервер (через Java-прокси) ---
     async function sendAudioToServer(audioBlob, qIndex) {
       const formData = new FormData();
       formData.append('audio', audioBlob, `answer_${qIndex}.webm`);
-
       try {
         const response = await fetch('/api/process-audio', {
           method: 'POST',
@@ -316,21 +345,22 @@
         });
         const data = await response.json();
         if (data.success) {
-          // Сохраняем результат
-          answersData[qIndex] = { text: data.text, emotions: data.emotions };
-          // Обновляем блок ответа для этого вопроса
+          const stats = window.pendingStats || { blinks: 0, touchDuration: 0 };
+          answersData[qIndex] = {
+            text: data.text,
+            emotions: data.emotions,
+            blinks: stats.blinks,
+            faceTouches: stats.touchDuration   // время в секундах
+          };
           const resultDiv = document.getElementById(`result${qIndex}`);
           if (resultDiv) {
-            resultDiv.innerHTML = `📝 Распознано: "${data.text}"<br>😊 Эмоции: ${formatEmotions(data.emotions)}`;
+            resultDiv.innerHTML = `📝 Распознано: "${data.text}"<br>😊 Эмоции: ${formatEmotions(data.emotions)}<br>👁️ Морганий: ${stats.blinks} | ✋ Время касаний: ${stats.touchDuration.toFixed(1)} сек`;
           }
-          // Переходим к следующему вопросу
           currentQuestionIndex++;
           if (currentQuestionIndex < questionsList.length) {
             showCurrentQuestion();
-            // Запрашиваем микрофон снова для следующего вопроса
             await requestMicrophoneAndStartRecording();
           } else {
-            // Все вопросы завершены
             showFinalSummary();
           }
         } else {
@@ -339,6 +369,8 @@
       } catch (error) {
         console.error(error);
         statusDiv.innerHTML = '❌ Не удалось отправить аудио на сервер.';
+      } finally {
+        window.pendingStats = null;
       }
     }
 
@@ -347,11 +379,41 @@
       return Object.entries(emotions).map(([k, v]) => `${k}: ${(v*100).toFixed(1)}%`).join(', ');
     }
 
-    // --- 4. После всех ответов — анализ в GigaChat ---
+    function showCurrentQuestion() {
+      if (currentQuestionIndex >= questionsList.length) {
+        showFinalSummary();
+        return;
+      }
+      const questionDiv = document.createElement('div');
+      questionDiv.className = 'question-block';
+      questionDiv.id = `q${currentQuestionIndex}`;
+      questionDiv.innerHTML = `
+        <div class="question-text">❓ ${questionsList[currentQuestionIndex]}</div>
+        <div class="answer-result" id="result${currentQuestionIndex}">⏳ Ожидание ответа...</div>
+      `;
+      questionsArea.appendChild(questionDiv);
+      statusDiv.innerHTML = `🎙️ Вопрос ${currentQuestionIndex+1} из ${questionsList.length}. Говорите...`;
+    }
+
+    async function startInterview() {
+      if (!videoStreamFromCam) {
+        statusDiv.innerHTML = '⚠️ Сначала включите камеру.';
+        return;
+      }
+      questionsArea.innerHTML = '';
+      answersData = [];
+      currentQuestionIndex = 0;
+      showCurrentQuestion();
+      await requestMicrophoneAndStartRecording();
+    }
+
     function showFinalSummary() {
-      // Собираем тексты ответов
-      const answerTexts = answersData.map(item => item.text).filter(t => t && t.trim());
-      const combinedText = answerTexts.join('\n\n');   // разделитель — два перевода строки
+      const answersPayload = answersData.map(item => ({
+        text: item.text,
+        emotions: item.emotions,
+        blinks: item.blinks,
+        faceTouches: item.faceTouches
+      }));
 
       questionsArea.innerHTML = `
         <div class="final-summary">
@@ -369,27 +431,27 @@
         startInterview();
       });
 
-      // Отправляем объединённые ответы на анализ (без дополнительной кнопки)
-      sendAnswersForAnalysis(combinedText);
+      sendAnswersForAnalysis(answersPayload);
     }
 
-    async function sendAnswersForAnalysis(answersText) {
+    async function sendAnswersForAnalysis(answersPayload) {
       const userId = document.body.getAttribute('data-user-id') || sessionStorage.getItem('userId') || '1';
       const resultDiv = document.getElementById('analysisResult');
       if (!resultDiv) return;
-      resultDiv.innerHTML = '⏳ Анализ ответов GigaChat...';
+      resultDiv.innerHTML = '⏳ Анализ ответов и поведения...';
 
       try {
         const response = await fetch('/api/analyze-answers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: userId, answers: answersText })
+          body: JSON.stringify({ userId: userId, answers: answersPayload })
         });
         const data = await response.json();
         if (data.success) {
           resultDiv.innerHTML = `
             <strong>🎯 Шансы на прохождение собеседования:</strong> ${data.probability}%<br>
-            <strong>📝 Комментарий:</strong><br> ${data.comments}
+            <strong>🧠 Влияние эмоций/поведения:</strong> ${data.behavior_impact}%<br>
+            <strong>📝 Рекомендации:</strong><br> ${data.recommendations}
           `;
         } else {
           resultDiv.innerHTML = `<span style="color: #ff6b6b;">❌ Ошибка: ${data.error}</span>`;
@@ -400,7 +462,6 @@
       }
     }
 
-    // Индикатор записи
     function addRecordingIndicator() {
       let ind = document.getElementById('recordingIndicator');
       if (ind) return;
@@ -415,7 +476,6 @@
       if (ind) ind.remove();
     }
 
-    // Обработчики кнопок
     startCamBtn.addEventListener('click', enableCamera);
     startInterviewBtn.addEventListener('click', startInterview);
   })();

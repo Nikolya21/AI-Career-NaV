@@ -8,6 +8,7 @@ import org.example.aicareernav1.model.roadmap.Roadmap;
 import org.example.aicareernav1.model.roadmap.RoadmapZone;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.roadMapService.RoadMapService;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class VacancyDiscussionController {
 
-  private final GigaChatService gigaChatService;
+  private final YandexGptService gptService;
   private final RoadMapService roadmapGenerateService;
 
   private static final String DISCUSSION_SYSTEM_PROMPT = """
@@ -121,7 +122,7 @@ public class VacancyDiscussionController {
       String prompt = "Пользователь выбрал вакансию: " + vacancy +
           ". Начни диалог для составления персонального плана развития. " +
           "Задай первый вопрос о его текущем опыте и навыках.";
-      return gigaChatService.sendMessage(prompt);
+      return gptService.sendMessage(prompt);
     } catch (Exception e) {
       return "Здравствуйте! Вы выбрали вакансию " + vacancy +
           ". Расскажите о вашем текущем опыте в этой области.";
@@ -146,7 +147,7 @@ public class VacancyDiscussionController {
       context.append("- Готовность к обучению\n\n");
       context.append("Верни ТОЛЬКО вопрос, без пояснений.");
 
-      return gigaChatService.sendMessage(context.toString());
+      return gptService.sendMessage(context.toString());
     } catch (Exception e) {
       String[] defaultQuestions = {
           "Какой у вас текущий уровень знаний в этой области?",
@@ -170,7 +171,7 @@ public class VacancyDiscussionController {
       }
 
       String prompt = buildRoadmapPrompt(userInfo.toString(), vacancy);
-      String roadmapResponse = gigaChatService.sendMessage(prompt);
+      String roadmapResponse = gptService.sendMessage(prompt);
 
       // Парсим ответ и создаём Roadmap
       Roadmap roadmap = parseRoadmapResponse(roadmapResponse, vacancy);

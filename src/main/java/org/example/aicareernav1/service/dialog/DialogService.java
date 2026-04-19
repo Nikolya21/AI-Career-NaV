@@ -7,6 +7,7 @@ import org.example.aicareernav1.dto.dialog.SummaryResponse;
 import org.example.aicareernav1.enums.DialogType;
 import org.example.aicareernav1.service.dialog.prompt.Prompts;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DialogService {
 
   private final Map<String, List<String>> historyMap = new ConcurrentHashMap<>();
-  private final GigaChatService gigaChatService;
+  private final YandexGptService gptService;
   private static final int WINDOW_SIZE = 8;
 
   public ChatResponse startDialog(Long userId, DialogType dialogType, Long contextId) {
@@ -55,7 +56,7 @@ public class DialogService {
       case ROADMAP -> Prompts.ROADMAP_SYSTEM_PROMPT;
     };
 
-    String llmReply = gigaChatService.chat(systemPrompt, contextWindow);
+    String llmReply = gptService.chat(systemPrompt, contextWindow);
 
     fullHistory.add("AI: " + llmReply);
 
@@ -85,7 +86,7 @@ public class DialogService {
       case ROADMAP -> Prompts.SUMMARIZE_ROADMAP_PROMPT;
     };
 
-    String llmResult = gigaChatService.summarize(fullHistory, systemPrompt);
+    String llmResult = gptService.summarize(fullHistory, systemPrompt);
     return new SummaryResponse(llmResult);
   }
 
