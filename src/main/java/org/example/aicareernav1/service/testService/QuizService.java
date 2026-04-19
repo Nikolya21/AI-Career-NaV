@@ -103,7 +103,7 @@ public class QuizService {
         List<QuestionDto> questions = new ArrayList<>();
         int attempt = 0;
 
-        while (attempt < 50 && questions.isEmpty()) {
+        while (attempt < 35 && questions.isEmpty()) {
             attempt++;
             try {
                 CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
