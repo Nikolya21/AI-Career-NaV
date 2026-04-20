@@ -12,6 +12,7 @@ import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.roadmap.prompt.CheckpointPrompts;
 import org.example.aicareernav1.service.roadmap.theory.TheoryOrchestrator;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +26,7 @@ public class LessonService {
 
     private final TheoryOrchestrator theoryOrchestrator;
     private final RoadmapConfigService configService;
-    private final GigaChatService llmService;
+    private final YandexGptService llmService;
     private final ContentMapper contentMapper;
 
 

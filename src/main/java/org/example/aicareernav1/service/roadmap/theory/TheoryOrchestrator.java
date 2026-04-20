@@ -13,6 +13,7 @@ import org.example.aicareernav1.repository.roadmap.TheoryRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.integration.PythonIntegrationService;
 import org.example.aicareernav1.service.roadmap.theory.strategy.TheoryProcessingStrategy;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +25,7 @@ public class TheoryOrchestrator {
 
     private final List<TheoryProcessingStrategy> strategies;
     private final PythonIntegrationService pythonClient;
-    private final GigaChatService llmService;
+    private final YandexGptService llmService;
     private final LessonRepository lessonRepository;
     private final TheoryRepository theoryRepository;
     private final RoadmapRepository roadmapRepository;

@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <link rel="stylesheet" th:href="@{/css/roadmap/roadmap-style.css}">
+    <link rel="stylesheet" th:href="@{/css/roadmap/sidebar.css}">
 
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
@@ -20,12 +21,6 @@
         <div class="progress-fill" th:style="'width:' + ${progress} + '%'"></div>
     </div>
     <span th:text="${progress} + '%'">0%</span>
-</div>
-
-<div id="node-tooltip" class="hidden">
-    <button id="deepen-trigger-btn">
-        <span class="material-icons">psychology</span> Углубиться
-    </button>
 </div>
 
 <div id="deepen-modal" class="modal hidden">
@@ -66,6 +61,17 @@
                 <button class="btn-deepen" onclick="deepenManager.openModal()">
                     <span class="material-icons">psychology</span> Углубиться в тему
                 </button>
+            </div>
+            <div class="feedback-section">
+                <p class="feedback-label">Как тебе обучение? Можешь написать мне, чего тебе не хватает и т.д.</p>
+                <div class="feedback-input-group">
+                    <textarea id="lesson-feedback-input" placeholder="Например: добавь больше примеров кода для этого раздела..."></textarea>
+                    <button id="send-feedback-btn" class="btn-feedback" onclick="sidebarManager.sendFeedback()">
+                        <span class="material-icons">send</span>
+                        Отправить фидбек
+                    </button>
+                </div>
+                <div id="feedback-status" class="hidden">Спасибо! Твои пожелания учтены 🚀</div>
             </div>
         </div>
     </div>

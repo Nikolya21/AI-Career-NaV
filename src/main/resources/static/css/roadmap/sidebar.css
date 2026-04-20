@@ -1,8 +1,17 @@
 #sidebar {
-    position: fixed; right: 0; top: 0; width: 450px; height: 100vh;
+    position: fixed; right: 0; top: 0;
+    width: 450px; /* Исходная ширина списка */
+    height: 100vh;
     background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.05);
-    z-index: 1000; transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+    /* Добавляем width в transition для плавного выезда */
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
     padding: 25px; box-sizing: border-box; overflow-y: auto;
+}
+/* Новый класс для широкой панели чтения */
+/* Используем связку ID и класса, чтобы точно перебить начальную ширину */
+#sidebar.sidebar-expanded {
+    width: 1200px;
 }
 
 .sidebar-hidden { transform: translateX(100%); }
@@ -33,16 +42,79 @@
     padding-bottom: 8px;
     margin-top: 24px;
 }
-#theory-content code {
-    background: #f1f3f4;
-    padding: 2px 5px;
-    border-radius: 4px;
-    font-family: monospace;
-}
+/* Контейнер для кода */
 #theory-content pre {
-    background: #202124;
-    color: #fff;
+    background: #202124; /* Темный фон из твоих логов */
+    color: #ffffff;      /* Явный белый цвет текста */
     padding: 15px;
     border-radius: 8px;
     overflow-x: auto;
+    margin: 15px 0;      /* Добавим отступов сверху и снизу */
+}
+
+/* Сами символы кода внутри блока */
+#theory-content pre code {
+    background: transparent; /* Убираем серый фон, который мешает внутри pre */
+    color: #e8eaed;          /* Светло-серый оттенок для лучшей читаемости */
+    padding: 0;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+/* Оставляем серый фон только для инлайнового кода (внутри текста) */
+#theory-content :not(pre) > code {
+    background: #f1f3f4;
+    color: #d93025; /* Красненький цвет для выделения команд в тексте */
+    padding: 2px 5px;
+    border-radius: 4px;
+}
+
+.feedback-section {
+    margin-top: 40px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e8eaed;
+}
+
+.feedback-label {
+    font-size: 14px;
+    color: #5f6368;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+#lesson-feedback-input {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 14px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+.btn-feedback {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1a73e8;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-feedback:hover { background: #1765cc; }
+
+#feedback-status {
+    margin-top: 10px;
+    color: #1e8e3e;
+    font-weight: 500;
+    font-size: 14px;
 }

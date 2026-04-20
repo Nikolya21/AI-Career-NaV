@@ -2,58 +2,64 @@ document.addEventListener('DOMContentLoaded', () => {
     const triggerBtn = document.getElementById('deepen-trigger-btn');
     const confirmBtn = document.getElementById('confirm-deepen-btn');
 
-    // Открыть модалку из тултипа
-    triggerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const nodeId = document.getElementById('node-tooltip').dataset.targetNodeId;
-        window.currentDeepenNodeId = nodeId;
-        document.getElementById('deepen-modal').classList.remove('hidden');
-    });
-
-    // Подтверждение углубления
-    confirmBtn.addEventListener('click', async () => {
-        const text = document.getElementById('deepen-input').value;
-        if (!text) return;
-
-        closeDeepenModal();
-        showGlobalLoader(true);
-
-        try {
-            const response = await fetch(`/api/v1/roadmap/checkpoint/${window.currentDeepenNodeId}/deepen`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain' },
-                body: text
-            });
-
-            if (response.ok) {
-                const newCp = await response.json();
-
-                // Динамическое добавление в граф (без перезагрузки!)
-                nodes.add({
-                    id: newCp.id,
-                    label: newCp.title,
-                    color: '#4285F4', // Новый всегда ACTIVE
-                    shape: 'dot',
-                    size: 16
-                });
-
-                edges.add({
-                    from: newCp.parentCheckpointId,
-                    to: newCp.id,
-                    dashes: true,
-                    color: '#4285F4'
-                });
-
-                // Включаем физику, чтобы узел нашел место
-                network.setOptions({ physics: { enabled: true } });
-                setTimeout(() => network.setOptions({ physics: { enabled: false } }), 2000);
+    // Проверяем, существует ли triggerBtn перед тем, как вешать событие
+    if (triggerBtn) {
+        triggerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tooltip = document.getElementById('node-tooltip');
+            if (tooltip) {
+                window.currentDeepenNodeId = tooltip.dataset.targetNodeId;
+                document.getElementById('deepen-modal').classList.remove('hidden');
             }
-        } catch (err) {
-            alert("Ошибка связи с ИИ");
-        } finally {
-            showGlobalLoader(false);
-        }
-    });
+        });
+    }
+
+    // Проверяем confirmBtn (он у нас есть в модалке)
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async () => {
+            const text = document.getElementById('deepen-input').value;
+            if (!text) return;
+
+            closeDeepenModal();
+            showGlobalLoader(true);
+
+            try {
+                const response = await fetch(`/api/v1/roadmap/checkpoint/${window.currentDeepenNodeId}/deepen`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: text
+                });
+
+                if (response.ok) {
+                    const newCp = await response.json();
+
+                    // Динамическое добавление в граф (без перезагрузки!)
+                    nodes.add({
+                        id: newCp.id,
+                        label: newCp.title,
+                        color: '#4285F4', // Новый всегда ACTIVE
+                        shape: 'dot',
+                        size: 16
+                    });
+
+                    edges.add({
+                        from: newCp.parentCheckpointId,
+                        to: newCp.id,
+                        dashes: true,
+                        color: '#4285F4'
+                    });
+
+                    // Включаем физику, чтобы узел нашел место
+                    network.setOptions({ physics: { enabled: true } });
+                    setTimeout(() => network.setOptions({ physics: { enabled: false } }), 2000);
+                }
+            } catch (err) {
+                alert("Ошибка связи с ИИ");
+            } finally {
+                showGlobalLoader(false);
+            }
+        });
+    }
 });
 
 const deepenManager = {

@@ -21,4 +21,5 @@ public class CheckpointResponse {
   private Long parentCheckpointId;
   private Long sourceLessonId;
   private Long roadmapId;
+  private ModuleResponse module;
 }

@@ -39,21 +39,20 @@ function initGraph(data) {
     nodes.clear();
     edges.clear();
 
-    // 1. Центральный узел (Профессия)
-    // ID 0 зарезервирован для центра
+    // 1. Центральный узел (Профессия) всегда рисуем как 0,
+    // но делаем его визуально уникальным (чтобы отличался от других)
     nodes.add({
         id: 0,
         label: window.jobTitle || "Roadmap",
-        color: '#4285F4',
-        shape: 'dot',
-        size: 30
+        color: '#FFD700', // Золотой корень
+        shape: 'dot',    // Форма звезды
+        size: 35
     });
 
     if (data.topics && Array.isArray(data.topics)) {
         data.topics.forEach(topic => {
             const topicNodeId = 'topic_' + topic.id;
 
-            // Добавляем узел темы
             nodes.add({
                 id: topicNodeId,
                 label: topic.topicTitle,
@@ -64,10 +63,9 @@ function initGraph(data) {
                 borderWidth: 2
             });
 
-            // Связываем тему с центром
+            // Связываем тему с центром (id: 0)
             edges.add({ from: 0, to: topicNodeId, color: '#DADCE0' });
 
-            // Отрисовываем чекпоинты этой темы
             if (topic.checkpoints && Array.isArray(topic.checkpoints)) {
                 topic.checkpoints.forEach(cp => {
                     renderCheckpointNode(cp, topicNodeId);
@@ -86,45 +84,57 @@ function initGraph(data) {
         interaction: { hover: true }
     };
     network = new vis.Network(container, { nodes, edges }, options);
-
     setupEventListeners();
 }
 
 function renderCheckpointNode(cp, topicNodeId) {
+    // Если бэкенд случайно прислал ROOT внутри темы (например, если ты пофиксишь topicId),
+    // мы его игнорируем, так как уже нарисовали центральную звезду.
+    if (cp.type === 'ROOT') {
+        window.realRootId = cp.id; // Запоминаем реальный ID рута из БД!
+        return;
+    }
+
     let nodeColor = '#BDC1C6';
     if (cp.status === 'COMPLETED') nodeColor = '#34A853';
     if (cp.status === 'ACTIVE') nodeColor = '#4285F4';
 
-    // 1. Добавляем узел (если его еще нет)
     if (!nodes.get(cp.id)) {
         nodes.add({
             id: cp.id,
-            label: cp.title || "Без названия", // Защита от null
+            label: cp.title || "Без названия",
             color: nodeColor,
             shape: 'dot',
             size: 16
         });
     }
 
-    // 2. Логика связи
-    let fromId = topicNodeId; // По умолчанию цепляем к теме
+    let fromId = topicNodeId;
 
-    // Проверяем: есть ли родитель и существует ли он уже в графе?
-    if (cp.parentCheckpointId && nodes.get(cp.parentCheckpointId)) {
-        fromId = cp.parentCheckpointId;
+    // --- УМНАЯ СВЯЗЬ ---
+    if (cp.parentCheckpointId) {
+        // Если родитель - это наш реальный ROOT из базы (176), цепляем напрямую к центру (0)
+        if (cp.parentCheckpointId === window.realRootId) {
+            fromId = 0;
+        }
+        // Если родитель есть в графе (это углубление внутри MAIN)
+        else if (nodes.get(cp.parentCheckpointId)) {
+            fromId = cp.parentCheckpointId;
+        }
+        // Иначе оставляем привязку к topicNodeId
     }
 
     edges.add({
         from: fromId,
         to: cp.id,
-        dashes: (fromId !== topicNodeId), // Пунктир, если это связь между чекпоинтами
+        dashes: (fromId !== topicNodeId && fromId !== 0),
         color: '#DADCE0'
     });
 }
 
+
 function setupEventListeners() {
     network.on("hoverNode", (params) => {
-        // Показываем тултип только для чекпоинтов (числовые ID), а не для тем (строковые ID)
         if (Number.isInteger(params.node) && params.node !== 0) {
             showNodeTooltip(params.node);
         }
@@ -135,8 +145,14 @@ function setupEventListeners() {
     network.on("click", (params) => {
         if (params.nodes.length > 0) {
             const selectedId = params.nodes[0];
-            // Если кликнули по чекпоинту — открываем сайдбар
-            if (Number.isInteger(selectedId) && selectedId !== 0) {
+
+            // Если кликнули по центральной звезде
+            if (selectedId === 0) {
+                alert("Это корень вашей профессии! Выберите конкретный этап (узел) для начала обучения.");
+                return;
+            }
+
+            if (Number.isInteger(selectedId)) {
                 if (typeof sidebarManager !== 'undefined') {
                     sidebarManager.loadCheckpoint(selectedId);
                 }

@@ -3,6 +3,7 @@ package org.example.aicareernav1.config;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -16,6 +17,9 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class WebClientConfig {
 
+    @Value("${python.service.url:http://127.0.0.1:8000}") // По умолчанию 127.0.0.1 для локального запуска
+    private String pythonServiceUrl;
+
     @Bean
     public WebClient pythonServiceClient(WebClient.Builder builder) {
         HttpClient httpClient = HttpClient.create()
@@ -26,7 +30,7 @@ public class WebClientConfig {
                         .addHandlerLast(new WriteTimeoutHandler(30, TimeUnit.SECONDS)));
 
         return builder
-                .baseUrl("http://127.0.0.1:8000")
+                .baseUrl(pythonServiceUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .filter((request, next) -> {
                     System.out.println("Sending request: " + request.method() + " " + request.url());

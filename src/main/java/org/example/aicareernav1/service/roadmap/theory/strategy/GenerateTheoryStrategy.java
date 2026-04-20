@@ -1,6 +1,5 @@
 package org.example.aicareernav1.service.roadmap.theory.strategy;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.example.aicareernav1.dto.external.pythonRAG.ChunkResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.GatewayResponse;
@@ -17,11 +16,11 @@ import org.example.aicareernav1.service.integration.PythonIntegrationService;
 import org.example.aicareernav1.service.roadmap.RoadmapConfigService;
 import org.example.aicareernav1.service.roadmap.prompt.TheoryPrompts;
 import org.example.aicareernav1.service.util.LlmResponseParserService;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+
 import java.util.stream.Collectors;
 
 @Component
@@ -30,7 +29,7 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
 
     private final PythonIntegrationService pythonClient;
     // Предположим, тут ваш сервис для работы с LLM (GigaChat/GPT/Claude)
-    private final GigaChatService llmService;
+    private final YandexGptService llmService;
     private final LlmResponseParserService llmParser;
     private final RagIntegrationMapper ragMapper;
     private final RoadmapConfigService configService;
@@ -38,7 +37,7 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
 
     @Override
     public boolean supports(String status) {
-        return "NEED_GENERATION".equals(status);
+        return "NEED_GENERATION".equals(status) || "NOT_FOUND".equals(status);
     }
 
     @Override

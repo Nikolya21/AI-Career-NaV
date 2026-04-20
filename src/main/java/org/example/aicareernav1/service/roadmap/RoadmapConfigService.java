@@ -12,6 +12,7 @@ import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.util.JsonUtilsService;
 import org.example.aicareernav1.service.roadmap.prompt.RoadmapConfigPrompts;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +25,7 @@ public class RoadmapConfigService {
     private final RoadmapRepository roadmapRepository;
     private final ObjectMapper objectMapper;
     private final RoadmapConfigMapper configMapper;
-    private final GigaChatService llmService;
+    private final YandexGptService llmService;
     private final JsonUtilsService jsonUtils;
 
     /**
@@ -49,14 +50,15 @@ public class RoadmapConfigService {
             // 3. Отправляем в LLM и получаем ответ
             String rawResponse = llmService.sendMessage(prompt);
 
+            String cleanedResponse = jsonUtils.cleanJsonResponse(rawResponse);
             // 4. Безопасно парсим через твой JsonUtilsService
-            RoadmapConfigUpdateDTO updateDto = jsonUtils.parseObject(rawResponse, RoadmapConfigUpdateDTO.class);
+            RoadmapConfigUpdateDTO updateDto = jsonUtils.parseObject(cleanedResponse, RoadmapConfigUpdateDTO.class);
 
             if (updateDto != null) {
                 // Применяем изменения точечно
                 configMapper.updateEntityFromDto(updateDto, roadmap.getConfig());
                 roadmapRepository.save(roadmap);
-                log.info("Config successfully updated for Roadmap ID {}. New data: {}", roadmap.getId(), rawResponse);
+                log.info("Config successfully updated for Roadmap ID {}. New data: {}", roadmap.getId(), cleanedResponse);
             }
 
         } catch (JsonProcessingException e) {

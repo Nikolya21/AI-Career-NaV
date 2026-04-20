@@ -2,6 +2,8 @@ package org.example.aicareernav1.mapper;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.aicareernav1.dto.roadmap.LessonDTO;
+import org.example.aicareernav1.dto.roadmap.ModuleDTO;
 import org.example.aicareernav1.dto.roadmap.checkpoint.CheckpointDTO;
 import org.example.aicareernav1.dto.roadmap.checkpoint.DeepenCheckpointDTO;
 import org.example.aicareernav1.dto.roadmap.TopicDTO;
@@ -60,6 +62,7 @@ public interface RoadmapMapper {
   @Mapping(target = "parentCheckpointId", source = "parentCheckpoint.id")
   @Mapping(target = "sourceLessonId", source = "sourceLesson.id")
   CheckpointResponse toCheckpointResponse(Checkpoint checkpoint);
+
 
   /**
    * Считает все чекпоинты во всех топиках, исключая ROOT.

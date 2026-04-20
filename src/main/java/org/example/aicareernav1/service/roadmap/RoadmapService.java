@@ -6,10 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.*;
 import org.example.aicareernav1.dto.roadmap.checkpoint.CheckpointDTO;
-import org.example.aicareernav1.dto.roadmap.checkpoint.CheckpointSkeletonDTO;
 import org.example.aicareernav1.dto.roadmap.response.*;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.*;
-import org.example.aicareernav1.entity.dynamicRoadmapEntity.Module;
 import org.example.aicareernav1.enums.CheckpointStatus;
 import org.example.aicareernav1.enums.CheckpointType;
 import org.example.aicareernav1.mapper.ContentMapper;
@@ -17,15 +15,14 @@ import org.example.aicareernav1.mapper.RoadmapMapper;
 import org.example.aicareernav1.repository.roadmap.CheckpointRepository;
 import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.repository.roadmap.TopicRepository;
-import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.roadmap.prompt.GeneralPrompts;
 import org.example.aicareernav1.service.util.JsonUtilsService;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 
 /**
@@ -51,7 +48,7 @@ public class RoadmapService {
     private final RoadmapRepository roadmapRepository;
     private final TopicRepository topicRepository;
     private final CheckpointRepository checkpointRepository;
-    private final GigaChatService gigaChatService;
+    private final YandexGptService llmService;
     private final RoadmapConfigService configService;
     private final CheckpointService checkpointService;
 
@@ -160,7 +157,7 @@ public class RoadmapService {
                 .replace("{requirements}", request.getRequirements())
                 .replace("{testResult}", request.getTestResult());
 
-        String rawResponse = gigaChatService.sendMessage(prompt);
+        String rawResponse = llmService.sendMessage(prompt);
         log.debug(">>>> [AI] Raw response: {}", rawResponse);
 
         // Очищаем и парсим JSON
@@ -313,6 +310,7 @@ public class RoadmapService {
      * @param userRequest  конкретный вопрос или тема для углубленного изучения.
      * @return ответ с данными нового чекпоинта и готовым контентом урока.
      */
+    //todo: нужно все-таки добавить связь с Lesson, откуда выходит - пока ее нет (вроде не критично, но вдальнейшем для анализа понадобиться)
     @Transactional
     public CheckpointResponse deepenTopicProcess(Long checkpointId, String userRequest) {
         // 1. Находим текущий контекст

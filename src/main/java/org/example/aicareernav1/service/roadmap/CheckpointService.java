@@ -15,16 +15,16 @@ import org.example.aicareernav1.enums.CheckpointStatus;
 import org.example.aicareernav1.enums.CheckpointType;
 import org.example.aicareernav1.mapper.ContentMapper;
 import org.example.aicareernav1.mapper.RoadmapMapper;
-import org.example.aicareernav1.repository.roadmap.CheckpointRepository;
-import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
-import org.example.aicareernav1.repository.roadmap.TopicRepository;
+import org.example.aicareernav1.repository.roadmap.*;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.roadmap.prompt.CheckpointPrompts;
 import org.example.aicareernav1.service.util.JsonUtilsService;
 import org.example.aicareernav1.service.util.LlmResponseParserService;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,8 +38,10 @@ public class CheckpointService {
     private final CheckpointRepository checkpointRepository;
     private final RoadmapRepository roadmapRepository;
     private final TopicRepository topicRepository;
+    private final ModuleRepository moduleRepository;
+    private final LessonRepository lessonRepository;
     private final LlmResponseParserService llmResponseParserService;
-    private final GigaChatService llmService; // Для генерации скелета
+    private final YandexGptService llmService; // Для генерации скелета
     private final RoadmapConfigService roadmapConfigService;
     private final ContentMapper contentMapper;
     private final RoadmapMapper roadmapMapper;
@@ -48,7 +50,7 @@ public class CheckpointService {
     private final LessonService lessonService;
 
     private static final int MAX_CHECKPOINT_WORDS = 4;
-    private static final int MAX_LESSON_WORDS = 3;
+    private static final int MAX_LESSON_WORDS = 7;
 
     /**
      * Создает новое ответвление (углубление) от существующего чекпоинта.
@@ -123,7 +125,7 @@ public class CheckpointService {
         Checkpoint parent = checkpointRepository.findById(parentId)
                 .orElseThrow(() -> new EntityNotFoundException("Родительский узел не найден"));
 
-        log.info("Creating new checkpoint. Parent ID: {}, Parent Topic: {}", parentId, parent.getTopic());
+        log.info("Creating topics for Checkpoint with ID: {}, Parent ID: {}, Parent Topic: {}", checkpoint.getId(), parentId, parent.getTopic());
 
         // 2. Идем в GigaChat ТОЛЬКО за структурой (названия чекпоинта и 3-5 уроков)
         CheckpointSkeletonDTO skeletonDTO = generateMainSkeletonFromAI(topic, config, parent);
@@ -148,7 +150,7 @@ public class CheckpointService {
                 .build();
         checkpoint.setModule(module);
 
-        log.info("Check: Roadmap in newCheckpoint is {}", checkpoint.getRoadmap());
+        log.info("Check: Roadmap in Checkpoint is {}", checkpoint.getRoadmap());
 
         // 4. Магия ленивой загрузки: создаем список пустых уроков
         List<Lesson> skeletonLessons = skeletonDTO.getLessonTitles().stream()
@@ -166,32 +168,15 @@ public class CheckpointService {
     }
 
     @Transactional
-    public Checkpoint createRootCheckpoint(Roadmap roadmap, String jobTitle) {
-        log.info("Инициализация ROOT чекпоинта с базовым топиком для Roadmap ID: {}", roadmap.getId());
-
-        // 1. Создаем или находим "Технический" топик для корня
-        // Это нужно, чтобы уйти от null в колонке topic_id
-        Topic rootTopic = Topic.builder()
-                .title("Основы направления") // Базовое название
-                .roadmap(roadmap)
-                .build();
-        roadmap.addTopic(rootTopic);
-        // Сохраняем топик (если он еще не сохранен каскадом)
-        topicRepository.save(rootTopic);
-
-        // 2. Создаем ROOT чекпоинт и привязываем его к этому топику
+    public Checkpoint createRootCheckpoint(Roadmap roadmap, String title) {
+        // 1. Создаем сам ROOT чекпоинт
         Checkpoint root = Checkpoint.builder()
-                .title(jobTitle)
-                .description("Стартовая точка: " + jobTitle)
-                .orderIndex(0) // <--- Явно делаем его первым
+                .title(title)
                 .type(CheckpointType.ROOT)
                 .status(CheckpointStatus.COMPLETED)
                 .roadmap(roadmap)
-                .topic(rootTopic) // Теперь здесь НЕ null
+                .orderIndex(0)
                 .build();
-        rootTopic.addCheckpoint(root);
-
-        log.info("ROOT Checkpoint подготовлен: title={}, topic_id={}", root.getTitle(), (root.getTopic() != null ? root.getTopic().getId() : "NULL"));
 
         return checkpointRepository.save(root);
     }
@@ -215,7 +200,7 @@ public class CheckpointService {
         String cleanedJsonAiResponse = jsonUtilsService.cleanJsonResponse(rawResponse);
 
         CheckpointSkeletonDTO dto = jsonUtilsService.parseObject(cleanedJsonAiResponse, CheckpointSkeletonDTO.class);
-
+        dto.setTitle(topic);
         if (dto == null || dto.getLessonTitles() == null || dto.getLessonTitles().isEmpty()) {
             log.error("JsonUtilsService не смог распарсить MAIN скелет. Используем fallback.");
             return new CheckpointSkeletonDTO(
@@ -238,10 +223,28 @@ public class CheckpointService {
 
     private String sanitizeTitle(String title, int maxWords) {
         if (title == null || title.isBlank()) return "New Step";
-        String clean = title.replaceAll("[\"«».,!?]", "").trim();
+
+        // 1. Убираем префиксы, которые любит GigaChat
+        String clean = title.replaceAll("(?i)^(Тема|Урок|Раздел|Этап)\\s*\\d*[:.]*\\s*", "")
+                .replaceAll("[\"«»]", "") // Кавычки только мешают на графе
+                .trim();
+
         String[] words = clean.split("\\s+");
+
         if (words.length <= maxWords) return clean;
-        return String.join(" ", Arrays.copyOfRange(words, 0, maxWords));
+
+        // 2. Берем нужное кол-во слов
+        List<String> resultWords = new ArrayList<>(Arrays.asList(Arrays.copyOfRange(words, 0, maxWords)));
+
+        // 3. Продвинутая проверка: не заканчиваем ли мы на предлоге?
+        // Список коротких слов, которые не должны быть в конце
+        List<String> stopWords = Arrays.asList("и", "в", "во", "на", "под", "для", "из", "с", "со", "как", "от", "по", "простого", "простой");
+
+        while (resultWords.size() > 1 && stopWords.contains(resultWords.get(resultWords.size() - 1).toLowerCase())) {
+            resultWords.remove(resultWords.size() - 1);
+        }
+
+        return String.join(" ", resultWords) + "...";
     }
 
 //    private String queryAdaptation(String userQuery, RoadmapConfig config) {
