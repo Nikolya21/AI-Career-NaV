@@ -12,7 +12,6 @@ import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.repository.roadmap.TheoryRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.integration.PythonIntegrationService;
-import org.example.aicareernav1.service.roadmap.prompt.TheoryPrompts;
 import org.example.aicareernav1.service.roadmap.theory.strategy.TheoryProcessingStrategy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +30,7 @@ public class TheoryOrchestrator {
     private final RoadmapRepository roadmapRepository;
 
     @Transactional // Обязательно для работы с БД
-    public Theory getTheoryForLesson(Long lessonId, String userQuery) {
+    public Theory getTheoryForLesson(Long lessonId, String adaptationQuery, RoadmapConfig config) {
         // 1. Загружаем урок
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new EntityNotFoundException("Lesson not found"));
@@ -43,7 +42,7 @@ public class TheoryOrchestrator {
 
         // 3. Если нет — идем в Python
         SearchRequest request = SearchRequest.builder()
-                .query(userQuery)
+                .query(adaptationQuery)
                 .build();
         GatewayResponse response = pythonClient.searchInRag(request);
 
@@ -52,7 +51,7 @@ public class TheoryOrchestrator {
                 .filter(s -> s.supports(response.getStatus()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No strategy for: " + response.getStatus()))
-                .process(response, request, lesson);
+                .process(response, request, lesson, config);
 
         // 5. Сохраняем. Благодаря CascadeType.ALL в Lesson,
         // достаточно сохранить теорию или обновить урок.

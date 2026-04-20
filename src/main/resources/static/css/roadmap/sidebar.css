@@ -1,0 +1,48 @@
+#sidebar {
+    position: fixed; right: 0; top: 0; width: 450px; height: 100vh;
+    background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.05);
+    z-index: 1000; transition: transform 0.3s ease-in-out;
+    padding: 25px; box-sizing: border-box; overflow-y: auto;
+}
+
+.sidebar-hidden { transform: translateX(100%); }
+
+.lesson-card {
+    display: flex; align-items: center; gap: 15px; padding: 15px;
+    border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px;
+    cursor: pointer; transition: 0.2s;
+}
+
+.lesson-card:hover { border-color: #4285F4; background: #f8faff; }
+
+.back-btn {
+    display: flex; align-items: center; gap: 5px; background: none;
+    border: none; color: #4285F4; cursor: pointer; margin-bottom: 20px;
+    font-weight: 500;
+}
+
+#theory-content { line-height: 1.6; color: #3c4043; }
+#theory-content h1, h2 { color: #202124; }
+
+#theory-content {
+    line-height: 1.6;
+    font-size: 15px;
+}
+#theory-content h1, #theory-content h2 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+    margin-top: 24px;
+}
+#theory-content code {
+    background: #f1f3f4;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+#theory-content pre {
+    background: #202124;
+    color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+}

@@ -1,10 +1,7 @@
 package org.example.aicareernav1.entity.dynamicRoadmapEntity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
@@ -16,6 +13,10 @@ import lombok.*;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RoadmapConfig {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(name = "main_domain", nullable = false)
     private String mainDomain; // Java, Python, UI/UX
@@ -34,6 +35,6 @@ public class RoadmapConfig {
     private Integer maxTags = 5;
 
     // Связь обратно к Roadmap, если нужно (optional)
-    @OneToOne(mappedBy = "learningProfile")
+    @OneToOne(mappedBy = "config")
     private Roadmap roadmap;
 }

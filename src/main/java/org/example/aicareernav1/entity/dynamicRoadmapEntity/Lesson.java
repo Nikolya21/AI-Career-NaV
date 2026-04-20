@@ -36,5 +36,6 @@ public class Lesson {
 
   @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
   @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
+  @Builder.Default
   private List<Task> tasks = new ArrayList<>();
 }

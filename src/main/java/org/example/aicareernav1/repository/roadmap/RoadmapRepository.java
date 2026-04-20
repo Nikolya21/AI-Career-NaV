@@ -15,7 +15,7 @@ public interface RoadmapRepository extends JpaRepository<Roadmap, Long> {
     @Query("SELECT r.config FROM Roadmap r " +
             "JOIN r.topics t " +
             "JOIN t.checkpoints cp " +
-            "JOIN cp.modules m " +
+            "JOIN cp.module m " +
             "JOIN m.lessons l " +
             "WHERE l.id = :lessonId")
     Optional<RoadmapConfig> findConfigByLessonId(@Param("lessonId") Long lessonId);

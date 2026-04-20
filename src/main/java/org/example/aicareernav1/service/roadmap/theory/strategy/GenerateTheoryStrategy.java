@@ -42,12 +42,12 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
     }
 
     @Override
-    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson) {
+    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson, RoadmapConfig config) {
         // Достаем профиль из роадмапа (связь @OneToOne)
-        RoadmapConfig config = roadmapRepository.findConfigByLessonId(lesson.getId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "RoadmapConfig not found for lesson with ID: " + lesson.getId()
-                ));
+//        RoadmapConfig config = roadmapRepository.findConfigByLessonId(lesson.getId())
+//                .orElseThrow(() -> new EntityNotFoundException(
+//                        "RoadmapConfig not found for lesson with ID: " + lesson.getId()
+//                ));
         //todo: когда все проеверю, заменить:
         //  RoadmapConfig config = roadmapRepository.findConfigByLessonId(lesson.getId())
         //      .orElseGet(() -> configService.createDefaultConfig());

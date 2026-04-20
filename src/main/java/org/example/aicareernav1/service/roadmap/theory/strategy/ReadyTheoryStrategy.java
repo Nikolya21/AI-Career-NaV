@@ -5,6 +5,7 @@ import org.example.aicareernav1.dto.external.pythonRAG.GatewayResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.SearchRequest;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Lesson;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Resource;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Theory;
 import org.example.aicareernav1.enums.ResourceType;
 import org.springframework.stereotype.Component;
@@ -22,7 +23,7 @@ public class ReadyTheoryStrategy implements TheoryProcessingStrategy {
     }
 
     @Override
-    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson) {
+    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson, RoadmapConfig config) {
         Theory theory = Theory.builder()
                 .text(response.getContent())
                 .tags(List.of("FINISH IT"))

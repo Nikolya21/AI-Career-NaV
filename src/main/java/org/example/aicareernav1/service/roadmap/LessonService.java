@@ -5,8 +5,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.response.LessonResponse;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Lesson;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.mapper.ContentMapper;
 import org.example.aicareernav1.repository.roadmap.LessonRepository;
+import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
+import org.example.aicareernav1.service.gigachat.GigaChatService;
+import org.example.aicareernav1.service.roadmap.prompt.CheckpointPrompts;
 import org.example.aicareernav1.service.roadmap.theory.TheoryOrchestrator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,19 +21,54 @@ import org.springframework.transaction.annotation.Transactional;
 public class LessonService {
 
     private final LessonRepository lessonRepository;
+    private final RoadmapRepository roadmapRepository;
+
     private final TheoryOrchestrator theoryOrchestrator;
+    private final RoadmapConfigService configService;
+    private final GigaChatService llmService;
     private final ContentMapper contentMapper;
 
+
+    /**
+     * Получает заголовок урока по ID и userQuery.
+     * Используется, когда пользователь кликает на "Углубиться" урок (сценарий с DEEPEN Checkpoint).
+     */
     @Transactional
     public LessonResponse fillLessonContent(Long lessonId, String userQuery) {
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new EntityNotFoundException("Lesson not found"));
 
+        RoadmapConfig config = roadmapRepository.findConfigByLessonId(lessonId).orElse(configService.createDefaultConfig());
+
+        String adaptationQuery = queryAdaptation(userQuery, config);
         // Делегируем всю сложную логику (RAG, стратегии, LLM) оркестратору
         // Используем название урока в качестве поискового запроса
-        theoryOrchestrator.getTheoryForLesson(lessonId, userQuery);
+        theoryOrchestrator.getTheoryForLesson(lessonId, adaptationQuery, config);
 
         // Возвращаем обновленный урок через маппер
         return contentMapper.toResponse(lesson);
+    }
+
+    /**
+     * Получает заголовок урока по ID и запускает процесс наполнения контентом.
+     * Используется, когда пользователь кликает на "пустой" урок (Сценарий с MAIN Checkpoint).
+     */
+    @Transactional
+    public LessonResponse getAndFillLesson(Long lessonId) {
+        // 1. Получаем сущность урока
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new EntityNotFoundException("Урок с ID " + lessonId + " не найден"));
+
+        // 2. Используем заголовок урока как userQuery для твоей логики
+        String lessonTitle = lesson.getTitle();
+        log.info("==> Запуск генерации контента для урока: '{}'", lessonTitle);
+
+        // 3. Вызываем твой существующий метод
+        return fillLessonContent(lessonId, lessonTitle);
+    }
+
+
+    private String queryAdaptation(String userQuery, RoadmapConfig config) {
+        return llmService.sendMessage(CheckpointPrompts.getQueryAdaptationForSearchPrompt(userQuery, config));
     }
 }

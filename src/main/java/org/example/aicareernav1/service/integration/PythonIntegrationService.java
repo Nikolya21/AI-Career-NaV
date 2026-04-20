@@ -3,6 +3,7 @@ package org.example.aicareernav1.service.integration;
 import org.example.aicareernav1.dto.external.pythonRAG.GatewayResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.SaveRequest;
 import org.example.aicareernav1.dto.external.pythonRAG.SearchRequest;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 public class PythonIntegrationService {
     private final WebClient webClient;
 
-    public PythonIntegrationService(WebClient webClient) {
+    public PythonIntegrationService(@Qualifier("pythonServiceClient") WebClient webClient) {
         this.webClient = webClient;
     }
 

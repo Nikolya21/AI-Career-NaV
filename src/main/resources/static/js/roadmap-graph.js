@@ -1,134 +1,164 @@
-/**
- * Логика визуализации дорожной карты в стиле Google / Lexitutor
- */
-document.addEventListener('DOMContentLoaded', function () {
-    const data = window.roadmapData;
-    if (!data) return;
+let network = null;
+let nodes = new vis.DataSet([]);
+let edges = new vis.DataSet([]);
 
-    const nodes = new vis.DataSet([]);
-    const edges = new vis.DataSet([]);
-
-    // 1. Центральный узел — Цель
-    nodes.add({
-        id: 0,
-        label: data.jobTitle,
-        color: { background: '#4285F4', border: '#1A73E8' },
-        size: 35,
-        shape: 'dot',
-        font: { color: '#ffffff', size: 16 }
-    });
-
-    // 2. Обработка данных из БД
-    data.topics.forEach((topic) => {
-        const topicNodeId = 't' + topic.id;
-
-        // Узел Темы (Блок)
-        nodes.add({
-            id: topicNodeId,
-            label: topic.topicTitle,
-            color: { background: '#ffffff', border: '#FBBC05' },
-            size: 25,
-            shape: 'dot',
-            borderWidth: 2,
-            font: { size: 14, weight: '500' }
-        });
-        edges.add({ from: 0, to: topicNodeId, color: '#E8EAED' });
-
-        // Узлы Чекпоинтов
-        topic.checkpoints.forEach((cp) => {
-            let nodeColor = '#BDC1C6'; // LOCKED
-            if (cp.status === 'COMPLETED') nodeColor = '#34A853';
-            if (cp.status === 'ACTIVE') nodeColor = '#4285F4';
-
-            nodes.add({
-                id: cp.id,
-                label: cp.title,
-                color: { background: nodeColor, border: nodeColor },
-                size: 18,
-                shape: 'dot',
-                font: { size: 12 },
-                chosen: { node: (values) => { values.shadow = true; } }
-            });
-
-            // Связь с темой или родителем
-            const fromId = cp.parentCheckpointId ? cp.parentCheckpointId : topicNodeId;
-            edges.add({
-                from: fromId,
-                to: cp.id,
-                dashes: !!cp.parentCheckpointId,
-                color: '#DADCE0'
-            });
-        });
-    });
-
-    const container = document.getElementById('roadmap-container');
-    const network = new vis.Network(container, { nodes, edges }, {
-        interaction: { hover: true, tooltipDelay: 200 },
-        physics: {
-            enabled: true,
-            barnesHut: { gravitationalConstant: -3000, centralGravity: 0.3, springLength: 95 }
-        }
-    });
-
-    // Появление кнопки "Углубиться" при наведении
-    network.on("hoverNode", function (params) {
-        if (typeof params.node === 'number') { // Если это чекпоинт
-            const nodePos = network.canvasToDOM(network.getPositions([params.node])[params.node]);
-            const tooltip = document.getElementById('node-tooltip');
-            tooltip.style.display = 'block';
-            tooltip.style.left = nodePos.x + 'px';
-            tooltip.style.top = (nodePos.y - 50) + 'px';
-            tooltip.dataset.nodeId = params.node;
-        }
-    });
-
-    network.on("blurNode", () => {
-        // Скрываем с небольшой задержкой, чтобы можно было успеть кликнуть
-        setTimeout(() => { document.getElementById('node-tooltip').style.display = 'none'; }, 2000);
-    });
-
-    // Переход в урок
-    network.on("click", function (params) {
-        if (params.nodes.length > 0 && typeof params.nodes[0] === 'number') {
-            window.location.href = `/roadmap/lesson/${params.nodes[0]}`;
-        }
-    });
+document.addEventListener('DOMContentLoaded', () => {
+    loadRoadmapFromServer();
 });
 
-// Функция отправки фидбека (глобальная)
-function sendGlobalFeedback() {
-    const feedbackInput = document.getElementById('feedback-text');
-    const feedbackText = feedbackInput.value.trim();
+async function loadRoadmapFromServer() {
+    const loader = document.getElementById('global-loader');
+    const roadmapId = window.roadmapId;
 
-    if (!feedbackText) {
-        alert("Пожалуйста, напишите что-нибудь, чтобы ИИ мог подстроиться.");
+    if (!roadmapId) {
+        console.error("ID дорожной карты не найден в window.roadmapId");
         return;
     }
 
-    // Блокируем кнопку на время запроса
-    const btn = event.target;
-    btn.disabled = true;
-    btn.innerText = "Обновляю профиль...";
+    loader.classList.remove('hidden');
 
-    fetch(`/api/v1/roadmap/${window.roadmapData.id}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: feedbackText
-    })
-    .then(response => {
-        if (response.ok) {
-            alert("Ваши предпочтения учтены! Следующие уроки будут адаптированы.");
-            feedbackInput.value = ""; // Очищаем поле
-        } else {
-            alert("Произошла ошибка при отправке фидбека.");
+    try {
+        const response = await fetch(`/api/v1/roadmap/${roadmapId}/graph-data`);
+
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status}`);
         }
-    })
-    .catch(err => {
-        console.error('Feedback error:', err);
-        alert("Не удалось связаться с сервером.");
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.innerText = "Обновить мой стиль";
+
+        const data = await response.json();
+        initGraph(data);
+
+    } catch (error) {
+        console.error('Ошибка при загрузке Roadmap:', error);
+        alert('Не удалось загрузить данные дорожной карты. Проверьте консоль.');
+    } finally {
+        loader.classList.add('hidden');
+    }
+}
+
+function initGraph(data) {
+    nodes.clear();
+    edges.clear();
+
+    // 1. Центральный узел (Профессия)
+    // ID 0 зарезервирован для центра
+    nodes.add({
+        id: 0,
+        label: window.jobTitle || "Roadmap",
+        color: '#4285F4',
+        shape: 'dot',
+        size: 30
     });
+
+    if (data.topics && Array.isArray(data.topics)) {
+        data.topics.forEach(topic => {
+            const topicNodeId = 'topic_' + topic.id;
+
+            // Добавляем узел темы
+            nodes.add({
+                id: topicNodeId,
+                label: topic.topicTitle,
+                color: '#ffffff',
+                border: '#FBBC05',
+                shape: 'dot',
+                size: 22,
+                borderWidth: 2
+            });
+
+            // Связываем тему с центром
+            edges.add({ from: 0, to: topicNodeId, color: '#DADCE0' });
+
+            // Отрисовываем чекпоинты этой темы
+            if (topic.checkpoints && Array.isArray(topic.checkpoints)) {
+                topic.checkpoints.forEach(cp => {
+                    renderCheckpointNode(cp, topicNodeId);
+                });
+            }
+        });
+    }
+
+    const container = document.getElementById('roadmap-container');
+    const options = {
+        physics: {
+            enabled: true,
+            stabilization: { iterations: 1000 },
+            barnesHut: { gravitationalConstant: -3000, springLength: 150 }
+        },
+        interaction: { hover: true }
+    };
+    network = new vis.Network(container, { nodes, edges }, options);
+
+    setupEventListeners();
+}
+
+function renderCheckpointNode(cp, topicNodeId) {
+    let nodeColor = '#BDC1C6';
+    if (cp.status === 'COMPLETED') nodeColor = '#34A853';
+    if (cp.status === 'ACTIVE') nodeColor = '#4285F4';
+
+    // 1. Добавляем узел (если его еще нет)
+    if (!nodes.get(cp.id)) {
+        nodes.add({
+            id: cp.id,
+            label: cp.title || "Без названия", // Защита от null
+            color: nodeColor,
+            shape: 'dot',
+            size: 16
+        });
+    }
+
+    // 2. Логика связи
+    let fromId = topicNodeId; // По умолчанию цепляем к теме
+
+    // Проверяем: есть ли родитель и существует ли он уже в графе?
+    if (cp.parentCheckpointId && nodes.get(cp.parentCheckpointId)) {
+        fromId = cp.parentCheckpointId;
+    }
+
+    edges.add({
+        from: fromId,
+        to: cp.id,
+        dashes: (fromId !== topicNodeId), // Пунктир, если это связь между чекпоинтами
+        color: '#DADCE0'
+    });
+}
+
+function setupEventListeners() {
+    network.on("hoverNode", (params) => {
+        // Показываем тултип только для чекпоинтов (числовые ID), а не для тем (строковые ID)
+        if (Number.isInteger(params.node) && params.node !== 0) {
+            showNodeTooltip(params.node);
+        }
+    });
+
+    network.on("blurNode", () => hideNodeTooltip());
+
+    network.on("click", (params) => {
+        if (params.nodes.length > 0) {
+            const selectedId = params.nodes[0];
+            // Если кликнули по чекпоинту — открываем сайдбар
+            if (Number.isInteger(selectedId) && selectedId !== 0) {
+                if (typeof sidebarManager !== 'undefined') {
+                    sidebarManager.loadCheckpoint(selectedId);
+                }
+            }
+        }
+    });
+}
+
+function showNodeTooltip(nodeId) {
+    const pos = network.canvasToDOM(network.getPositions([nodeId])[nodeId]);
+    const tooltip = document.getElementById('node-tooltip');
+    if (!tooltip) return;
+
+    tooltip.classList.remove('hidden');
+    tooltip.style.left = pos.x + 'px';
+    tooltip.style.top = (pos.y - 40) + 'px';
+    tooltip.dataset.targetNodeId = nodeId;
+}
+
+function hideNodeTooltip() {
+    setTimeout(() => {
+        const tooltip = document.getElementById('node-tooltip');
+        if (tooltip) tooltip.classList.add('hidden');
+    }, 300);
 }

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.aicareernav1.dto.roadmap.config.ConfigUpdateDto;
+import org.example.aicareernav1.dto.roadmap.config.RoadmapConfigUpdateDTO;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.mapper.RoadmapConfigMapper;
@@ -50,7 +50,7 @@ public class RoadmapConfigService {
             String rawResponse = llmService.sendMessage(prompt);
 
             // 4. Безопасно парсим через твой JsonUtilsService
-            ConfigUpdateDto updateDto = jsonUtils.parseObject(rawResponse, ConfigUpdateDto.class);
+            RoadmapConfigUpdateDTO updateDto = jsonUtils.parseObject(rawResponse, RoadmapConfigUpdateDTO.class);
 
             if (updateDto != null) {
                 // Применяем изменения точечно

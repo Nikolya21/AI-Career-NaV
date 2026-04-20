@@ -4,8 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
+import org.example.aicareernav1.dto.roadmap.response.LessonResponse;
 import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
+import org.example.aicareernav1.dto.roadmap.response.RoadmapResponse;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
+import org.example.aicareernav1.service.roadmap.LessonService;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,37 +26,28 @@ import org.springframework.web.server.ResponseStatusException;
 public class RoadmapController {
 
   private final RoadmapService roadmapService;
+  private final LessonService lessonService;
 
   /**
    * Полная генерация дорожной карты: создание сущности + генерация структуры через ИИ.
    * Возвращает ID созданного Roadmap для последующего редиректа.
    */
   @PostMapping("/generate")
-  public ResponseEntity<Long> generateRoadmap(@RequestBody RoadmapGenerationRequest request) {
+  public ResponseEntity<RoadmapResponse> generateRoadmap(@RequestBody RoadmapGenerationRequest request) {
     log.info("API: Запрос на полную генерацию Roadmap для вакансии: {}", request.getJobTitle());
-    Roadmap roadmap = roadmapService.generateFullRoadmap(request);
-    return ResponseEntity.ok(roadmap.getId());
+    RoadmapResponse roadmap = roadmapService.generateFullRoadmap(request);
+    return ResponseEntity.ok(roadmap);
   }
 
   /**
-   * Получает контент модуля для чекпоинта.
-   * Если контента нет, он будет сгенерирован автоматически.
+   * Точка входа в чекпоинт.
+   * Если пользователь заходит впервые — этап активируется и нарезаются уроки.
+   * Если заходит повторно — просто возвращается структура этапа.
    */
-  @GetMapping("/checkpoint/{id}/content")
-  public ResponseEntity<ModuleResponse> getCheckpointContent(@PathVariable Long id) {
-    log.info("API: Запрос контента для Checkpoint ID: {}", id);
-    ModuleResponse response = roadmapService.getModuleByCheckpointId(id);
-
-    if (response == null) {
-      roadmapService.fillCheckpointContent(id);
-      response = roadmapService.getModuleByCheckpointId(id);
-    }
-
-    if (response == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Не удалось сформировать контент для урока");
-    }
-
-    return ResponseEntity.ok(response);
+  @GetMapping("/checkpoint/{id}")
+  public ResponseEntity<CheckpointResponse> enterCheckpoint(@PathVariable Long id) {
+    log.info("API: Вход в чекпоинт ID: {}", id);
+    return ResponseEntity.ok(roadmapService.getOrStartCheckpoint(id));
   }
 
   /**
@@ -79,18 +74,8 @@ public class RoadmapController {
   @PostMapping("/checkpoint/{id}/deepen")
   public ResponseEntity<CheckpointResponse> deepenTopic(@PathVariable Long id, @RequestBody String request) {
     log.info("API: Запрос на углубление темы для Checkpoint ID: {}", id);
-    CheckpointResponse response = roadmapService.deepenTopic(id, request);
+    CheckpointResponse response = roadmapService.deepenTopicProcess(id, request);
     return ResponseEntity.ok(response);
-  }
-
-  /**
-   * Принудительное обновление (перегенерация) контента чекпоинта.
-   */
-  @PostMapping("/checkpoint/{id}/fill-content")
-  public ResponseEntity<Void> fillContent(@PathVariable Long id) {
-    log.info("API: Принудительное заполнение контента для Checkpoint ID: {}", id);
-    roadmapService.fillCheckpointContent(id);
-    return ResponseEntity.ok().build();
   }
 
   /**
@@ -102,5 +87,26 @@ public class RoadmapController {
   @GetMapping("/{id}/progress")
   public ResponseEntity<Double> getProgress(@PathVariable Long id) {
     return ResponseEntity.ok(roadmapService.calculateProgress(id));
+  }
+
+  /**
+   * Генерирует или возвращает контент конкретного урока.
+   * Именно этот метод должен вызываться, когда пользователь нажимает на урок в интерфейсе (Сценарий с MAIN Checkpoint).
+   */
+  @GetMapping("/lesson/{lessonId}")
+  public ResponseEntity<LessonResponse> getLessonContent(@PathVariable Long lessonId) {
+    log.info("API: Запрос контента для конкретного урока ID: {}", lessonId);
+    return ResponseEntity.ok(lessonService.getAndFillLesson(lessonId));
+  }
+
+  /**
+   * Возвращает полные данные для отрисовки графа (все узлы и связи).
+   */
+  @GetMapping("/{id}/graph-data")
+  public ResponseEntity<RoadmapResponse> getGraphData(@PathVariable Long id) {
+    // В сервисе нужно реализовать получение Roadmap со ВСЕМИ вложенными чекпоинтами
+    // (включая дочерние для DEEPEN чекпоинтов)
+    RoadmapResponse response = roadmapService.getFullGraphResponse(id);
+    return ResponseEntity.ok(response);
   }
 }
