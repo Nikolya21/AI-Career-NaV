@@ -56,7 +56,6 @@ public class RoadmapController {
    * @param id       идентификатор Roadmap
    * @param feedback текст отзыва
    */
-  //todo: Json не проходит - посмотреть, почему и тп
   @PostMapping("/{id}/feedback")
   public ResponseEntity<Void> sendFeedback(@PathVariable Long id, @RequestBody String feedback) {
     log.info("API: Получен фидбек для Roadmap ID: {}", id);

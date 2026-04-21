@@ -12,23 +12,32 @@ import java.util.*;
 @AllArgsConstructor
 public class SearchRequest {
     private String query;
-    private Double threshold = 0.9;
+
+    @Builder.Default
+    private Double threshold = 0.95;
 
     @JsonProperty("tag_threshold")
+    @Builder.Default
     private Double tagThreshold = 0.3;
 
     @JsonProperty("tag_weight")
+    @Builder.Default
     private Double tagWeight = 2.0;
 
     @JsonProperty("max_weighted_distance")
+    @Builder.Default
     private Double maxWeightedDistance = 0.35;
 
     @JsonProperty("rerank_threshold")
-    private Double rerankThreshold = 0.5;
+    @Builder.Default
+    private Double rerankThreshold = 0.85;
 
     @JsonProperty("assemble_article")
+    @Builder.Default
     private Boolean assembleArticle = true;
 
+    @Builder.Default
     private List<String> tags = new ArrayList<>();
+
     private Map<String, Object> metadata;
 }

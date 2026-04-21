@@ -31,6 +31,7 @@ public class Roadmap {
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "config_id", referencedColumnName = "id")
+    @JsonManagedReference
     private RoadmapConfig config;
 
     @Column(columnDefinition = "TEXT")

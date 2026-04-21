@@ -41,6 +41,7 @@ public class RoadmapConfigService {
         }
 
         try {
+            log.info("CURRENT Roadmap Config: {}", currentConfig.toString());
             // 1. Превращаем текущий конфиг в JSON строку
             String currentConfigJson = objectMapper.writeValueAsString(currentConfig);
 
@@ -51,6 +52,8 @@ public class RoadmapConfigService {
             String rawResponse = llmService.sendMessage(prompt);
 
             String cleanedResponse = jsonUtils.cleanJsonResponse(rawResponse);
+
+            log.info("Roadmap Config to Update JSON: {}", cleanedResponse);
             // 4. Безопасно парсим через твой JsonUtilsService
             RoadmapConfigUpdateDTO updateDto = jsonUtils.parseObject(cleanedResponse, RoadmapConfigUpdateDTO.class);
 

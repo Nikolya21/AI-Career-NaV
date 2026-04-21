@@ -1,5 +1,6 @@
 package org.example.aicareernav1.entity.dynamicRoadmapEntity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -36,5 +37,6 @@ public class RoadmapConfig {
 
     // Связь обратно к Roadmap, если нужно (optional)
     @OneToOne(mappedBy = "config")
+    @JsonBackReference
     private Roadmap roadmap;
 }
