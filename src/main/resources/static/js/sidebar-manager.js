@@ -1,5 +1,6 @@
 const sidebarManager = {
     currentCheckpointId: null,
+    currentLessonId: null, // Добавляем новое поле
 
     // Открыть/закрыть сайдбар
     toggle(show) {
@@ -89,6 +90,7 @@ const sidebarManager = {
 
     // 2. Ленивая загрузка теории конкретного урока
     async loadLessonTheory(lessonId) {
+        this.currentLessonId = lessonId;
         const theoryContainer = document.getElementById('theory-content');
         this.showDetail();
         theoryContainer.innerHTML = '<div class="loader">ИИ пишет теорию...</div>';

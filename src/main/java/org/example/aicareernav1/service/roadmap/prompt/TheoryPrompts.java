@@ -7,9 +7,11 @@ public class TheoryPrompts {
     public static final String GENERATE_THEORY_PROMPT = """
             ### INPUT DATA
             1. ЗАПРОС ПОЛЬЗОВАТЕЛЯ (структурированный): {refinedQuery}
-            2. КОНТЕКСТ (RAG Chunks): {chunks}
-            3. ПРОФИЛЬ ОБУЧАЕМОГО (Теги предпочтений): {userTags}\s
+            2. ТЕХНИЧЕСКИЙ ФУНДАМЕНТ (RAG Chunks): {chunks}
+            3. ПРОФИЛЬ ОБУЧАЕМОГО (Теги предпочтений): {userTags}
                /* Пример: "Java, Beginner, Loves Analogies, Needs Code Samples" */
+            4. ИСТОРИЯ ОБУЧЕНИЯ (Контекст пройденного): {context}
+               /* Содержит список тем и конкретные навыки, которыми пользователь уже овладел */
             
             ### ROLE
             Ты — ведущий методист по техническому обучению в стиле "Яндекс Практикума" с экспертизой Senior Software Engineer. Твоя задача — создать глубокий, структурированный и интерактивный урок на основе предоставленных данных.
@@ -26,7 +28,12 @@ public class TheoryPrompts {
                - Характер текста и форма обращения должны строго соответствовать параметрам Style и Tone из {userTags}.
                - Если указано "Loves Analogies" — пропитай ими весь урок. Если "Code Samples" — увеличь объем листингов кода до 60% от объема статьи.
             
-            3. РАБОТА С ИСТОЧНИКАМИ:
+            3. УЧЕТ КОНТЕКСТА ОБУЧЕНИЯ (на основе {context}):
+               - **ЗАПРЕТ ПОВТОРОВ**: Если в {context} указано, что пользователь уже знает конкретную технологию или метод, не трать время на их подробное описание.\s
+               - **НЕПРЕРЫВНОСТЬ**: Ссылайся на пройденные темы из {context} как на фундамент (например: «Помнишь, как мы использовали [Тема из контекста]? Здесь принцип похожий, но...»).
+               - **ПРОГРЕССИЯ**: Если текущая тема — углубление предыдущей, сразу переходи к продвинутым аспектам, минуя введение.
+            
+            4. РАБОТА С ТЕХНИЧЕСКИЙ ФУНДАМЕНТ:
                - Твой приоритет — данные из {chunks}. Однако, если информации в них недостаточно для полного раскрытия темы, ТЫ ДОЛЖЕН дополнить её из собственной базы знаний.
                - ЗАПРЕТ: Сохраняй верность официальным техническим стандартам. Категорически запрещено выдумывать несуществующие параметры API или библиотеки.
             
@@ -80,11 +87,12 @@ public class TheoryPrompts {
             ВЫДАЙ СНАЧАЛА METADATA, ЗАТЕМ РАЗДЕЛИТЕЛЬ, ЗАТЕМ MARKDOWN:
             """;
 
-    public static String getGenerateTheoryPrompt(String refinedQuery, String contextText, String tagsText, String mainDomain) {
+    public static String getGenerateTheoryPrompt(String refinedQuery, String contextText, String tagsText, String mainDomain, String context) {
         return GENERATE_THEORY_PROMPT
                 .replace("{refinedQuery}", refinedQuery)
                 .replace("{chunks}", contextText)
                 .replace("{userTags}", tagsText)
-                .replace("{mainDomain}", mainDomain);
+                .replace("{mainDomain}", mainDomain)
+                .replace("{context}", context);
     }
 }

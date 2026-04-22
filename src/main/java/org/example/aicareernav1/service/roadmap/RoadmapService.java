@@ -12,7 +12,9 @@ import org.example.aicareernav1.enums.CheckpointStatus;
 import org.example.aicareernav1.enums.CheckpointType;
 import org.example.aicareernav1.mapper.ContentMapper;
 import org.example.aicareernav1.mapper.RoadmapMapper;
+import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.repository.roadmap.CheckpointRepository;
+import org.example.aicareernav1.repository.roadmap.LessonRepository;
 import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.repository.roadmap.TopicRepository;
 import org.example.aicareernav1.service.roadmap.prompt.GeneralPrompts;
@@ -48,6 +50,8 @@ public class RoadmapService {
     private final RoadmapRepository roadmapRepository;
     private final TopicRepository topicRepository;
     private final CheckpointRepository checkpointRepository;
+    private final LessonRepository lessonRepository;
+    private final UserRepository userRepository;
     private final YandexGptService llmService;
     private final RoadmapConfigService configService;
     private final CheckpointService checkpointService;
@@ -306,22 +310,36 @@ public class RoadmapService {
      * инициирует генерацию теории по специфическому вопросу пользователя.
      * </p>
      *
-     * @param checkpointId ID узла, от которого происходит ветвление.
+
      * @param userRequest  конкретный вопрос или тема для углубленного изучения.
      * @return ответ с данными нового чекпоинта и готовым контентом урока.
      */
     //todo: нужно все-таки добавить связь с Lesson, откуда выходит - пока ее нет (вроде не критично, но вдальнейшем для анализа понадобиться)
+//    @Transactional
+//    public CheckpointResponse deepenTopicProcess(Long checkpointId, String userRequest) {
+//        // 1. Находим текущий контекст
+//        Checkpoint parent = checkpointRepository.findById(checkpointId)
+//                .orElseThrow(() -> new EntityNotFoundException("Checkpoint not found"));
+//        Roadmap roadmap = parent.getRoadmap();
+//        RoadmapConfig config = roadmapRepository.findConfigByRoadmapId(roadmap.getId())
+//                .orElse(configService.createDefaultConfig());
+//
+//        return checkpointService.deepenTopic(parent.getId(), userRequest, config, roadmap);
+//    }
+
     @Transactional
-    public CheckpointResponse deepenTopicProcess(Long checkpointId, String userRequest) {
-        // 1. Находим текущий контекст
-        Checkpoint parent = checkpointRepository.findById(checkpointId)
+    public CheckpointResponse deepenTopicProcess(Long lessonId, String userRequest) {
+        Checkpoint parentCheckpoint = checkpointRepository.findByLessonId(lessonId)
                 .orElseThrow(() -> new EntityNotFoundException("Checkpoint not found"));
 
-        Roadmap roadmap = parent.getRoadmap();
+        Lesson parentLesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new EntityNotFoundException("Checkpoint not found"));
+
+        Roadmap roadmap = parentCheckpoint.getRoadmap();
         RoadmapConfig config = roadmapRepository.findConfigByRoadmapId(roadmap.getId())
                 .orElse(configService.createDefaultConfig());
 
-        return checkpointService.deepenTopic(parent.getId(), userRequest, config, roadmap);
+        return checkpointService.deepenTopic(parentCheckpoint, parentLesson, userRequest, config, roadmap);
     }
 
     /**
@@ -374,6 +392,11 @@ public class RoadmapService {
         return roadmapRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Дорожная карта не найдена"));
     }
+
+//    public UserEntity getUserByRoadmapId(Long roadmapId) {
+//        //roadmapRepository.get
+//
+//    }
 
     @Transactional(readOnly = true)
     public RoadmapResponse getFullGraphResponse(Long roadmapId) {

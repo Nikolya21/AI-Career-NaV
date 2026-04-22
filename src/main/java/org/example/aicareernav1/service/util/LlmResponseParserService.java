@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -20,6 +22,37 @@ public class LlmResponseParserService {
     public static class ParsedLlmContent {
         private final List<String> tags;
         private final String content;
+        private final String summary;
+    }
+
+
+    /**
+     * Извлекает блоки "Чему ты научишься" и "Итоги раздела" для создания summary.
+     */
+    public String extractSummary(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+
+        StringBuilder summaryBuilder = new StringBuilder();
+
+        // Регулярное выражение для поиска блоков от заголовка до следующего заголовка или конца текста
+        // Группа 1: Название секции, Группа 2: Контент секции
+        Pattern sectionPattern = Pattern.compile(
+                "(###\\s*(?:🎯\\s*Чему ты научишься|✅\\s*Итоги раздела))([\\s\\S]*?)(?=###|$)"
+        );
+
+        Matcher matcher = sectionPattern.matcher(content);
+
+        while (matcher.find()) {
+            String sectionTitle = matcher.group(1).trim();
+            String sectionContent = matcher.group(2).trim();
+
+            summaryBuilder.append(sectionTitle).append("\n")
+                    .append(sectionContent).append("\n\n");
+        }
+
+        return summaryBuilder.toString().trim();
     }
 
     /**
@@ -60,9 +93,12 @@ public class LlmResponseParserService {
             log.warn("Разделитель '===' не найден в ответе LLM. Весь текст будет считаться контентом.");
         }
 
+        // 2. Извлекаем summary из чистого контента (без удаления блоков из текста)
+        String summary = extractSummary(markdownContent);
         return ParsedLlmContent.builder()
                 .tags(tags)
                 .content(markdownContent)
+                .summary(summary)
                 .build();
     }
 

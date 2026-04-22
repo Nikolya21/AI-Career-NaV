@@ -116,7 +116,7 @@ public class RoadmapConfigService {
     public RoadmapConfig createDefaultConfig() {
         return RoadmapConfig.builder()
                 .mainDomain("Software Engineering")
-                .targetLevel("Beginner")
+                .targetLevel("Standart")
                 .learningStyle("Standard technical explanation")
                 .toneOfVoice("Neutral mentor")
                 .maxTags(5)

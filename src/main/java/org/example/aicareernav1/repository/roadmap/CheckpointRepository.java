@@ -28,5 +28,12 @@ public interface CheckpointRepository extends JpaRepository<Checkpoint, Long> {
     Optional<Checkpoint> findByIdWithModule(@Param("id") Long id);
 
     List<Checkpoint> findAllByTopicIdOrderByOrderIndexAsc(Long topicId);
+
+
+    @Query("SELECT cp FROM Checkpoint cp " +
+            "JOIN cp.module m " +
+            "JOIN m.lessons l " +
+            "WHERE l.id = :lessonId")
+    Optional<Checkpoint> findByLessonId(@Param("lessonId") Long lessonId);
 }
 

@@ -41,7 +41,7 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
     }
 
     @Override
-    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson, RoadmapConfig config) {
+    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson, RoadmapConfig config, String context) {
         // Достаем профиль из роадмапа (связь @OneToOne)
 //        RoadmapConfig config = roadmapRepository.findConfigByLessonId(lesson.getId())
 //                .orElseThrow(() -> new EntityNotFoundException(
@@ -55,15 +55,18 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
         String fullLearningContext = configService.getFullContextString(config);
 
         // 3. Генерируем теорию через LLM на основе чанков из RAG, используя эти же настройки стиля
-        String rawLlmResponse = generateLessonFromChunks(response.getChunks(), request.getQuery(), fullLearningContext, config.getMainDomain());
+        String rawLlmResponse = generateLessonFromChunks(response.getChunks(), request.getQuery(), fullLearningContext, config.getMainDomain(), context);
 
         LlmResponseParserService.ParsedLlmContent cleanGeneratedMarkdown = llmParser.parseTheoryResponse(rawLlmResponse);
+
+        lesson.setSummary(cleanGeneratedMarkdown.getSummary());
 
         Theory theory = Theory.builder()
                 .text(cleanGeneratedMarkdown.getContent())
                 .tags(cleanGeneratedMarkdown.getTags())
                 .lesson(lesson)
                 .build();
+
 
         // 4. Создание SaveRequest для Python RAG
         SaveRequest saveRequest = ragMapper.toSaveRequest(theory, lesson, cleanGeneratedMarkdown.getTags(), request.getQuery());
@@ -75,11 +78,11 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
         return theory;
     }
 
-    private String generateLessonFromChunks(List<ChunkResponse> chunks, String userQuery, String contextLearning, String mainDomain) {
+    private String generateLessonFromChunks(List<ChunkResponse> chunks, String userQuery, String contextLearning, String mainDomain, String context) {
         String chunksText = chunks.stream()
                 .map(ChunkResponse::getContent)
                 .collect(Collectors.joining("\n---\n"));
 
-        return llmService.sendMessage(TheoryPrompts.getGenerateTheoryPrompt(userQuery, chunksText, contextLearning, mainDomain));
+        return llmService.sendMessage(TheoryPrompts.getGenerateTheoryPrompt(userQuery, chunksText, contextLearning, mainDomain, context));
     }
 }

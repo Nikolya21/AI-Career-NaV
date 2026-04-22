@@ -142,16 +142,26 @@ function setupEventListeners() {
 
     network.on("blurNode", () => hideNodeTooltip());
 
-    network.on("click", (params) => {
+    network.on("click", async (params) => {
         if (params.nodes.length > 0) {
             const selectedId = params.nodes[0];
 
-            // Если кликнули по центральной звезде
+            // 1. ЛОГИКА ДЛЯ ЦЕНТРАЛЬНОГО УЗЛА (ROOT)
             if (selectedId === 0) {
-                alert("Это корень вашей профессии! Выберите конкретный этап (узел) для начала обучения.");
+                try {
+                    const response = await fetch(`/api/v1/roadmap/${window.roadmapId}/root-action`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Выполняем переход на стороне фронтенда
+                        window.location.href = data.redirectUrl;
+                    }
+                } catch (error) {
+                    console.error("Ошибка при получении ссылки редиректа:", error);
+                }
                 return;
             }
 
+            // 2. ЛОГИКА ДЛЯ ОСТАЛЬНЫХ УЗЛОВ (ЧЕКПОИНТОВ)
             if (Number.isInteger(selectedId)) {
                 if (typeof sidebarManager !== 'undefined') {
                     sidebarManager.loadCheckpoint(selectedId);

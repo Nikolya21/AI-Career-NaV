@@ -29,6 +29,9 @@ public class Lesson {
   @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
   private Theory theory; // Теперь это объект
 
+  @Column(columnDefinition = "TEXT")
+  private String summary;
+
   @ManyToOne
   @JoinColumn(name = "module_id")
   @JsonBackReference

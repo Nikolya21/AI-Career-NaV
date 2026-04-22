@@ -56,10 +56,9 @@ public class CheckpointService {
      * Создает новое ответвление (углубление) от существующего чекпоинта.
      */
     @Transactional
-    public CheckpointResponse deepenTopic(Long parentId, String userQuery, RoadmapConfig config, Roadmap roadmap) {
+    public CheckpointResponse deepenTopic(Checkpoint parentCheckpoint, Lesson parentLesson, String userQuery, RoadmapConfig config, Roadmap roadmap) {
         // 1. Находим родителя
-        Checkpoint parent = checkpointRepository.findById(parentId)
-                .orElseThrow(() -> new EntityNotFoundException("Родительский чекпоинт не найден"));
+
 
 //        // 2. Адаптируем запрос (если нужно для поиска)
 //        String adaptationQuery = queryAdaptation(userQuery, config);
@@ -70,12 +69,13 @@ public class CheckpointService {
                 .title(userQuery) // Временный заголовок, пока нет ответа от LLM
                 .type(CheckpointType.DEEPEN)
                 .status(CheckpointStatus.ACTIVE)
-                .topic(parent.getTopic())
+                .topic(parentCheckpoint.getTopic())
+                .sourceLesson(parentLesson)
                 .roadmap(roadmap)
-                .parentCheckpoint(parent)
+                .parentCheckpoint(parentCheckpoint)
                 .build();
 
-        parent.addChild(newCheckpoint);
+        parentCheckpoint.addChild(newCheckpoint);
 
         // Создаем модуль
         Module module = Module.builder()

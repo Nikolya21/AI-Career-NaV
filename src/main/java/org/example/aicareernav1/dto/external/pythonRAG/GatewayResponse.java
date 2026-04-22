@@ -3,6 +3,7 @@ package org.example.aicareernav1.dto.external.pythonRAG;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 public class GatewayResponse {
     private String status; // READY_LESSON | NEED_GENERATION | NOT_FOUND
     private String content;

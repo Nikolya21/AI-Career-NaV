@@ -9,5 +9,5 @@ import org.example.aicareernav1.entity.dynamicRoadmapEntity.Theory;
 
 public interface TheoryProcessingStrategy {
     boolean supports(String status);
-    Theory process(GatewayResponse response, SearchRequest originalRequest, Lesson lesson, RoadmapConfig config);
+    Theory process(GatewayResponse response, SearchRequest originalRequest, Lesson lesson, RoadmapConfig config, String context);
 }

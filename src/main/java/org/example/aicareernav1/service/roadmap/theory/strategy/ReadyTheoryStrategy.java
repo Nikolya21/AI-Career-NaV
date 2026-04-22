@@ -22,8 +22,9 @@ public class ReadyTheoryStrategy implements TheoryProcessingStrategy {
         return "READY_LESSON".equals(status);
     }
 
+
     @Override
-    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson, RoadmapConfig config) {
+    public Theory process(GatewayResponse response, SearchRequest request, Lesson lesson, RoadmapConfig config, String context) {
         Theory theory = Theory.builder()
                 .text(response.getContent())
                 .tags(List.of("FINISH IT"))
@@ -46,4 +47,5 @@ public class ReadyTheoryStrategy implements TheoryProcessingStrategy {
         lesson.setTheory(theory);
         return theory;
     }
+
 }

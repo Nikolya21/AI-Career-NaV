@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showGlobalLoader(true);
 
             try {
-                const response = await fetch(`/api/v1/roadmap/checkpoint/${window.currentDeepenNodeId}/deepen`, {
+                const response = await fetch(`/api/v1/roadmap/lesson/${window.currentDeepenLessonId}/deepen`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
                     body: text
@@ -50,8 +50,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
 
                     // Включаем физику, чтобы узел нашел место
-                    network.setOptions({ physics: { enabled: true } });
-                    setTimeout(() => network.setOptions({ physics: { enabled: false } }), 2000);
+                    network.setOptions({
+                        physics: {
+                            enabled: true,
+                            stabilization: {
+                                enabled: true,
+                                iterations: 200 // Даем графу "продышаться" и найти место
+                            }
+                        }
+                    });
+                    // Вместо setTimeout используем событие стабилизации
+                    network.once("stabilized", function() {
+                        // Не выключаем физику совсем, а просто останавливаем активный расчет,
+                        // чтобы пользователь мог двигать узлы, и они возвращались на место
+                        network.setOptions({ physics: { enabled: true, stabilization: false } });
+                    });
                 }
             } catch (err) {
                 alert("Ошибка связи с ИИ");
@@ -67,14 +80,22 @@ const deepenManager = {
     openModal() {
         // sidebarManager сохраняет ID чекпоинта, когда вы открываете его список уроков или теорию
         const nodeId = sidebarManager.currentCheckpointId;
+        const lessonId = sidebarManager.currentLessonId;
 
         if (!nodeId) {
             alert("Ошибка: не выбран этап для углубления");
             return;
         }
 
+        if (!lessonId) {
+             alert("Ошибка: откройте урок, чтобы углубиться в тему");
+             return;
+        }
+
         // Сохраняем ID в глобальную переменную, которую использует твой confirmBtn.addEventListener
         window.currentDeepenNodeId = nodeId;
+
+        window.currentDeepenLessonId = lessonId;
 
         // Показываем модалку
         document.getElementById('deepen-modal').classList.remove('hidden');
