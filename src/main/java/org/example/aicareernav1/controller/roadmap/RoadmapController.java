@@ -2,17 +2,17 @@ package org.example.aicareernav1.controller.roadmap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.aicareernav1.dto.roadmap.AnswerCheckResult;
-import org.example.aicareernav1.dto.roadmap.AnswerRequest;
 import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
-import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
-import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
+import org.example.aicareernav1.dto.roadmap.response.LessonResponse;
+import org.example.aicareernav1.dto.roadmap.response.RoadmapResponse;
+import org.example.aicareernav1.service.roadmap.LessonService;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Контроллер для управления образовательным процессом дорожной карты.
@@ -24,37 +24,44 @@ import org.springframework.web.server.ResponseStatusException;
 public class RoadmapController {
 
   private final RoadmapService roadmapService;
+  private final LessonService lessonService;
+
+  /**
+   * Центральная ROOT вершина redirect to...
+   * Возвращает redirect.
+   */
+  //todo: redirect должен происходить по userId => по RoadmapId нужно искать UserId, но... пока такого функционала нет:) (Георгий блядотович спасибо!)
+  @GetMapping("/{roadmapId}/root-action")
+  public ResponseEntity<Map<String, String>> getRootRedirect(@PathVariable Long roadmapId) {
+    // Ваша логика: куда именно должен попасть пользователь при клике на ROOT
+    String targetUrl = "/dashboard/roadmap/" + roadmapId + "/statistics";
+    Map<String, String> response = new HashMap<>();
+    response.put("redirectUrl", targetUrl);
+
+    return ResponseEntity.ok(response);
+  }
 
   /**
    * Полная генерация дорожной карты: создание сущности + генерация структуры через ИИ.
    * Возвращает ID созданного Roadmap для последующего редиректа.
    */
   @PostMapping("/generate")
-  public ResponseEntity<Long> generateRoadmap(@RequestBody RoadmapGenerationRequest request) {
+  public ResponseEntity<RoadmapResponse> generateRoadmap(@RequestBody RoadmapGenerationRequest request) {
     log.info("API: Запрос на полную генерацию Roadmap для вакансии: {}", request.getJobTitle());
-    Roadmap roadmap = roadmapService.generateFullRoadmap(request);
-    return ResponseEntity.ok(roadmap.getId());
+    RoadmapResponse roadmap = roadmapService.generateFullRoadmap(request);
+    roadmapService.processUserFeedback(roadmap.getId(), request.getTestResult());
+    return ResponseEntity.ok(roadmap);
   }
 
   /**
-   * Получает контент модуля для чекпоинта.
-   * Если контента нет, он будет сгенерирован автоматически.
+   * Точка входа в чекпоинт.
+   * Если пользователь заходит впервые — этап активируется и нарезаются уроки.
+   * Если заходит повторно — просто возвращается структура этапа.
    */
-  @GetMapping("/checkpoint/{id}/content")
-  public ResponseEntity<ModuleResponse> getCheckpointContent(@PathVariable Long id) {
-    log.info("API: Запрос контента для Checkpoint ID: {}", id);
-    ModuleResponse response = roadmapService.getModuleByCheckpointId(id);
-
-    if (response == null) {
-      roadmapService.fillCheckpointContent(id);
-      response = roadmapService.getModuleByCheckpointId(id);
-    }
-
-    if (response == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Не удалось сформировать контент для урока");
-    }
-
-    return ResponseEntity.ok(response);
+  @GetMapping("/checkpoint/{id}")
+  public ResponseEntity<CheckpointResponse> enterCheckpoint(@PathVariable Long id) {
+    log.info("API: Вход в чекпоинт ID: {}", id);
+    return ResponseEntity.ok(roadmapService.getOrStartCheckpoint(id));
   }
 
   /**
@@ -78,21 +85,12 @@ public class RoadmapController {
    * @param request уточняющий запрос пользователя (что именно изучить подробнее)
    * @return DTO созданного чекпоинта
    */
-  @PostMapping("/checkpoint/{id}/deepen")
+  @PostMapping("/lesson/{id}/deepen")
+  //@PostMapping("/checkpoint/{id}/deepen")
   public ResponseEntity<CheckpointResponse> deepenTopic(@PathVariable Long id, @RequestBody String request) {
     log.info("API: Запрос на углубление темы для Checkpoint ID: {}", id);
-    CheckpointResponse response = roadmapService.deepenTopic(id, request);
+    CheckpointResponse response = roadmapService.deepenTopicProcess(id, request);
     return ResponseEntity.ok(response);
-  }
-
-  /**
-   * Принудительное обновление (перегенерация) контента чекпоинта.
-   */
-  @PostMapping("/checkpoint/{id}/fill-content")
-  public ResponseEntity<Void> fillContent(@PathVariable Long id) {
-    log.info("API: Принудительное заполнение контента для Checkpoint ID: {}", id);
-    roadmapService.fillCheckpointContent(id);
-    return ResponseEntity.ok().build();
   }
 
   /**
@@ -106,26 +104,24 @@ public class RoadmapController {
     return ResponseEntity.ok(roadmapService.calculateProgress(id));
   }
 
+  /**
+   * Генерирует или возвращает контент конкретного урока.
+   * Именно этот метод должен вызываться, когда пользователь нажимает на урок в интерфейсе (Сценарий с MAIN Checkpoint).
+   */
+  @GetMapping("/lesson/{lessonId}")
+  public ResponseEntity<LessonResponse> getLessonContent(@PathVariable Long lessonId) {
+    log.info("API: Запрос контента для конкретного урока ID: {}", lessonId);
+    return ResponseEntity.ok(lessonService.getAndFillLesson(lessonId));
+  }
 
   /**
-   * Проверяет ответ пользователя на задачу.
-   * <p>
-   * Для детерминированных типов (SINGLE_CHOICE, TRUE_FALSE, MATCHING, FILL_BLANK, ORDERING)
-   * проверка выполняется локально без обращения к ИИ.
-   * Для OPEN_QUESTION — ответ оценивается через GigaChat.
-   * Для PRACTICE и CODE_SNIPPET — возвращается подтверждение без оценки (ручная проверка).
-   * </p>
-   *
-   * @param taskId  ID задачи
-   * @param request объект с ответом пользователя
-   * @return результат проверки с флагом {@code correct} и текстом объяснения
+   * Возвращает полные данные для отрисовки графа (все узлы и связи).
    */
-  @PostMapping("/task/{taskId}/check")
-  public ResponseEntity<AnswerCheckResult> checkAnswer(
-      @PathVariable Long taskId,
-      @RequestBody AnswerRequest request) {
-    log.info("API: Проверка ответа для Task ID: {}", taskId);
-    AnswerCheckResult result = roadmapService.checkAnswer(taskId, request);
-    return ResponseEntity.ok(result);
+  @GetMapping("/{id}/graph-data")
+  public ResponseEntity<RoadmapResponse> getGraphData(@PathVariable Long id) {
+    // В сервисе нужно реализовать получение Roadmap со ВСЕМИ вложенными чекпоинтами
+    // (включая дочерние для DEEPEN чекпоинтов)
+    RoadmapResponse response = roadmapService.getFullGraphResponse(id);
+    return ResponseEntity.ok(response);
   }
 }

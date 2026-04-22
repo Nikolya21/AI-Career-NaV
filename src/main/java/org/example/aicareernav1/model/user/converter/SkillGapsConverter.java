@@ -12,7 +12,7 @@ import java.util.Map;
 @Converter
 public class SkillGapsConverter implements AttributeConverter<Map<String, Double>, String> {
 
-  private static final ObjectMapper objectMapper = new ObjectMapper();
+  public static final ObjectMapper objectMapper = new ObjectMapper();
 
   @Override
   public String convertToDatabaseColumn(Map<String, Double> attribute) {

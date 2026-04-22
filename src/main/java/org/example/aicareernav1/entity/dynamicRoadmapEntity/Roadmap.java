@@ -3,6 +3,7 @@ package org.example.aicareernav1.entity.dynamicRoadmapEntity;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,33 +19,41 @@ import java.util.List;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true) // Сравниваем только по ID
 public class Roadmap {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @ToString.Include // Разрешаем печатать ID в логах
-  @EqualsAndHashCode.Include // Объект равен другому, если их ID совпадают
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include // Разрешаем печатать ID в логах
+    @EqualsAndHashCode.Include // Объект равен другому, если их ID совпадают
+    private Long id;
 
-  private Long userId; // Связь с пользователем
+    private Long userId; // Связь с пользователем
 
-  private String targetJobTitle; // Название профессии (например, "Java Developer")
+    private String targetJobTitle; // Название профессии (например, "Java Developer")
 
-  @Column(columnDefinition = "TEXT")
-  private String learningStyleNotes; // Здесь будет лежать что-то вроде: "Предпочитает практику, избегает длинных текстов, любит юмор"
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "config_id", referencedColumnName = "id")
+    @JsonManagedReference
+    private RoadmapConfig config;
 
-  @Column(columnDefinition = "TEXT")
-  private String userContext; // результаты теста + требования к вакансии
+    @Column(columnDefinition = "TEXT")
+    private String userContext; // результаты теста + требования к вакансии
 
-  private LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 
-  // Связь с блоками (Topic)
-  @OneToMany(mappedBy = "roadmap", cascade = CascadeType.ALL, orphanRemoval = true)
-  @Builder.Default
-  @OrderBy("orderIndex ASC")
-  @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
-  private List<Topic> topics = new ArrayList<>();
+    // Связь с блоками (Topic)
+    @OneToMany(mappedBy = "roadmap", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    @OrderBy("orderIndex ASC")
+    @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
+    private List<Topic> topics = new ArrayList<>();
 
-  @PrePersist
-  protected void onCreate() {
-    createdAt = LocalDateTime.now();
-  }
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+
+    public void addTopic(Topic topic) {
+        if (this.topics == null) this.topics = new ArrayList<>();
+        this.topics.add(topic);
+        topic.setRoadmap(this);
+    }
 }
