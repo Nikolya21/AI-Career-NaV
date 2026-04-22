@@ -1,155 +1,176 @@
-import React, { useState, useEffect } from 'react';
-import './InterviewPage.css';
+const { useState, useEffect } = React;
 
-const InterviewPage = ({ userId }) => {
+const InterviewPage = ({ userId, vacancyNow }) => {
     const [currentQuestion, setCurrentQuestion] = useState(null);
     const [currentNumber, setCurrentNumber] = useState(1);
     const [answer, setAnswer] = useState('');
+    const [activeLanguage, setActiveLanguage] = useState('none');
+    const [code, setCode] = useState('');
+    const [codeOutput, setCodeOutput] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const [isCompleted, setIsCompleted] = useState(false);
-    const [totalQuestions, setTotalQuestions] = useState(0);
+
+    const isCompilerVisible = activeLanguage !== 'none' &&
+        (currentQuestion?.compilerRequired === true || String(currentQuestion?.compilerRequired) === 'true');
 
     useEffect(() => {
-        loadFirstQuestion();
-    }, []);
+        const init = async () => {
+            if (vacancyNow && vacancyNow !== "undefined") {
+                await detectLanguage();
+                await loadFirstQuestion();
+            }
+        };
+        init();
+    }, [vacancyNow]);
+
+    const detectLanguage = async () => {
+        try {
+            const res = await fetch(`/api/v1/compiler/detect?vacancy=${encodeURIComponent(vacancyNow)}`);
+            const lang = await res.text();
+            const cleanLang = lang.trim().toLowerCase();
+            setActiveLanguage(cleanLang);
+
+            const templates = {
+                java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World!");\n    }\n}',
+                python: 'print("Hello World!")',
+                javascript: 'console.log("Hello World!");',
+                cpp: '#include <iostream>\nint main() {\n    std::cout << "Hello World!";\n    return 0;\n}'
+            };
+            setCode(templates[cleanLang] || '// Write your code here...');
+        } catch (e) {
+            setActiveLanguage('none');
+        }
+    };
 
     const loadFirstQuestion = async () => {
         try {
             setIsLoading(true);
-            // 1. СНАЧАЛА ГЕНЕРИРУЕМ ТЕСТ (POST запрос)
-            const questionsResponse = await fetch(`/api/v1/quiz/generate/${userId}`, {
-                method: 'POST'
-            });
-
-            if (!questionsResponse.ok) throw new Error('Ошибка генерации');
-
-            const questions = await questionsResponse.json();
-            setTotalQuestions(questions.length);
-
-            // 2. И ТОЛЬКО ПОТОМ ПОЛУЧАЕМ ПЕРВЫЙ ВОПРОС
+            await fetch(`/api/v1/quiz/generate/${userId}`, { method: 'POST' });
             const response = await fetch(`/api/v1/quiz/start/${userId}`);
+            if (!response.ok) throw new Error("Quiz not found");
             const data = await response.json();
-
             setCurrentQuestion(data);
-            setCurrentNumber(data.number);
-            setIsLoading(false);
-
+            setCurrentNumber(data.number || 1);
         } catch (error) {
-            console.error('Ошибка загрузки:', error);
+            console.error("Error loading question:", error);
+        } finally {
             setIsLoading(false);
         }
     };
 
-    const saveAnswer = async () => {
-        if (!answer.trim()) {
-            alert('Пожалуйста, введите ответ');
-            return;
-        }
-
+    const handleNext = async () => {
         try {
+            setIsLoading(true);
             const response = await fetch(`/api/v1/quiz/answer/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: currentQuestion.question,
-                    answer: answer.trim()
-                }),
+                    answer: isCompilerVisible ? code : answer
+                })
             });
 
-// Проверяем, есть ли содержимое в ответе
-            const text = await response.text();
-            const nextQuestion = text ? JSON.parse(text) : null;
+            if (response.status === 204 || !response.ok) {
+                window.location.href = `/dialogs/chat?userId=${userId}&type=ROADMAP`;
+                return;
+            }
 
-            setIsTransitioning(true);
+            const nextData = await response.json();
+            setCurrentQuestion(nextData);
+            setCurrentNumber(nextData.number);
             setAnswer('');
-
-            setTimeout(() => {
-                if (nextQuestion && nextQuestion.question) {
-                    setCurrentQuestion(nextQuestion);
-                    setCurrentNumber(nextQuestion.number);
-                    setIsTransitioning(false);
-                } else {
-                    // ЕСЛИ ВОПРОСОВ БОЛЬШЕ НЕТ:
-                    setIsCompleted(true);
-                    // Редирект на роадмап через 3 секунды
-                    setTimeout(() => {
-                        window.location.href = '/roadmap';
-                    }, 3000);
-                }
-            }, 500);
-
-        } catch (error) {
-            console.error('Ошибка сохранения ответа:', error);
-            alert('Произошла ошибка при сохранении ответа');
-            setIsTransitioning(false);
+            setCodeOutput('');
+        } catch (err) {
+            window.location.href = `/dialogs/chat?userId=${userId}&type=ROADMAP`;
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            saveAnswer();
+    const handleRunCode = async () => {
+        setCodeOutput("> Running compilation...");
+        try {
+            const res = await fetch('/api/v1/compiler/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, vacancy: vacancyNow })
+            });
+            const result = await res.json();
+            if (result.isTimeout) setCodeOutput("⚠️ Timeout: execution exceeded 15s");
+            else setCodeOutput(result.stderr ? `❌ Error:\n${result.stderr}` : `✅ Output:\n${result.stdout}`);
+        } catch (err) {
+            setCodeOutput("❌ Server error");
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="interview-container">
-                <div className="loader">Загрузка вопросов...</div>
-            </div>
-        );
-    }
-
-    if (isCompleted) {
-        return (
-            <div className="interview-container">
-                <div className="completion-card">
-                    <h2>🎉 Тест успешно завершен!</h2>
-                    <p>Спасибо за ваши ответы!</p>
-                </div>
-            </div>
-        );
-    }
+    if (isLoading) return <div className="loader-container"><div className="loader"></div><p>Preparing Interview...</p></div>;
 
     return (
-        <div className="interview-container">
-            <div className="progress-bar">
-                <div
-                    className="progress-fill"
-                    style={{ width: `${(currentNumber / totalQuestions) * 100}%` }}
-                />
-                <span className="progress-text">
-          Вопрос {currentNumber} из {totalQuestions}
-        </span>
-            </div>
+        <div className={`interview-layout ${isCompilerVisible ? 'with-compiler' : 'standard-view'}`}>
+            <div className="interview-main">
+                <div className="interview-header">
+                    <div className="brand">AI Career Navigator</div>
+                    <div className="progress-info">Step {currentNumber} of 12</div>
+                </div>
 
-            <div className={`question-card ${isTransitioning ? 'fade-out' : 'fade-in'}`}>
-                <h2 className="question-title">{currentQuestion?.question}</h2>
+                <div className="progress-container">
+                    <div className="progress-fill" style={{ width: `${(currentNumber / 12) * 100}%` }} />
+                </div>
 
-                <div className="answer-section">
-          <textarea
-              className="answer-input"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Введите ваш ответ здесь..."
-              rows={6}
-              disabled={isTransitioning}
-              autoFocus
-          />
+                <div className="question-card">
+                    <h2 className="question-title">{currentQuestion?.question}</h2>
 
-                    <button
-                        className="next-button"
-                        onClick={saveAnswer}
-                        disabled={isTransitioning}
-                    >
-                        {currentNumber === totalQuestions ? 'Завершить' : 'Следующий вопрос →'}
-                    </button>
+                    {!isCompilerVisible ? (
+                        <textarea
+                            className="answer-input"
+                            value={answer}
+                            onChange={(e) => setAnswer(e.target.value)}
+                            placeholder="Type your detailed answer here..."
+                        />
+                    ) : (
+                        <div className="compiler-hint">
+                            <span className="hint-icon">💡</span>
+                            This is a coding task. Please use the IDE on the right to implement your solution in <strong>{activeLanguage.toUpperCase()}</strong>.
+                        </div>
+                    )}
+
+                    <div className="actions">
+                        <button className="next-button" onClick={handleNext}>
+                            {currentNumber >= 12 ? 'Finish Interview' : 'Next Question →'}
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {isCompilerVisible && (
+                <div className="compiler-section">
+                    <div className="ide-window">
+                        <div className="ide-header">
+                            <div className="mac-dots">
+                                <span className="dot red"></span>
+                                <span className="dot yellow"></span>
+                                <span className="dot green"></span>
+                            </div>
+                            <div className="tab active">solution.{activeLanguage === 'python' ? 'py' : activeLanguage === 'java' ? 'java' : 'js'}</div>
+                            <button className="run-button" onClick={handleRunCode}>
+                                <span className="play-icon">▶</span> RUN
+                            </button>
+                        </div>
+                        <div className="editor-wrapper">
+                             <textarea
+                                 className="code-editor"
+                                 value={code}
+                                 onChange={(e) => setCode(e.target.value)}
+                                 spellCheck="false"
+                             />
+                        </div>
+                        <div className="terminal">
+                            <div className="terminal-header">Terminal</div>
+                            <pre className="console-output">{codeOutput || "$ Ready for execution..."}</pre>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
-
-export default InterviewPage;
+window.InterviewPage = InterviewPage;

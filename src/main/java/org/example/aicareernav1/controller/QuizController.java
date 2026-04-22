@@ -1,11 +1,12 @@
 package org.example.aicareernav1.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.testDto.QuestionDto;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.testService.QuizService;
+import org.example.aicareernav1.service.userService.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,95 +16,88 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/quiz")
 @RequiredArgsConstructor
+@Slf4j
 public class QuizController {
-  private final QuizService quizService;
-  private final UserRepository userRepository;
 
-  /**
-   * Генерирует тест для пользователя
-   */
-  @PostMapping("/generate/{userId}")
-  public ResponseEntity<List<QuestionDto>> generateTest(@PathVariable Long userId) throws JsonProcessingException {
-    String email = userRepository.findById(userId)
-      .map(UserEntity::getEmail)
-      .orElseThrow(() -> new RuntimeException("User not found"));
+    private final QuizService quizService;
+    private final UserRepository userRepository;
+    private final UserService userService;
 
-    List<QuestionDto> questions = quizService.generateAndSaveQuestions(userId, email);
+    @PostMapping("/generate/{userId}")
+    public ResponseEntity<List<QuestionDto>> generateTest(@PathVariable Long userId) {
+        // Получаем email пользователя
+        String email = userRepository.findById(userId)
+          .map(UserEntity::getEmail)
+          .orElseThrow(() -> new RuntimeException("User not found"));
 
-    // Создаем сессию для хранения ответов
-    quizService.createQuizSession(userId);
+        // Получаем вакансию/тему
+        String vacancy = userService.getVacancyByEmail(email);
 
-    return ResponseEntity.ok(questions);
-  }
+        // Очищаем старую сессию (результаты и анализ) перед генерацией нового теста
+        quizService.createQuizSession(userId);
 
-  /**
-   * Получить первый вопрос
-   */
-  @GetMapping("/start/{userId}")
-  public ResponseEntity<?> startQuiz(@PathVariable Long userId) {
-    List<QuestionDto> questions = quizService.getQuestions(userId);
-    if (questions == null || questions.isEmpty()) {
-      return ResponseEntity.badRequest().body("Тест не найден. Сначала сгенерируйте вопросы.");
+        // Генерируем вопросы (БД + AI), проставляем флаги компилятора и сохраняем в Redis
+        List<QuestionDto> questions = quizService.generateAndSaveQuestions(userId, vacancy);
+
+        return ResponseEntity.ok(questions);
     }
 
-    QuestionDto firstQuestion = questions.stream()
-      .filter(q -> q.getNumber() == 1)
-      .findFirst()
-      .orElse(questions.get(0));
+    @GetMapping("/start/{userId}")
+    public ResponseEntity<?> startQuiz(@PathVariable Long userId) {
+        // Получаем список вопросов из Redis
+        List<QuestionDto> questions = quizService.getQuestions(userId);
 
-    return ResponseEntity.ok(firstQuestion);
-  }
+        if (questions.isEmpty()) {
+            return ResponseEntity.badRequest().body("Тест не найден. Сначала сгенерируйте вопросы.");
+        }
 
-  /**
-   * Сохранить ответ и получить следующий вопрос
-   */
-  @PostMapping("/answer/{userId}")
-  public ResponseEntity<?> saveAnswer(
-    @PathVariable Long userId,
-    @RequestBody Map<String, String> request) {
-
-    String questionText = request.get("question");
-    String answer = request.get("answer");
-
-    // 1. Просто сохраняем ответ
-    quizService.saveAnswer(userId, questionText, answer);
-
-    // 2. Получаем список вопросов
-    List<QuestionDto> questions = quizService.getQuestions(userId);
-
-    // Если списка нет вообще, просто возвращаем 204 (конец)
-    if (questions == null || questions.isEmpty()) {
-      return ResponseEntity.noContent().build();
+        // Возвращаем первый вопрос (number 1)
+        return ResponseEntity.ok(questions.get(0));
     }
 
-    // 3. Ищем текущий номер
-    int currentNumber = questions.stream()
-      .filter(q -> q.getQuestion().equals(questionText))
-      .findFirst()
-      .map(QuestionDto::getNumber)
-      .orElse(0);
+    @PostMapping("/answer/{userId}")
+    public ResponseEntity<?> saveAnswer(@PathVariable Long userId, @RequestBody Map<String, String> request) {
+        String questionText = request.get("question");
+        String answer = request.get("answer");
 
-    // 4. Ищем следующий вопрос
-    QuestionDto nextQuestion = questions.stream()
-      .filter(q -> q.getNumber() == currentNumber + 1)
-      .findFirst()
-      .orElse(null);
+        // 1. Сохраняем ответ в JSON-поле пользователя в БД
+        quizService.saveAnswer(userId, questionText, answer);
 
-    // 5. Если следующего нет — статус 204 (No Content)
-    if (nextQuestion == null) {
-      return ResponseEntity.noContent().build();
+        // 2. Получаем все вопросы из Redis, чтобы найти следующий
+        List<QuestionDto> questions = quizService.getQuestions(userId);
+
+        int currentNumber = questions.stream()
+          .filter(q -> q.getQuestion().equals(questionText))
+          .findFirst()
+          .map(QuestionDto::getNumber)
+          .orElse(0);
+
+        // Ищем следующий вопрос по порядку
+        var nextQuestion = questions.stream()
+          .filter(q -> q.getNumber() == currentNumber + 1)
+          .findFirst();
+
+        if (nextQuestion.isPresent()) {
+            return ResponseEntity.ok(nextQuestion.get());
+        } else {
+            // 3. Если вопросов больше нет — запускаем финальный анализ
+            log.info("🏁 Тест завершен для пользователя {}. Запуск AI-анализа.", userId);
+            quizService.runFullQuizAnalysis(userId);
+
+            // Возвращаем 204 (No Content), чтобы фронт понял: тест окончен
+            return ResponseEntity.noContent().build();
+        }
     }
 
-    return ResponseEntity.ok(nextQuestion);
-  }
+    @GetMapping("/answers/{userId}")
+    public ResponseEntity<?> getAllAnswers(@PathVariable Long userId) {
+        return ResponseEntity.ok(quizService.getAllAnswers(userId));
+    }
 
-
-  /**
-   * Получить все ответы (для отладки)
-   */
-  @GetMapping("/answers/{userId}")
-  public ResponseEntity<?> getAllAnswers(@PathVariable Long userId) {
-    Map<String, String> answers = quizService.getAllAnswers(userId);
-    return ResponseEntity.ok(answers);
-  }
+    @PostMapping("/analyze/{userId}")
+    public ResponseEntity<String> analyze(@PathVariable Long userId) {
+        log.info("📥 Ручной запрос на анализ для пользователя: {}", userId);
+        String analysisResult = quizService.runFullQuizAnalysis(userId);
+        return ResponseEntity.ok(analysisResult);
+    }
 }

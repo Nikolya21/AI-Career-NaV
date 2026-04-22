@@ -32,6 +32,9 @@ public class UserEntity {
   @Column(name = "vacancy_now")
   private String vacancyNow;
 
+  @Column(name = "test_analysis", columnDefinition = "TEXT")
+  private String testAnalysis;
+
   @Column(name = "vacancy_requirements")
   private String vacancyRequirements;
 

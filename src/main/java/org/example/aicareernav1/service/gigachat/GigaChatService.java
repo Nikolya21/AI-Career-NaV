@@ -12,12 +12,18 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 public class GigaChatService {
 
   private final GigaChatClient gigaChatClient;
+
+  // Семафор разрешает только 1 поток одновременно.
+  // Это превращает хаотичные запросы в организованную очередь.
+  private final Semaphore semaphore = new Semaphore(1);
 
   @Value("${gigachat.max-tokens:12000}")
   private int maxTokens;
@@ -36,106 +42,122 @@ public class GigaChatService {
   }
 
   public String sendMessage(String prompt) {
-    log.debug("Отправка запроса в GigaChat, длина prompt: {}", prompt.length());
+    return executeWithLock(() -> {
+      log.debug("Отправка запроса в GigaChat, длина prompt: {}", prompt.length());
 
-    CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
+      CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
         .model(ModelName.GIGA_CHAT)
         .message(ChatMessage.builder()
-            .content(prompt)
-            .role(ChatMessageRole.USER)
-            .build())
+          .content(prompt)
+          .role(ChatMessageRole.USER)
+          .build())
         .maxTokens(maxTokens)
         .temperature(temperature)
         .topP(topP)
         .repetitionPenalty(repetitionPenalty)
         .build());
 
-    String content = response.choices().get(0).message().content();
-    log.info("📊 Длина ответа GigaChat: {}", content != null ? content.length() : 0);
-    return content != null ? content : "";
+      String content = response.choices().get(0).message().content();
+      log.info("📊 Длина ответа GigaChat: {}", content != null ? content.length() : 0);
+      return content != null ? content : "";
+    });
   }
 
-  /**
-   * Чат с системным промптом и контекстом (для диалогов)
-   * @param systemPrompt системный промпт (роль/инструкция для модели)
-   * @param context список сообщений из истории диалога
-   * @return ответ от модели
-   */
   public String chat(String systemPrompt, List<String> context) {
-    log.debug("Отправка запроса в GigaChat, systemPrompt длина: {}, контекст из {} сообщений",
-      systemPrompt.length(), context.size());
+    return executeWithLock(() -> {
+      log.debug("Отправка запроса в GigaChat (Chat Mode), контекст из {} сообщений", context.size());
 
-    // Формируем список сообщений
-    List<ChatMessage> messages = new ArrayList<>();
+      List<ChatMessage> messages = new ArrayList<>();
+      messages.add(ChatMessage.builder()
+        .content(systemPrompt)
+        .role(ChatMessageRole.SYSTEM)
+        .build());
 
-    // Добавляем системный промпт
-    messages.add(ChatMessage.builder()
-      .content(systemPrompt)
-      .role(ChatMessageRole.SYSTEM)
-      .build());
-
-    // Добавляем контекст диалога
-    for (String message : context) {
-      // Определяем роль по префиксу (User: или AI:)
-      if (message.startsWith("User:")) {
-        messages.add(ChatMessage.builder()
-          .content(message.substring(5).trim())
-          .role(ChatMessageRole.USER)
-          .build());
-      } else if (message.startsWith("AI:")) {
-        messages.add(ChatMessage.builder()
-          .content(message.substring(3).trim())
-          .role(ChatMessageRole.ASSISTANT)
-          .build());
-      } else {
-        // Если префикса нет, считаем сообщением пользователя
-        messages.add(ChatMessage.builder()
-          .content(message)
-          .role(ChatMessageRole.USER)
-          .build());
+      for (String message : context) {
+        if (message.startsWith("User:")) {
+          messages.add(ChatMessage.builder()
+            .content(message.substring(5).trim())
+            .role(ChatMessageRole.USER)
+            .build());
+        } else if (message.startsWith("AI:")) {
+          messages.add(ChatMessage.builder()
+            .content(message.substring(3).trim())
+            .role(ChatMessageRole.ASSISTANT)
+            .build());
+        } else {
+          messages.add(ChatMessage.builder()
+            .content(message)
+            .role(ChatMessageRole.USER)
+            .build());
+        }
       }
-    }
 
-    CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
-      .model(ModelName.GIGA_CHAT)
-      .messages(messages)
-      .maxTokens(maxTokens)
-      .temperature(temperature)
-      .topP(topP)
-      .repetitionPenalty(repetitionPenalty)
-      .build());
+      CompletionResponse response = gigaChatClient.completions(CompletionRequest.builder()
+        .model(ModelName.GIGA_CHAT)
+        .messages(messages)
+        .maxTokens(maxTokens)
+        .temperature(temperature)
+        .topP(topP)
+        .repetitionPenalty(repetitionPenalty)
+        .build());
 
-    String content = response.choices().get(0).message().content();
-    log.info("📊 Длина ответа GigaChat: {}", content != null ? content.length() : 0);
-    return content != null ? content : "";
+      String content = response.choices().get(0).message().content();
+      log.info("📊 Длина ответа GigaChat (Chat): {}", content != null ? content.length() : 0);
+      return content != null ? content : "";
+    });
   }
 
-  /**
-   * Чат с системным промптом и одним сообщением (упрощенный вариант)
-   */
   public String chat(String systemPrompt, String userMessage) {
-    List<String> context = List.of("User: " + userMessage);
-    return chat(systemPrompt, context);
+    return chat(systemPrompt, List.of("User: " + userMessage));
   }
 
-  /**
-   * Создать резюме диалога
-   * @param history полная история диалога
-   * @param prompt промпт для создания резюме
-   * @return резюме
-   */
   public String summarize(List<String> history, String prompt) {
-    log.debug("Создание резюме диалога из {} сообщений", history.size());
-
-    // Формируем полный запрос
     StringBuilder fullPrompt = new StringBuilder();
-    fullPrompt.append(prompt).append("\n\n");
-    fullPrompt.append("История диалога:\n");
-
+    fullPrompt.append(prompt).append("\n\nИстория диалога:\n");
     for (String message : history) {
       fullPrompt.append(message).append("\n");
     }
-
     return sendMessage(fullPrompt.toString());
+  }
+
+  /**
+   * Вспомогательный метод для управления очередью (Semaphore)
+   */
+  private String executeWithLock(GigaChatOperation operation) {
+    boolean acquired = false;
+    try {
+      // Ждем доступа к API до 30 секунд
+      acquired = semaphore.tryAcquire(30, TimeUnit.SECONDS);
+      if (!acquired) {
+        log.warn("⏳ Очередь к GigaChat переполнена. Запрос отменен.");
+        return "Ошибка: сервер перегружен. Попробуйте позже.";
+      }
+
+      // Выполняем саму операцию
+      String result = operation.run();
+
+      // КРИТИЧЕСКИ ВАЖНО: Пауза в 600мс ПОСЛЕ запроса,
+      // чтобы API GigaChat "отдышало" перед следующим вызовом.
+      Thread.sleep(600);
+
+      return result;
+
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.error("❌ Поток прерван во время ожидания AI");
+      return "";
+    } catch (Exception e) {
+      log.error("❌ Критическая ошибка GigaChat: {}", e.getMessage());
+      return "";
+    } finally {
+      if (acquired) {
+        semaphore.release();
+      }
+    }
+  }
+
+  @FunctionalInterface
+  private interface GigaChatOperation {
+    String run() throws Exception;
   }
 }

@@ -1,0 +1,6 @@
+CREATE SCHEMA IF NOT EXISTS aicareer;
+
+CREATE TABLE IF NOT EXISTS aicareer.tags (
+    id BIGSERIAL PRIMARY KEY,
+    name_lang Text UNIQUE
+);
