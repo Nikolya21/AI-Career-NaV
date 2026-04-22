@@ -4,8 +4,8 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.wishes.WishesResponseDto;
-import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.wishes.WishesService;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +19,7 @@ import java.util.List;
 public class VacancyByWishesController {
 
   private final WishesService wishesService;
-  private final GigaChatService gigaChatService;
+  private final YandexGptService gptService;
 
   private static final String PROMPT = """
         На основе следующих пожеланий пользователя подбери 3 наиболее подходящие IT-вакансии.
@@ -55,7 +55,7 @@ public class VacancyByWishesController {
       // 2. Отправляем запрос в GigaChat
       String prompt = String.format(PROMPT, wishes);
       log.info("Отправка запроса в GigaChat для подбора вакансий");
-      String aiResponse = gigaChatService.sendMessage(prompt);
+      String aiResponse = gptService.sendMessage(prompt);
       log.info("Ответ от GigaChat: {}", aiResponse);
 
       // 3. Парсим ответ
@@ -109,7 +109,34 @@ public class VacancyByWishesController {
         return vacancies;
       }
     }
-
+    else{
+      aiResponse = gptService.sendMessage("Выдан неправильный формат вакансий попробуй еще раз, только уже  с правильным форматированием как я тебя просил выше");
+      String[] lines2 = aiResponse.split("\n");
+      for (String line : lines2) {
+        if (line.contains(",")) {
+          String[] parts = line.split(",");
+          List<String> vacancies = Arrays.stream(parts)
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .limit(3)
+              .toList();
+          if (vacancies.size() >= 3) {
+            return vacancies;
+          }
+        }
+      }
+      if (aiResponse.contains(",")) {
+        String[] parts = aiResponse.split(",");
+        List<String> vacancies = Arrays.stream(parts)
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .limit(3)
+            .toList();
+        if (!vacancies.isEmpty()) {
+          return vacancies;
+        }
+    }
+  }
     return getDefaultVacancies();
   }
 

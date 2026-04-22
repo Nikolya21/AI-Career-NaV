@@ -23,6 +23,9 @@
     .upload-zone:hover { border-color: var(--accent); background: rgba(0,122,255,0.08); }
     .wishes-btn { margin-top: 40px; display: inline-flex; align-items: center; gap: 12px; padding: 18px 32px; background: #fff; color: #000; border-radius: 18px; font-weight: 700; text-decoration: none; transition: 0.3s; }
     .wishes-btn:hover { background: var(--accent); color: #fff; transform: translateY(-3px); }
+    /* Новая кнопка ML собеседование */
+    .ml-btn { margin-top: 20px; display: inline-flex; align-items: center; gap: 12px; padding: 16px 32px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 18px; font-weight: 600; color: white; text-decoration: none; transition: 0.3s; }
+    .ml-btn:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,122,255,0.3); }
     .resume-badge { display: inline-flex; align-items: center; padding: 12px 20px; background: rgba(255,255,255,0.06); border-radius: 16px; margin-top: 20px; }
   </style>
 </head>
@@ -53,6 +56,11 @@
     </div>
 
     <a th:href="@{/wishes/form(userId=${session.userId})}" class="wishes-btn">🎯 Мои пожелания →</a>
+
+    <!-- НОВАЯ КНОПКА ML СОБЕСЕДОВАНИЕ -->
+    <a th:href="@{/ml-interview}" class="ml-btn" target="_blank">
+      🤖 ML собеседование →
+    </a>
   </main>
 </div>
 </body>

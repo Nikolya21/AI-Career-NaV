@@ -8,6 +8,8 @@ import org.example.aicareernav1.model.vacancy.RealVacancy;
 import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.parser.ParserService;
+import org.example.aicareernav1.service.yandexGpt.YandexGptService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,8 +25,8 @@ import java.util.Optional;
 @Controller
 @RequiredArgsConstructor
 public class DialogVacancyController {
-
-  private final GigaChatService gigaChatService;
+  @Autowired
+  private final YandexGptService gptService;
   private final ParserService parserService;
   private final UserRepository userRepository;
 
@@ -60,7 +62,7 @@ public class DialogVacancyController {
     log.info("🆕 Начинаем новый диалог");
 
     // Генерируем первое сообщение от AI
-    String firstMessage = gigaChatService.chat(SYSTEM_PROMPT, "");
+    String firstMessage = gptService.chat(SYSTEM_PROMPT, "");
 
     List<String> discussionHistory = new ArrayList<>();
     discussionHistory.add(firstMessage);
@@ -117,7 +119,7 @@ public class DialogVacancyController {
     // Если достигли 5 вопросов, завершаем диалог
     if (questionCount >= 5) {
       String finalPrompt = buildFinalPrompt(discussionHistory);
-      String aiResponse = gigaChatService.sendMessage(finalPrompt);
+      String aiResponse = gptService.sendMessage(finalPrompt);
       List<String> suggestedVacancies = extractVacancies(aiResponse);
 
       session.setAttribute("suggestedVacancies", suggestedVacancies);
@@ -305,7 +307,12 @@ public class DialogVacancyController {
     context.append("- Предпочтения в работе\n\n");
     context.append("Верни ТОЛЬКО вопрос, без пояснений.");
 
-    return gigaChatService.sendMessage(context.toString());
+    return gptService.sendMessage(context.toString());
+  }
+
+  @GetMapping("/ml-interview")
+  public String mlInterview() {
+    return "ml-interview"; // имя HTML-шаблона
   }
 
 }
