@@ -23,6 +23,9 @@ public class Theory {
   @EqualsAndHashCode.Include // Объект равен другому, если их ID совпадают
   private Long id;
 
+  @Column(name = "external_id")
+  private String externalId; // Храним parent_id из RAG здесь
+
   @Column(columnDefinition = "TEXT")
   private String text; // Основной Markdown текст
 
