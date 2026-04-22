@@ -28,7 +28,7 @@ public interface RoadmapRepository extends JpaRepository<Roadmap, Long> {
     Optional<RoadmapConfig> findConfigByRoadmapId(@Param("roadmapId") Long roadmapId);
 
     @Query("""
-    SELECT DISTINCT t.externalId
+    SELECT DISTINCT t.externalId 
     FROM Roadmap r 
     JOIN r.topics top 
     JOIN top.checkpoints cp 
