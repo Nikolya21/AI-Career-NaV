@@ -1,4 +1,4 @@
-package org.example.aicareernav1.dto.roadmap;
+package org.example.aicareernav1.dto.roadmap.checkpoint;
 
 import lombok.Data;
 

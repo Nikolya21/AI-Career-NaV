@@ -36,4 +36,10 @@ public class Topic {
   @OrderBy("orderIndex ASC")
   @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
   private List<Checkpoint> checkpoints = new ArrayList<>();
+
+  public void addCheckpoint(Checkpoint checkpoint) {
+    if (this.checkpoints == null) this.checkpoints = new ArrayList<>();
+    this.checkpoints.add(checkpoint);
+    checkpoint.setTopic(this);
+  }
 }

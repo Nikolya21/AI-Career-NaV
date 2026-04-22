@@ -5,6 +5,10 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.example.aicareernav1.enums.CheckpointStatus;
+import org.example.aicareernav1.enums.CheckpointType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 @Entity // Помечает класс как таблицу в базе данных
@@ -34,6 +38,11 @@ public class Checkpoint {
   @JsonBackReference // "Обратная" сторона, которую Jackson должен игнорировать
   private Topic topic;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "roadmap_id", nullable = false) // Теперь каждый узел знает свою карту
+  @JsonBackReference
+  private Roadmap roadmap;
+
   @Column(columnDefinition = "TEXT")
   private String description; // Тот текст, который ты написал в скобках (например, "Пойми разницу между stack и heap")
 
@@ -43,12 +52,29 @@ public class Checkpoint {
   @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
   private Module module;
 
-//  @OneToOne(cascade = CascadeType.ALL) // Связь 1-к-1: у чекпоинта один финальный тест
-//  @JoinColumn(name = "test_id") // Создает колонку с ID теста в таблице Checkpoint
-//  private Test finalTest;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "parent_checkpoint_id")
+  @JsonBackReference
+  private Checkpoint parentCheckpoint;
 
-  @Column(name = "parent_checkpoint_id")
-  private Long parentCheckpointId;
+  @OneToMany(mappedBy = "parentCheckpoint", cascade = CascadeType.ALL)
+  @JsonManagedReference
+  private List<Checkpoint> children = new ArrayList<>();
 
+  // НОВОЕ: чтобы знать, какой именно урок вызвал ветвление
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "source_lesson_id")
+  private Lesson sourceLesson;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  private CheckpointType type = CheckpointType.MAIN;
+
+  @Builder.Default
   private Integer retryCount = 0; // Обычное поле, Hibernate сам сделает его колонкой
+
+  public void addChild(Checkpoint child) {
+    this.children.add(child);
+    child.setParentCheckpoint(this); // Синхронизируем обе стороны в одном месте
+  }
 }

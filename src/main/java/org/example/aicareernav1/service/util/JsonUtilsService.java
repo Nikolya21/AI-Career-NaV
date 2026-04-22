@@ -1,4 +1,4 @@
-package org.example.aicareernav1.service.json;
+package org.example.aicareernav1.service.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

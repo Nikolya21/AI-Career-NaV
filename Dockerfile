@@ -1,17 +1,12 @@
-# Используем образ под твой процессор (Ubuntu-based)
-FROM eclipse-temurin:17-jdk
-
-# Создаем рабочую директорию
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Создаем группу и пользователя без пароля (синтаксис для Ubuntu)
-RUN groupadd -r executor && useradd -r -g executor executor
-
-# Настраиваем права на папку, чтобы наш пользователь мог в ней писать
-RUN chown executor:executor /app
-
-# Переключаемся на этого пользователя
-USER executor
-
-# Команда по умолчанию (не обязательна, так как мы запускаем через Java)
-CMD ["sh"]
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

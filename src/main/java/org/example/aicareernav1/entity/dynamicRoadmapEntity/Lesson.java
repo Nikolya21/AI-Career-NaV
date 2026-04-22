@@ -29,6 +29,9 @@ public class Lesson {
   @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
   private Theory theory; // Теперь это объект
 
+  @Column(columnDefinition = "TEXT")
+  private String summary;
+
   @ManyToOne
   @JoinColumn(name = "module_id")
   @JsonBackReference
@@ -36,5 +39,6 @@ public class Lesson {
 
   @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
   @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
+  @Builder.Default
   private List<Task> tasks = new ArrayList<>();
 }

@@ -1,0 +1,45 @@
+:root {
+    --g-blue: #4285F4; --g-green: #34A853; --border: #DADCE0;
+}
+
+body { font-family: 'Google Sans', sans-serif; margin: 0; background: #F8F9FA; overflow: hidden; }
+
+#roadmap-container { width: 100vw; height: 100vh; }
+
+/* Header */
+.header-panel {
+    position: absolute; top: 20px; left: 20px; background: white;
+    padding: 12px 24px; border-radius: 30px; display: flex; align-items: center;
+    gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); z-index: 10;
+}
+.progress-track { width: 100px; height: 8px; background: #E8EAED; border-radius: 4px; }
+.progress-fill { height: 100%; background: var(--g-green); border-radius: 4px; transition: 0.5s; }
+
+/* Tooltip & Modals */
+.hidden { display: none !important; }
+
+#node-tooltip {
+    position: absolute; z-index: 1000;
+}
+#node-tooltip button {
+    background: var(--g-blue); color: white; border: none; padding: 8px 16px;
+    border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 5px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;
+}
+.modal-content {
+    background: white; padding: 25px; border-radius: 12px; width: 400px;
+}
+textarea { width: 100%; height: 100px; margin: 15px 0; padding: 10px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; resize: none; }
+
+/* Loader */
+#global-loader {
+    position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.8);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000;
+}
+.spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--g-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }

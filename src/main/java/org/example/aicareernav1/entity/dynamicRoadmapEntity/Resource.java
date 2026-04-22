@@ -3,7 +3,6 @@ package org.example.aicareernav1.entity.dynamicRoadmapEntity;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.enums.ResourceType;
 
 @Entity

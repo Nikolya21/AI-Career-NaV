@@ -39,4 +39,10 @@ public class Module {
   private List<Lesson> lessons = new ArrayList<>();
 
   // в будущем сюда можно будет добавить finalTest и собеседование
+
+  public void addLesson(Lesson lesson) {
+    if (this.lessons == null) this.lessons = new ArrayList<>();
+    this.lessons.add(lesson);
+    lesson.setModule(this);
+  }
 }

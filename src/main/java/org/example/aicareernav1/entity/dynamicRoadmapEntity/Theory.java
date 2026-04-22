@@ -31,6 +31,11 @@ public class Theory {
   @JsonManagedReference
   private List<Resource> resources = new ArrayList<>();
 
+  @ElementCollection
+  @CollectionTable(name = "theory_tags", joinColumns = @JoinColumn(name = "theory_id"))
+  @Column(name = "tag")
+  private List<String> tags = new ArrayList<>();
+
   @OneToOne
   @JoinColumn(name = "lesson_id")
   @JsonBackReference // "Обратная" сторона, которую Jackson должен игнорировать
