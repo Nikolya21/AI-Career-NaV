@@ -2,12 +2,12 @@ package org.example.aicareernav1.controller.roadmap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.aicareernav1.dto.roadmap.CheckpointStatusDTO;
+import org.example.aicareernav1.dto.roadmap.AnswerCheckResult;
+import org.example.aicareernav1.dto.roadmap.AnswerRequest;
 import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.ModuleResponse;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
-import org.example.aicareernav1.enums.CheckpointStatus;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -90,9 +90,9 @@ public class RoadmapController {
    */
   @PostMapping("/checkpoint/{id}/fill-content")
   public ResponseEntity<Void> fillContent(@PathVariable Long id) {
-    log.info("API: Запрос принят, запускаем фоновую генерацию для ID: {}", id);
+    log.info("API: Принудительное заполнение контента для Checkpoint ID: {}", id);
     roadmapService.fillCheckpointContent(id);
-    return ResponseEntity.accepted().build();
+    return ResponseEntity.ok().build();
   }
 
   /**
@@ -106,21 +106,26 @@ public class RoadmapController {
     return ResponseEntity.ok(roadmapService.calculateProgress(id));
   }
 
+
   /**
-   * Возвращает текущий статус этапа обучения (Checkpoint).
+   * Проверяет ответ пользователя на задачу.
    * <p>
-   * Метод используется фронтендом для реализации механизма опроса (polling).
-   * Это позволяет динамически обновлять интерфейс (например, скрывать лоадер),
-   * когда асинхронный процесс генерации контента через ИИ завершен.
+   * Для детерминированных типов (SINGLE_CHOICE, TRUE_FALSE, MATCHING, FILL_BLANK, ORDERING)
+   * проверка выполняется локально без обращения к ИИ.
+   * Для OPEN_QUESTION — ответ оценивается через GigaChat.
+   * Для PRACTICE и CODE_SNIPPET — возвращается подтверждение без оценки (ручная проверка).
    * </p>
    *
-   * @param id уникальный идентификатор чекпоинта
-   * @return {@link ResponseEntity} содержащая Map со статусом, например: {@code {"status": "ACTIVE"}}
-   * @see org.example.aicareernav1.enums.CheckpointStatus
+   * @param taskId  ID задачи
+   * @param request объект с ответом пользователя
+   * @return результат проверки с флагом {@code correct} и текстом объяснения
    */
-  @GetMapping("/checkpoint/{id}/status")
-  public ResponseEntity<CheckpointStatusDTO> getStatus(@PathVariable Long id) {
-    CheckpointStatus status = roadmapService.getCheckpointStatus(id);
-    return ResponseEntity.ok(new CheckpointStatusDTO(status.name()));
+  @PostMapping("/task/{taskId}/check")
+  public ResponseEntity<AnswerCheckResult> checkAnswer(
+      @PathVariable Long taskId,
+      @RequestBody AnswerRequest request) {
+    log.info("API: Проверка ответа для Task ID: {}", taskId);
+    AnswerCheckResult result = roadmapService.checkAnswer(taskId, request);
+    return ResponseEntity.ok(result);
   }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.example.aicareernav1.enums.TaskType;
+import org.hibernate.annotations.Check;
 
 @Entity
 @Getter
@@ -23,6 +24,7 @@ public class Task {
   private String title;
 
   @Enumerated(EnumType.STRING)
+  @Check(constraints = "type IN ('SINGLE_CHOICE', 'TRUE_FALSE', 'MATCHING', 'FILL_BLANK', 'ORDERING', 'PRACTICE', 'CODE_SNIPPET', 'OPEN_QUESTION')")
   private TaskType type;
 
   @Column(columnDefinition = "TEXT")

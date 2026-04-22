@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.roadmap;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.example.aicareernav1.mapper.ContentMapper;
 import org.example.aicareernav1.mapper.RoadmapMapper;
 import org.example.aicareernav1.repository.roadmap.CheckpointRepository;
 import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
+import org.example.aicareernav1.repository.roadmap.TaskRepository;
 import org.example.aicareernav1.repository.roadmap.TopicRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.roadmap.prompt.Prompts;
@@ -40,6 +42,7 @@ public class RoadmapService {
   private final RoadmapRepository roadmapRepository;
   private final TopicRepository topicRepository;
   private final CheckpointRepository checkpointRepository;
+  private final TaskRepository taskRepository;
   private final GigaChatService gigaChatService;
   private final ObjectMapper objectMapper;
 
@@ -446,7 +449,7 @@ public class RoadmapService {
 
       log.warn("Попытка {}: ИИ выдал невалидный JSON", i + 1);
       context = "ОШИБКА: Твой предыдущий ответ не является валидным JSON." +
-        " Выведи ТОЛЬКО чистый JSON, без пояснений, комментариев и Markdown-разметки: "
+        " Выведи ТОЛЬКО чистый JSON, и проверь на синтаксис его, без пояснений, комментариев и Markdown-разметки: "
         + lastResponse;
       if (i == attempts - 1) {
         log.warn("НЕ ПОЛУЧИЛОСЬ ОТФОРМАТИРОВАТЬ JSON: " + "\n" + context);
@@ -496,5 +499,163 @@ public class RoadmapService {
       .count();
 
     return (double) completedCount / allCheckpoints.size() * 100;
+  }
+
+
+  /**
+   * Проверяет ответ пользователя на задачу.
+   * <p>
+   * Детерминированные типы (SINGLE_CHOICE, TRUE_FALSE, MATCHING, FILL_BLANK, ORDERING)
+   * проверяются локально. OPEN_QUESTION делегируется ИИ. PRACTICE и CODE_SNIPPET
+   * всегда возвращают «принято» (требуют ручной проверки).
+   * </p>
+   *
+   * @param taskId  ID задачи
+   * @param request DTO с ответом пользователя
+   * @return {@link AnswerCheckResult} с флагом correctness и объяснением
+   */
+  @Transactional(readOnly = true)
+  public AnswerCheckResult checkAnswer(Long taskId, AnswerRequest request) {
+    Task task = taskRepository.findById(taskId)
+        .orElseThrow(() -> new EntityNotFoundException("Task не найден: " + taskId));
+
+    if (task.getContent() == null || task.getContent().isBlank()) {
+      return AnswerCheckResult.builder().correct(false).explanation("Задача не содержит данных для проверки").build();
+    }
+
+    JsonNode content;
+    try {
+      content = objectMapper.readTree(task.getContent());
+    } catch (Exception e) {
+      log.error("Ошибка парсинга content задачи {}: {}", taskId, e.getMessage());
+      return AnswerCheckResult.builder().correct(false).explanation("Ошибка в данных задачи").build();
+    }
+
+    JsonNode userAnswer = request.getAnswer();
+    if (userAnswer == null) {
+      return AnswerCheckResult.builder().correct(false).explanation("Ответ не передан").build();
+    }
+
+    return switch (task.getType()) {
+      case SINGLE_CHOICE          -> checkSingleChoice(content, userAnswer);
+      case TRUE_FALSE             -> checkTrueFalse(content, userAnswer);
+      case MATCHING               -> checkMatching(content, userAnswer);
+      case FILL_BLANK             -> checkFillBlank(content, userAnswer);
+      case ORDERING               -> checkOrdering(content, userAnswer);
+      case OPEN_QUESTION          -> checkOpenQuestionWithAI(content, userAnswer);
+      case PRACTICE, CODE_SNIPPET ->
+          AnswerCheckResult.builder()
+              .correct(true)
+              .explanation("Ответ принят! Практические задания и разбор кода оцениваются самостоятельно.")
+              .build();
+    };
+  }
+
+  private AnswerCheckResult checkSingleChoice(JsonNode content, JsonNode userAnswer) {
+    JsonNode correctNode = content.get("correct");
+    JsonNode selectedNode = userAnswer.get("selectedIndex");
+    if (correctNode == null || selectedNode == null) {
+      return AnswerCheckResult.builder().correct(false).explanation("Некорректная структура ответа").build();
+    }
+    int correct = correctNode.asInt();
+    boolean isCorrect = correct == selectedNode.asInt();
+    String explanation = isCorrect
+        ? "Верно!"
+        : "Неверно. Правильный вариант: " + getOptionText(content, correct);
+    return AnswerCheckResult.builder().correct(isCorrect).explanation(explanation).build();
+  }
+
+  private AnswerCheckResult checkTrueFalse(JsonNode content, JsonNode userAnswer) {
+    JsonNode isTrueNode = content.get("isTrue");
+    JsonNode answerNode = userAnswer.get("answer");
+    if (isTrueNode == null || answerNode == null) {
+      return AnswerCheckResult.builder().correct(false).explanation("Некорректная структура ответа").build();
+    }
+    boolean correct = isTrueNode.asBoolean();
+    boolean userChoice = answerNode.asBoolean();
+    boolean isCorrect = correct == userChoice;
+    String explanation = isCorrect
+        ? "Верно!"
+        : "Неверно. Правильный ответ: " + (correct ? "Правда" : "Ложь");
+    return AnswerCheckResult.builder().correct(isCorrect).explanation(explanation).build();
+  }
+
+  private AnswerCheckResult checkMatching(JsonNode content, JsonNode userAnswer) {
+    JsonNode correctPairs = content.get("pairs");
+    JsonNode userPairs = userAnswer.get("pairs");
+    if (correctPairs == null || userPairs == null) {
+      return AnswerCheckResult.builder().correct(false).explanation("Некорректная структура ответа").build();
+    }
+    boolean isCorrect = correctPairs.equals(userPairs);
+    String explanation = isCorrect
+        ? "Верно! Все пары совпадают."
+        : "Неверно. Проверьте ещё раз.";
+    return AnswerCheckResult.builder().correct(isCorrect).explanation(explanation).build();
+  }
+
+  private AnswerCheckResult checkFillBlank(JsonNode content, JsonNode userAnswer) {
+    JsonNode answerNode = content.get("answer");
+    JsonNode userText = userAnswer.get("answer");
+    if (answerNode == null || userText == null) {
+      return AnswerCheckResult.builder().correct(false).explanation("Некорректная структура ответа").build();
+    }
+    String correct = answerNode.asText().trim().toLowerCase();
+    String user = userText.asText().trim().toLowerCase();
+    boolean isCorrect = correct.equals(user);
+    String explanation = isCorrect
+        ? "Верно!"
+        : "Неверно. Правильный ответ: " + answerNode.asText();
+    return AnswerCheckResult.builder().correct(isCorrect).explanation(explanation).build();
+  }
+
+  private AnswerCheckResult checkOrdering(JsonNode content, JsonNode userAnswer) {
+    JsonNode correctOrder = content.get("correctOrder");
+    JsonNode userOrder = userAnswer.get("order");
+    if (correctOrder == null || userOrder == null) {
+      return AnswerCheckResult.builder().correct(false).explanation("Некорректная структура ответа").build();
+    }
+    boolean isCorrect = correctOrder.equals(userOrder);
+    String explanation = isCorrect
+        ? "Верно! Порядок правильный."
+        : "Порядок неверный. Попробуйте ещё раз.";
+    return AnswerCheckResult.builder().correct(isCorrect).explanation(explanation).build();
+  }
+
+  private AnswerCheckResult checkOpenQuestionWithAI(JsonNode content, JsonNode userAnswer) {
+    String question = content.has("question") ? content.get("question").asText() : "";
+    String hint = content.has("hint") ? content.get("hint").asText() : "";
+    String answer = userAnswer.has("answer") ? userAnswer.get("answer").asText() : "";
+
+    String prompt = String.format(
+        "Ты — строгий, но справедливый преподаватель. Проверь ответ студента.\n" +
+            "Вопрос: %s\n" +
+            "Подсказка для оценки (не показывай студенту): %s\n" +
+            "Ответ студента: %s\n\n" +
+            "Дай краткую обратную связь (2-3 предложения): что сказано верно, что неточно или упущено. " +
+            "Заверши одним предложением-выводом: засчитан ли ответ.",
+        question, hint, answer
+    );
+
+    try {
+      String feedback = gigaChatService.sendMessage(prompt);
+      boolean correct = feedback != null && !feedback.toLowerCase().contains("неверно") &&
+          !feedback.toLowerCase().contains("не засчитан");
+      return AnswerCheckResult.builder().correct(correct).explanation(feedback).build();
+    } catch (Exception e) {
+      log.error("Ошибка AI-проверки открытого вопроса: {}", e.getMessage());
+      return AnswerCheckResult.builder()
+          .correct(true)
+          .explanation("Ответ принят. Рекомендуем самостоятельно сверить его с подсказкой: " + hint)
+          .build();
+    }
+  }
+
+  /** Безопасно получает текст варианта ответа из массива options по индексу. */
+  private String getOptionText(JsonNode content, int index) {
+    JsonNode options = content.get("options");
+    if (options != null && options.isArray() && index >= 0 && index < options.size()) {
+      return options.get(index).asText();
+    }
+    return String.valueOf(index);
   }
 }

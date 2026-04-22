@@ -1,105 +1,169 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title th:text="${checkpoint.title}">Урок</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title th:text="${checkpoint.title}">Урок</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <script th:inline="javascript">
-        window.roadmapId = [[${roadmapId}]];
-    </script>
-    <script src="/js/lesson-manager.js"></script>
+  <script th:inline="javascript">
+    window.roadmapId = [[${roadmapId}]];
+  </script>
+  <script src="/js/lesson-manager.js"></script>
 
-    <style>
-        :root { --google-blue: #1A73E8; }
-        body { font-family: 'Roboto', sans-serif; color: #3C4043; line-height: 1.6; margin: 0; display: flex; background: #F8F9FA; }
-        .sidebar { width: 300px; border-right: 1px solid #E8EAED; height: 100vh; padding: 20px; overflow-y: auto; background: white; position: sticky; top: 0; }
-        .content { flex: 1; padding: 40px 100px; overflow-y: auto; }
+  <style>
+    :root { --google-blue: #1A73E8; }
+    body { font-family: 'Roboto', sans-serif; color: #3C4043; line-height: 1.6; margin: 0; display: flex; background: #F8F9FA; }
+    .sidebar { width: 300px; border-right: 1px solid #E8EAED; height: 100vh; padding: 20px; overflow-y: auto; background: white; position: sticky; top: 0; }
+    .content { flex: 1; padding: 40px 100px; overflow-y: auto; }
 
-        .theory-card { background: #FFFFFF; border: 1px solid #DADCE0; border-radius: 8px; padding: 32px; margin-bottom: 24px; }
-        .theory-content { font-size: 16px; color: #3C4043; }
+    .theory-card { background: #FFFFFF; border: 1px solid #DADCE0; border-radius: 8px; padding: 32px; margin-bottom: 24px; }
+    .theory-content { font-size: 16px; color: #3C4043; }
 
-        /* Стили для Markdown кода */
-        pre { background: #f1f3f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
-        code { font-family: 'Roboto Mono', monospace; color: #d93025; }
+    /* Стили для Markdown кода */
+    pre { background: #f1f3f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    code { font-family: 'Roboto Mono', monospace; color: #d93025; }
 
-        .resource-link { display: inline-flex; align-items: center; padding: 8px 16px; border: 1px solid #DADCE0; border-radius: 20px; text-decoration: none; color: var(--google-blue); margin: 5px; font-size: 14px; }
-        .btn-back { color: #5F6368; text-decoration: none; display: flex; align-items: center; margin-bottom: 24px; font-weight: 500; }
+    .resource-link { display: inline-flex; align-items: center; padding: 8px 16px; border: 1px solid #DADCE0; border-radius: 20px; text-decoration: none; color: var(--google-blue); margin: 5px; font-size: 14px; }
+    .btn-back { color: #5F6368; text-decoration: none; display: flex; align-items: center; margin-bottom: 24px; font-weight: 500; }
 
-        #global-loader {
-            display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-            background:rgba(255,255,255,0.9); z-index:1000; align-items:center; justify-content:center; flex-direction:column;
-        }
-    </style>
+    #global-loader {
+      display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(255,255,255,0.9); z-index:1000; align-items:center; justify-content:center; flex-direction:column;
+    }
+
+    /* ===== Задачи ===== */
+    .tasks-section { margin-top: 32px; border-top: 2px solid #E8EAED; padding-top: 24px; }
+    .tasks-section h3 { font-size: 16px; font-weight: 500; color: #5F6368; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 20px; }
+    .task-widget { background: #F8F9FA; border: 1px solid #DADCE0; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .task-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .task-type-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px; white-space: nowrap; flex-shrink: 0; }
+    .badge-choice  { background: #E8F0FE; color: #1967D2; }
+    .badge-tf      { background: #E6F4EA; color: #137333; }
+    .badge-match   { background: #FEF7E0; color: #B06000; }
+    .badge-fill    { background: #FCE8E6; color: #C5221F; }
+    .badge-order   { background: #F3E8FD; color: #7B1FA2; }
+    .badge-open    { background: #E8EAF6; color: #303F9F; }
+    .badge-practice{ background: #E0F2F1; color: #00695C; }
+
+    .task-options { list-style: none; padding: 0; margin: 0; }
+    .task-options li { padding: 10px 14px; border: 1px solid #DADCE0; border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s; }
+    .task-options li:hover { background: #E8F0FE; }
+    .task-options li.selected { background: #E8F0FE; border-color: var(--google-blue); }
+    .task-options li.correct  { background: #E6F4EA; border-color: #34A853; color: #137333; }
+    .task-options li.wrong    { background: #FCE8E6; border-color: #EA4335; color: #C5221F; }
+
+    .tf-buttons { display: flex; gap: 12px; margin: 10px 0; }
+    .tf-btn { padding: 10px 28px; border: 1px solid #DADCE0; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.15s; background: white; }
+    .tf-btn:hover { background: #E8F0FE; }
+    .tf-btn.selected { background: #E8F0FE; border-color: var(--google-blue); }
+    .tf-btn.correct  { background: #E6F4EA; border-color: #34A853; color: #137333; }
+    .tf-btn.wrong    { background: #FCE8E6; border-color: #EA4335; color: #C5221F; }
+
+    .matching-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+    .matching-select { width: 100%; padding: 8px; border: 1px solid #DADCE0; border-radius: 6px; font-family: inherit; font-size: 14px; }
+
+    .fill-blank-input { width: 100%; padding: 10px 14px; border: 1px solid #DADCE0; border-radius: 6px; font-family: inherit; font-size: 15px; box-sizing: border-box; }
+    .fill-blank-input.correct { border-color: #34A853; background: #E6F4EA; }
+    .fill-blank-input.wrong   { border-color: #EA4335; background: #FCE8E6; }
+
+    .ordering-list { list-style: none; padding: 0; margin: 10px 0; }
+    .ordering-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid #DADCE0; border-radius: 6px; margin-bottom: 8px; background: white; cursor: default; }
+    .ordering-item button { background: none; border: 1px solid #DADCE0; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 16px; line-height: 1; }
+    .ordering-item button:hover { background: #E8F0FE; }
+
+    .open-answer-area { width: 100%; min-height: 80px; padding: 10px 14px; border: 1px solid #DADCE0; border-radius: 6px; font-family: inherit; font-size: 14px; resize: vertical; box-sizing: border-box; }
+
+    .task-submit-btn { margin-top: 14px; padding: 9px 24px; background: var(--google-blue); color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; font-size: 14px; }
+    .task-submit-btn:hover { background: #1558B0; }
+    .task-submit-btn:disabled { background: #DADCE0; cursor: default; }
+
+    .task-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 6px; font-size: 14px; display: none; }
+    .task-feedback.correct { background: #E6F4EA; border: 1px solid #34A853; color: #137333; }
+    .task-feedback.wrong   { background: #FCE8E6; border: 1px solid #EA4335; color: #C5221F; }
+    .task-feedback.info    { background: #E8F0FE; border: 1px solid var(--google-blue); color: #1967D2; }
+  </style>
 </head>
 <body>
 
 <div id="global-loader">
-    <div class="spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid var(--google-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
-    <p style="margin-top:15px; font-weight:500;">ИИ создает новый этап обучения...</p>
+  <div class="spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid var(--google-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
+  <p style="margin-top:15px; font-weight:500;">ИИ создает новый этап обучения...</p>
 </div>
 
 <div class="sidebar">
-    <a th:href="@{/roadmap/{id}(id=${roadmapId})}" style="text-decoration: none; color: #5F6368; display: flex; align-items: center; margin-bottom: 30px;">
-        <span class="material-icons" style="margin-right: 8px;">arrow_back</span>
-        Назад к плану
-    </a>
-    <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.8px; color: #70757A; margin-bottom: 16px;">Этап обучения</h3>
-    <p th:text="${checkpoint.title}" style="font-weight: 500; font-size: 18px; margin: 0;"></p>
-    <p th:text="${checkpoint.description}" style="color: #5F6368; font-size: 14px; margin-top: 8px;"></p>
+  <a th:href="@{/roadmap/{id}(id=${roadmapId})}" style="text-decoration: none; color: #5F6368; display: flex; align-items: center; margin-bottom: 30px;">
+    <span class="material-icons" style="margin-right: 8px;">arrow_back</span>
+    Назад к плану
+  </a>
+  <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.8px; color: #70757A; margin-bottom: 16px;">Этап обучения</h3>
+  <p th:text="${checkpoint.title}" style="font-weight: 500; font-size: 18px; margin: 0;"></p>
+  <p th:text="${checkpoint.description}" style="color: #5F6368; font-size: 14px; margin-top: 8px;"></p>
 </div>
 
 <div class="content">
 
-    <div th:if="${module != null}">
-        <h1 th:text="${module.title}" style="font-size: 32px; font-weight: 400; margin-bottom: 40px; color: #202124;"></h1>
+  <div th:if="${module != null}">
+    <h1 th:text="${module.title}" style="font-size: 32px; font-weight: 400; margin-bottom: 40px; color: #202124;"></h1>
 
-        <div th:each="lesson : ${module.lessons}" class="theory-card">
-            <h2 th:text="${lesson.title}" style="margin-top:0; color: #202124;"></h2>
+    <div th:each="lesson : ${module.lessons}" class="theory-card">
+      <h2 th:text="${lesson.title}" style="margin-top:0; color: #202124;"></h2>
 
-            <div class="theory-content" th:if="${lesson.theory != null}" th:text="${lesson.theory.text}"></div>
+      <div class="theory-content" th:if="${lesson.theory != null}" th:text="${lesson.theory.text}"></div>
 
-            <div th:if="${lesson.theory != null && !#lists.isEmpty(lesson.theory.resources)}"
-                 style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
-                <p style="font-weight:500; margin-bottom:10px;">Материалы для изучения:</p>
-                <a th:each="res : ${lesson.theory.resources}"
-                   th:href="${res.url}" class="resource-link" target="_blank">
-                    <span class="material-icons" style="font-size: 18px; margin-right: 8px;">link</span>
-                    <span th:text="${res.title}"></span>
-                </a>
-            </div>
+      <div th:if="${lesson.theory != null && !#lists.isEmpty(lesson.theory.resources)}"
+           style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+        <p style="font-weight:500; margin-bottom:10px;">Материалы для изучения:</p>
+        <a th:each="res : ${lesson.theory.resources}"
+           th:href="${res.url}" class="resource-link" target="_blank">
+          <span class="material-icons" style="font-size: 18px; margin-right: 8px;">link</span>
+          <span th:text="${res.title}"></span>
+        </a>
+      </div>
+
+      <!-- Блок заданий для самопроверки -->
+      <div th:if="${lesson.tasks != null && !#lists.isEmpty(lesson.tasks)}" class="tasks-section">
+        <h3>Проверь себя</h3>
+        <div th:each="task : ${lesson.tasks}"
+             class="task-widget"
+             th:attr="data-task-id=${task.id},
+                              data-task-type=${task.type},
+                              data-task-title=${task.title},
+                              data-task-content=${task.content}">
+          <!-- Интерактивный виджет отрисовывает JavaScript -->
         </div>
-
-        <div style="text-align: center; margin-top: 40px; padding-bottom: 60px;">
-            <button th:onclick="'requestDeepen(' + ${checkpoint.id} + ')'"
-                    style="background: var(--google-blue); color: white; border: none; padding: 12px 32px; border-radius: 4px; font-weight: 500; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
-                Хочу узнать подробнее
-            </button>
-        </div>
+      </div>
     </div>
 
-    <div th:if="${module == null}" class="alert-info">
-        <div style="display: flex; align-items: center; flex-direction: column; padding: 20px;">
-            <span class="material-icons rotating" style="font-size: 48px; color: var(--google-blue);">autorenew</span>
-            <h2 style="margin-top: 20px;">ИИ готовит ваш персонализированный урок...</h2>
-            <p>Обычно это занимает около минуты. Страница обновится автоматически.</p>
-        </div>
+    <div style="text-align: center; margin-top: 40px; padding-bottom: 60px;">
+      <button th:onclick="'requestDeepen(' + ${checkpoint.id} + ')'"
+              style="background: var(--google-blue); color: white; border: none; padding: 12px 32px; border-radius: 4px; font-weight: 500; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+        Хочу узнать подробнее
+      </button>
     </div>
+  </div>
 
-    <style>
-        /* Анимация вращения */
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .rotating {
-            display: inline-block;
-            animation: rotate 2s linear infinite;
-        }
-    </style>
+  <div th:if="${module == null}" class="alert-info">
+    <div style="display: flex; align-items: center; flex-direction: column; padding: 20px;">
+      <span class="material-icons rotating" style="font-size: 48px; color: var(--google-blue);">autorenew</span>
+      <h2 style="margin-top: 20px;">ИИ готовит ваш персонализированный урок...</h2>
+      <p>Обычно это занимает около минуты. Страница обновится автоматически.</p>
+    </div>
+  </div>
+
+  <style>
+    /* Анимация вращения */
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .rotating {
+      display: inline-block;
+      animation: rotate 2s linear infinite;
+    }
+  </style>
 
 </div>
 

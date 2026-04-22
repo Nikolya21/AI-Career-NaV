@@ -12,4 +12,3 @@ public class RoadMapResponse {
   private String message;
   private List<RoadmapTaskEntity> plan;
 }
-
