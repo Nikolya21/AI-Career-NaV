@@ -1,0 +1,38 @@
+services:
+  java-db:
+    image: 'postgres:latest'
+    container_name: java-postgres-main
+    environment:
+      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '5432:5432'
+    networks:
+      - shared-network
+
+  redis:
+    image: 'redis:latest'
+    container_name: redis_cache
+    ports:
+      - '6379:6379'
+    networks:
+      - shared-network
+
+  java-app:
+    build: .
+    container_name: java-spring-app
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://java-db:5432/mydatabase
+      - PYTHON_SERVICE_URL=http://python-fastapi-service:8000
+    depends_on:
+      - java-db
+    networks:
+      - shared-network
+
+networks:
+  shared-network:
+    external: true
+    name: ai-career-network
