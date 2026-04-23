@@ -39,5 +39,9 @@ public class SearchRequest {
     @Builder.Default
     private List<String> tags = new ArrayList<>();
 
+    // Список parent_id уроков, которые уже есть в Roadmap
+    @Builder.Default
+    private List<String> excludedParentIds = new ArrayList<>();
+
     private Map<String, Object> metadata;
 }
