@@ -9,4 +9,10 @@ import org.springframework.stereotype.Repository;
 public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
   Optional<UserEntity> findByEmail(String email);
   boolean existsByEmail(String email);
+
+  /**
+   * Поиск пользователя по идентификатору дорожной карты.
+   * Возвращает Optional, так как пользователя с таким roadmapId может не существовать.
+   */
+  Optional<UserEntity> findByRoadmapId(Long roadmapId);
 }

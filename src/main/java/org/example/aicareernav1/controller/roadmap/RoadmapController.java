@@ -6,8 +6,11 @@ import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.LessonResponse;
 import org.example.aicareernav1.dto.roadmap.response.RoadmapResponse;
+import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.service.roadmap.LessonService;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
+import org.example.aicareernav1.service.user.impl.UserServiceImpl;
+import org.example.aicareernav1.service.userService.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +27,7 @@ import java.util.Map;
 public class RoadmapController {
 
   private final RoadmapService roadmapService;
+  private final UserServiceImpl userService;
   private final LessonService lessonService;
 
   /**
@@ -34,7 +38,8 @@ public class RoadmapController {
   @GetMapping("/{roadmapId}/root-action")
   public ResponseEntity<Map<String, String>> getRootRedirect(@PathVariable Long roadmapId) {
     // Ваша логика: куда именно должен попасть пользователь при клике на ROOT
-    String targetUrl = "/dashboard/roadmap/" + roadmapId + "/statistics";
+    UserEntity user = userService.getUserByRoadmapId(roadmapId);
+    String targetUrl = "/personal-cabinet" + roadmapId;
     Map<String, String> response = new HashMap<>();
     response.put("redirectUrl", targetUrl);
 
@@ -46,11 +51,16 @@ public class RoadmapController {
    * Возвращает ID созданного Roadmap для последующего редиректа.
    */
   @PostMapping("/generate")
-  public ResponseEntity<RoadmapResponse> generateRoadmap(@RequestBody RoadmapGenerationRequest request) {
+  public ResponseEntity<RoadmapResponse> generateRoadmap(@RequestBody RoadmapGenerationRequest request, @RequestParam Long userId) {
     log.info("API: Запрос на полную генерацию Roadmap для вакансии: {}", request.getJobTitle());
-    RoadmapResponse roadmap = roadmapService.generateFullRoadmap(request);
-    roadmapService.processUserFeedback(roadmap.getId(), request.getTestResult());
-    return ResponseEntity.ok(roadmap);
+    RoadmapResponse roadmapResponse = roadmapService.generateFullRoadmap(request);
+    roadmapService.processUserFeedback(roadmapResponse.getId(), request.getTestResult());
+    UserEntity user = userService.getUserById(userId);
+    user.setRoadmapId(roadmapResponse.getId());
+    userService.saveUser(user);
+
+    log.info("✅ Roadmap успешно создан (ID: {}) и привязан к пользователю {}", roadmapResponse.getId(), userId);
+    return ResponseEntity.ok(roadmapResponse);
   }
 
   /**

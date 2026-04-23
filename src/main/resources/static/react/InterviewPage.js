@@ -57,34 +57,54 @@ const InterviewPage = ({ userId, vacancyNow }) => {
         }
     };
 
-    const handleNext = async () => {
-        try {
-            setIsLoading(true);
-            const response = await fetch(`/api/v1/quiz/answer/${userId}`, {
+const handleNext = async () => {
+    try {
+        setIsLoading(true);
+        const response = await fetch(`/api/v1/quiz/answer/${userId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: currentQuestion.question,
+                answer: isCompilerVisible ? code : answer
+            })
+        });
+
+        // Если тест завершен (сервер вернул 204 No Content)
+        if (response.status === 204) {
+            console.log("🏁 Тест окончен, генерируем Roadmap...");
+
+            // Вызываем наш новый метод финализации
+            const analyzeRes = await fetch(`/api/v1/quiz/analyze/${userId}`, { method: 'POST' });
+            const generationRequestObj = await analyzeRes.json();
+            console.log("📦 Объект получен. Шаг 2: Генерация карты (может занять время)...");
+            const finalRes = await fetch(`/api/v1/roadmap/generate?userId=${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    question: currentQuestion.question,
-                    answer: isCompilerVisible ? code : answer
-                })
+                body: JSON.stringify(generationRequestObj)
             });
-
-            if (response.status === 204 || !response.ok) {
-                window.location.href = `/dialogs/chat?userId=${userId}&type=ROADMAP`;
-                return;
+            if (finalRes.ok) {
+                const roadmapData = await finalRes.json();
+                // Теперь у нас есть РЕАЛЬНЫЙ ID: roadmapData.id
+                window.location.href = `/roadmap/${roadmapData.id}`;
+            } else {
+                // Если что-то пошло не так, отправляем в общий кабинет
+                throw new Error("Ошибка при генерации карты");
             }
-
-            const nextData = await response.json();
-            setCurrentQuestion(nextData);
-            setCurrentNumber(nextData.number);
-            setAnswer('');
-            setCodeOutput('');
-        } catch (err) {
-            window.location.href = `/dialogs/chat?userId=${userId}&type=ROADMAP`;
-        } finally {
-            setIsLoading(false);
+            return;
         }
-    };
+
+        // Логика перехода к следующему вопросу...
+        const nextData = await response.json();
+        setCurrentQuestion(nextData);
+        setCurrentNumber(nextData.number);
+        setAnswer('');
+    } catch (err) {
+        console.error("Ошибка:", err);
+//        window.location.href = `/personal-cabinet`;
+    } finally {
+        setIsLoading(false);
+    }
+};
 
     const handleRunCode = async () => {
         setCodeOutput("> Running compilation...");

@@ -1,5 +1,6 @@
 package org.example.aicareernav1.service.user.impl;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.example.aicareernav1.dto.user.*;
 import org.example.aicareernav1.model.user.*;
@@ -39,6 +40,21 @@ public class UserServiceImpl implements UserService {
   private final UserPreferencesJpaRepository userPreferencesJpaRepository;
 
   // ========== Вспомогательные методы конвертации ==========
+
+  public UserEntity getUserByRoadmapId(Long roadmapId) {
+    return userJpaRepository.findByRoadmapId(roadmapId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+  }
+
+  @Transactional
+  public UserEntity saveUser(UserEntity user) {
+    return userJpaRepository.save(user);
+  }
+
+  public UserEntity getUserById(Long userId) {
+    return userJpaRepository.findById(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+  }
 
   private User toUser(UserEntity entity) {
     if (entity == null) return null;
