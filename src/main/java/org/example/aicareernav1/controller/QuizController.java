@@ -111,6 +111,8 @@ public class QuizController {
         user.setRoadmapId(roadmapResponse.getId()); //
         userRepository.save(user); //
 
+        log.info("UserEntity: {}", user.toString());
+
         log.info("✅ Roadmap успешно создан с ID: {} и привязан к пользователю: {}", roadmapResponse.getId(), userId);
 
         return ResponseEntity.ok(roadmapResponse);

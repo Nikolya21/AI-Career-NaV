@@ -13,10 +13,13 @@ const InterviewPage = ({ userId, vacancyNow }) => {
         (currentQuestion?.compilerRequired === true || String(currentQuestion?.compilerRequired) === 'true');
 
     useEffect(() => {
+        console.log("🛠 [INIT] Запуск инициализации. UserId:", userId, "Vacancy:", vacancyNow);
         const init = async () => {
             if (vacancyNow && vacancyNow !== "undefined") {
                 await detectLanguage();
                 await loadFirstQuestion();
+            } else {
+                console.warn("⚠️ [INIT] vacancyNow не определен, ожидание...");
             }
         };
         init();
@@ -24,9 +27,11 @@ const InterviewPage = ({ userId, vacancyNow }) => {
 
     const detectLanguage = async () => {
         try {
+            console.log("🔍 [Compiler] Определение языка для:", vacancyNow);
             const res = await fetch(`/api/v1/compiler/detect?vacancy=${encodeURIComponent(vacancyNow)}`);
             const lang = await res.text();
             const cleanLang = lang.trim().toLowerCase();
+            console.log("✅ [Compiler] Определен язык:", cleanLang);
             setActiveLanguage(cleanLang);
 
             const templates = {
@@ -37,6 +42,7 @@ const InterviewPage = ({ userId, vacancyNow }) => {
             };
             setCode(templates[cleanLang] || '// Write your code here...');
         } catch (e) {
+            console.error("❌ [Compiler] Ошибка определения языка:", e);
             setActiveLanguage('none');
         }
     };
@@ -44,69 +50,86 @@ const InterviewPage = ({ userId, vacancyNow }) => {
     const loadFirstQuestion = async () => {
         try {
             setIsLoading(true);
-            await fetch(`/api/v1/quiz/generate/${userId}`, { method: 'POST' });
+            console.log("🆕 [Quiz] Генерация квиза для пользователя...");
+            const genRes = await fetch(`/api/v1/quiz/generate/${userId}`, { method: 'POST' });
+            console.log("📡 [Quiz] POST /generate статус:", genRes.status);
+
             const response = await fetch(`/api/v1/quiz/start/${userId}`);
-            if (!response.ok) throw new Error("Quiz not found");
+            console.log("📡 [Quiz] GET /start статус:", response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Ошибка загрузки квиза: ${response.status}. Тело: ${errorText}`);
+            }
+
             const data = await response.json();
+            console.log("📝 [Quiz] Первый вопрос получен:", data);
             setCurrentQuestion(data);
             setCurrentNumber(data.number || 1);
         } catch (error) {
-            console.error("Error loading question:", error);
+            console.error("❌ [Quiz] Ошибка при загрузке вопроса:", error);
         } finally {
             setIsLoading(false);
         }
     };
 
-const handleNext = async () => {
-    try {
-        setIsLoading(true);
-        const response = await fetch(`/api/v1/quiz/answer/${userId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                question: currentQuestion.question,
-                answer: isCompilerVisible ? code : answer
-            })
-        });
+    const handleNext = async () => {
+        try {
+            setIsLoading(true);
+            console.log(`➡️ [Step ${currentNumber}] Отправка ответа...`);
 
-        // Если тест завершен (сервер вернул 204 No Content)
-        if (response.status === 204) {
-            console.log("🏁 Тест окончен, генерируем Roadmap...");
-
-            // Вызываем наш новый метод финализации
-            const analyzeRes = await fetch(`/api/v1/quiz/analyze/${userId}`, { method: 'POST' });
-            const generationRequestObj = await analyzeRes.json();
-            console.log("📦 Объект получен. Шаг 2: Генерация карты (может занять время)...");
-            const finalRes = await fetch(`/api/v1/roadmap/generate?userId=${userId}`, {
+            const response = await fetch(`/api/v1/quiz/answer/${userId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(generationRequestObj)
+                body: JSON.stringify({
+                    question: currentQuestion.question,
+                    answer: isCompilerVisible ? code : answer
+                })
             });
-            if (finalRes.ok) {
-                const roadmapData = await finalRes.json();
-                // Теперь у нас есть РЕАЛЬНЫЙ ID: roadmapData.id
-                window.location.href = `/roadmap/${roadmapData.id}`;
-            } else {
-                // Если что-то пошло не так, отправляем в общий кабинет
-                throw new Error("Ошибка при генерации карты");
-            }
-            return;
-        }
 
-        // Логика перехода к следующему вопросу...
-        const nextData = await response.json();
-        setCurrentQuestion(nextData);
-        setCurrentNumber(nextData.number);
-        setAnswer('');
-    } catch (err) {
-        console.error("Ошибка:", err);
-//        window.location.href = `/personal-cabinet`;
-    } finally {
-        setIsLoading(false);
-    }
-};
+            console.log("📡 [Answer] Статус ответа сервера:", response.status);
+
+            if (response.status === 204) {
+                console.log("🏁 [Finish] Тест окончен. Инициация финализации...");
+
+                // Использование твоего нового Java-метода (анализ + генерация в одном флаконе)
+                console.log("📡 [Finalize] Вызов finalize-and-generate...");
+                const finalRes = await fetch(`/api/v1/quiz/${userId}/finalize-and-generate`, {
+                    method: 'POST'
+                });
+
+                console.log("📡 [Finalize] Статус генерации:", finalRes.status);
+
+                if (finalRes.ok) {
+                    const roadmapData = await finalRes.json();
+                    console.log("✅ [Success] Roadmap создан:", roadmapData);
+                    // Перенаправление на страницу по ID из ответа
+                    window.location.href = `/roadmap/${roadmapData.id}`;
+                } else {
+                    const errDetail = await finalRes.text();
+                    console.error("❌ [Error] Сбой финализации:", errDetail);
+                    throw new Error("Ошибка при генерации финальной карты");
+                }
+                return;
+            }
+
+            const nextData = await response.json();
+            console.log("📥 [Next] Получен следующий вопрос:", nextData);
+            setCurrentQuestion(nextData);
+            setCurrentNumber(nextData.number);
+            setAnswer('');
+            setCodeOutput(''); // Очищаем консоль для новой задачи
+        } catch (err) {
+            console.error("❌ [Critical Error] Ошибка в handleNext:", err);
+            // Если критическая ошибка, можно раскомментировать редирект:
+            // window.location.href = `/personal-cabinet`;
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleRunCode = async () => {
+        console.log("🚀 [Compiler] Запуск кода...");
         setCodeOutput("> Running compilation...");
         try {
             const res = await fetch('/api/v1/compiler/execute', {
@@ -115,30 +138,32 @@ const handleNext = async () => {
                 body: JSON.stringify({ code, vacancy: vacancyNow })
             });
             const result = await res.json();
+            console.log("💻 [Compiler] Результат выполнения:", result);
+
             if (result.isTimeout) setCodeOutput("⚠️ Timeout: execution exceeded 15s");
             else setCodeOutput(result.stderr ? `❌ Error:\n${result.stderr}` : `✅ Output:\n${result.stdout}`);
         } catch (err) {
+            console.error("❌ [Compiler] Ошибка запроса:", err);
             setCodeOutput("❌ Server error");
         }
     };
 
-    if (isLoading) return <div className="loader-container"><div className="loader"></div><p>Preparing Interview...</p></div>;
+    // Отрисовка (оставлена без изменений)
+    if (isLoading) return <div className="loader-container"><div className="loader"></div><p>Processing request...</p></div>;
 
     return (
         <div className={`interview-layout ${isCompilerVisible ? 'with-compiler' : 'standard-view'}`}>
+            {/* Твой JSX код без изменений */}
             <div className="interview-main">
                 <div className="interview-header">
                     <div className="brand">AI Career Navigator</div>
                     <div className="progress-info">Step {currentNumber} of 12</div>
                 </div>
-
                 <div className="progress-container">
                     <div className="progress-fill" style={{ width: `${(currentNumber / 12) * 100}%` }} />
                 </div>
-
                 <div className="question-card">
                     <h2 className="question-title">{currentQuestion?.question}</h2>
-
                     {!isCompilerVisible ? (
                         <textarea
                             className="answer-input"
@@ -149,10 +174,9 @@ const handleNext = async () => {
                     ) : (
                         <div className="compiler-hint">
                             <span className="hint-icon">💡</span>
-                            This is a coding task. Please use the IDE on the right to implement your solution in <strong>{activeLanguage.toUpperCase()}</strong>.
+                            Coding task. Use the IDE in <strong>{activeLanguage.toUpperCase()}</strong>.
                         </div>
                     )}
-
                     <div className="actions">
                         <button className="next-button" onClick={handleNext}>
                             {currentNumber >= 12 ? 'Finish Interview' : 'Next Question →'}
@@ -166,26 +190,17 @@ const handleNext = async () => {
                     <div className="ide-window">
                         <div className="ide-header">
                             <div className="mac-dots">
-                                <span className="dot red"></span>
-                                <span className="dot yellow"></span>
-                                <span className="dot green"></span>
+                                <span className="dot red"></span><span className="dot yellow"></span><span className="dot green"></span>
                             </div>
                             <div className="tab active">solution.{activeLanguage === 'python' ? 'py' : activeLanguage === 'java' ? 'java' : 'js'}</div>
-                            <button className="run-button" onClick={handleRunCode}>
-                                <span className="play-icon">▶</span> RUN
-                            </button>
+                            <button className="run-button" onClick={handleRunCode}>RUN</button>
                         </div>
                         <div className="editor-wrapper">
-                             <textarea
-                                 className="code-editor"
-                                 value={code}
-                                 onChange={(e) => setCode(e.target.value)}
-                                 spellCheck="false"
-                             />
+                             <textarea className="code-editor" value={code} onChange={(e) => setCode(e.target.value)} spellCheck="false" />
                         </div>
                         <div className="terminal">
                             <div className="terminal-header">Terminal</div>
-                            <pre className="console-output">{codeOutput || "$ Ready for execution..."}</pre>
+                            <pre className="console-output">{codeOutput || "$ Ready..."}</pre>
                         </div>
                     </div>
                 </div>

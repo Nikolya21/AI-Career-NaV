@@ -39,7 +39,7 @@ public class RoadmapController {
   public ResponseEntity<Map<String, String>> getRootRedirect(@PathVariable Long roadmapId) {
     // Ваша логика: куда именно должен попасть пользователь при клике на ROOT
     UserEntity user = userService.getUserByRoadmapId(roadmapId);
-    String targetUrl = "/personal-cabinet" + roadmapId;
+    String targetUrl = "/personal-cabinet/" + user.getId();
     Map<String, String> response = new HashMap<>();
     response.put("redirectUrl", targetUrl);
 

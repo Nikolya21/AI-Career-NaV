@@ -156,9 +156,13 @@ public class RoadmapService {
     private SkeletonResponse generateAndSaveSkeleton(Roadmap roadmap, Checkpoint rootNode, RoadmapGenerationRequest request) {
         log.info(">>>> [AI] Запрос скелета у GigaChat...");
         // 1. Формируем промпт (используем твой шаблон)
+        String requirements = request.getRequirements();
+        if (requirements == null) {
+            requirements = "<Действуй как Senior IT Recruiter. Проанализируй вакансию: {jobTitle}. На основе своих знаний о рынке IT на 2026 год, сформируй список из 7-10 наиболее актуальных и критически важных требований (Hard Skills, инструменты, методологии). Игнорируй общие фразы ('коммуникабельность', 'стрессоустойчивость'). Выдавай только конкретный технологический стек и профессиональные компетенции, которые сейчас востребованы для этой роли.>";
+        }
         String prompt = GeneralPrompts.SKELETON_SYSTEM_PROMPT
                 .replace("{jobTitle}", request.getJobTitle())
-                .replace("{requirements}", request.getRequirements())
+                .replace("{requirements}", requirements)
                 .replace("{testResult}", request.getTestResult());
 
         String rawResponse = llmService.sendMessage(prompt);
