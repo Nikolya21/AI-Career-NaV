@@ -6,10 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.service.user.UserService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -23,11 +20,18 @@ public class PersonalCabinetController {
 
   private final UserService userService;
 
-  @GetMapping
-  public String showPersonalCabinet(HttpSession session, Model model) {
+  @GetMapping("/{userId}")
+  public String showPersonalCabinet(@PathVariable("userId") Long userId, HttpSession session, Model model) {
     // Проверка авторизации
     if (session.getAttribute("authenticated") == null) {
       log.warn("Доступ запрещен: пользователь не авторизован");
+      return "redirect:/login";
+    }
+
+    // Для безопасности: проверяем, что ID в URL совпадает с ID в сессии
+    Long sessionUserId = (Long) session.getAttribute("userId");
+    if (sessionUserId == null || !sessionUserId.equals(userId)) {
+      log.error("Попытка доступа к чужому кабинету! Сессия: {}, URL: {}", sessionUserId, userId);
       return "redirect:/login";
     }
 
@@ -94,6 +98,6 @@ public class PersonalCabinetController {
       }
     }
 
-    return "redirect:/personal-cabinet";
+    return "redirect:/personal-cabinet/" + userId;
   }
 }

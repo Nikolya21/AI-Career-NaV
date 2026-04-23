@@ -87,7 +87,7 @@ public class RegisterController {
 
         log.info("✅ Auto-login successful for user: {}", registrationDto.getEmail());
 
-        return "redirect:/personal-cabinet";
+        return "redirect:/personal-cabinet/" + userId;
       } else {
         log.error("❌ Auto-login failed after registration for {}: {}",
             registrationDto.getEmail(), authResult.getErrors());

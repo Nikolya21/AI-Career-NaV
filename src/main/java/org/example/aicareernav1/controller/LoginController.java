@@ -3,6 +3,7 @@ package org.example.aicareernav1.controller;
 import java.util.Date;
 import org.apache.commons.logging.Log;
 import org.example.aicareernav1.dto.user.LoginRequestDto;
+import org.example.aicareernav1.model.user.User;
 import org.example.aicareernav1.service.user.UserService;
 import org.example.aicareernav1.service.user.model.AuthenticationResult;
 import jakarta.servlet.http.HttpSession;
@@ -43,13 +44,15 @@ public class LoginController {
     }
 
     AuthenticationResult authResult = userService.authenticateUser(loginRequest);
+    User user = authResult.getUser();
+    Long userId = user.getId();
     if (authResult.isSuccess()) {
       session.setAttribute("user", authResult.getUser());
       session.setAttribute("userEmail", loginRequest.getEmail());
       session.setAttribute("authenticated", true);
       session.setAttribute("userName", loginRequest.getEmail().split("@")[0]);
       session.setAttribute("registrationDate", new Date());
-      return "redirect:/personal-cabinet";
+      return "redirect:/personal-cabinet/" + userId;
     } else {
       model.addAttribute("errors", authResult.getErrors());
       model.addAttribute("email", loginRequest.getEmail());
