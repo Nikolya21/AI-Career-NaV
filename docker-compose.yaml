@@ -24,7 +24,7 @@ services:
     container_name: java-spring-app
     user: root
     ports:
-      - "8086:8086"
+      - "8089:8086"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://java-db:5432/mydatabase
       - PYTHON_SERVICE_URL=http://python-fastapi-service:8000
@@ -32,8 +32,29 @@ services:
       - java-db
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      # Используем внутреннее имя тома, которое мапится на внешнее my_global_code_storage
       - temp_code_storage:/codes:rw
+    networks:
+      - shared-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - shared-network
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
     networks:
       - shared-network
 
@@ -43,6 +64,8 @@ networks:
     name: ai-career-network
 
 volumes:
+  # Теперь этот том зарегистрирован и Docker его увидит
+  grafana-storage:
   temp_code_storage:
-    name: my_global_code_storage  # СТРОГО ЭТО ИМЯ используем в Java
+    name: my_global_code_storage
     driver: local
