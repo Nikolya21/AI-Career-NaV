@@ -10,6 +10,7 @@ import org.example.aicareernav1.repository.UserRepository;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.example.aicareernav1.service.testService.QuizService;
 import org.example.aicareernav1.service.user.impl.UserServiceImpl;
+import org.example.aicareernav1.service.email.AnalysisMailService; // Добавь этот импорт!
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,29 +28,23 @@ public class QuizController {
     private final UserRepository userRepository;
     private final UserServiceImpl userService;
     private final RoadmapService roadmapService;
+    private final AnalysisMailService mailService; // 1. Добавили сервис почты
 
     @PostMapping("/generate/{userId}")
     public ResponseEntity<List<QuestionDto>> generateTest(@PathVariable Long userId) {
         UserEntity user = userService.getUserById(userId);
         String vacancy = user.getVacancyNow();
-
-        // Очищаем старую сессию перед генерацией нового теста
         quizService.createQuizSession(userId);
-
-        // Генерируем вопросы и сохраняем в Redis
         List<QuestionDto> questions = quizService.generateAndSaveQuestions(userId, vacancy);
-
         return ResponseEntity.ok(questions);
     }
 
     @GetMapping("/start/{userId}")
     public ResponseEntity<?> startQuiz(@PathVariable Long userId) {
         List<QuestionDto> questions = quizService.getQuestions(userId);
-
         if (questions.isEmpty()) {
             return ResponseEntity.badRequest().body("Тест не найден. Сначала сгенерируйте вопросы.");
         }
-
         return ResponseEntity.ok(questions.get(0));
     }
 
@@ -57,20 +52,18 @@ public class QuizController {
     public ResponseEntity<?> saveAnswer(@PathVariable Long userId, @RequestBody Map<String, String> request) {
         String questionText = request.get("question");
         String answer = request.get("answer");
-
         quizService.saveAnswer(userId, questionText, answer);
-
         List<QuestionDto> questions = quizService.getQuestions(userId);
 
         int currentNumber = questions.stream()
-                .filter(q -> q.getQuestion().equals(questionText))
-                .findFirst()
-                .map(QuestionDto::getNumber)
-                .orElse(0);
+          .filter(q -> q.getQuestion().equals(questionText))
+          .findFirst()
+          .map(QuestionDto::getNumber)
+          .orElse(0);
 
         var nextQuestion = questions.stream()
-                .filter(q -> q.getNumber() == currentNumber + 1)
-                .findFirst();
+          .filter(q -> q.getNumber() == currentNumber + 1)
+          .findFirst();
 
         if (nextQuestion.isPresent()) {
             return ResponseEntity.ok(nextQuestion.get());
@@ -86,10 +79,6 @@ public class QuizController {
         return ResponseEntity.ok(quizService.getAllAnswers(userId));
     }
 
-    /**
-     * Финализация теста и автоматическая генерация Roadmap.
-     * Этот метод связывает результаты анализа ИИ с новой дорожной картой и обновляет UserEntity.
-     */
     @PostMapping("/{userId}/finalize-and-generate")
     public ResponseEntity<RoadmapResponse> finalize(@PathVariable Long userId) {
         log.info("🚀 Финализация теста и генерация Roadmap для пользователя: {}", userId);
@@ -107,11 +96,21 @@ public class QuizController {
         // 3. Генерируем Roadmap через RoadmapService
         RoadmapResponse roadmapResponse = roadmapService.generateFullRoadmap(request);
 
-        // 4. Важно: сохраняем ID созданной дорожной карты в сущности пользователя
-        user.setRoadmapId(roadmapResponse.getId()); //
-        userRepository.save(user); //
+        // 4. Сохраняем ID созданной дорожной карты в сущности пользователя
+        user.setRoadmapId(roadmapResponse.getId());
+        userRepository.save(user);
 
-        log.info("UserEntity: {}", user.toString());
+        log.info("UserEntity сохранен в БД: {}", user.getId());
+
+        // 5. ОТПРАВКА НА ПОЧТУ
+        try {
+            log.info("📧 Попытка отправки анализа на почту: {}", user.getEmail());
+            mailService.sendAnalysisByEmail(user.getEmail());
+            log.info("✅ Письмо успешно поставлено в очередь отправки");
+        } catch (Exception e) {
+            log.error("❌ Ошибка при отправке письма: {}", e.getMessage());
+            // Мы не возвращаем ошибку клиенту, чтобы он всё равно получил Roadmap в браузере
+        }
 
         log.info("✅ Roadmap успешно создан с ID: {} и привязан к пользователю: {}", roadmapResponse.getId(), userId);
 
