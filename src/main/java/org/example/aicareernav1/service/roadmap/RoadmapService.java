@@ -239,11 +239,11 @@ public class RoadmapService {
      * @param feedbackText текст отзыва (например: "слишком сложно", "хочу больше примеров кода").
      */
     @Transactional
-    public void processUserFeedback(Long roadmapId, String feedbackText) {
+    public RoadmapConfig processUserFeedback(Long roadmapId, String feedbackText) {
         Roadmap roadmap = roadmapRepository.findById(roadmapId)
                 .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
 
-        configService.updateConfigFromUserText(roadmap, feedbackText);
+        return configService.updateConfigFromUserText(roadmap, feedbackText);
     }
 
 

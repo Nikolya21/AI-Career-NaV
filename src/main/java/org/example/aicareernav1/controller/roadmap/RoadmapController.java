@@ -7,6 +7,7 @@ import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.LessonResponse;
 import org.example.aicareernav1.dto.roadmap.response.RoadmapResponse;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.service.roadmap.LessonService;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
@@ -86,10 +87,10 @@ public class RoadmapController {
    * @param feedback текст отзыва
    */
   @PostMapping("/{id}/feedback")
-  public ResponseEntity<Void> sendFeedback(@PathVariable Long id, @RequestBody String feedback) {
+  public ResponseEntity<RoadmapConfig> sendFeedback(@PathVariable Long id, @RequestBody String feedback) {
     log.info("API: Получен фидбек для Roadmap ID: {}", id);
     roadmapService.processUserFeedback(id, feedback);
-    return ResponseEntity.accepted().build();
+    return ResponseEntity.ok(roadmapService.processUserFeedback(id, feedback));
   }
 
   /**

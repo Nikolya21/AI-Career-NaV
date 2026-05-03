@@ -5,7 +5,64 @@ const sidebarManager = {
     // Открыть/закрыть сайдбар
     toggle(show) {
         const sidebar = document.getElementById('sidebar');
+        const headerPanel = document.querySelector('.header-panel');
+        const fsBtn = document.getElementById('fullscreen-btn')?.querySelector('.material-icons');
+
         sidebar.classList.toggle('sidebar-hidden', !show);
+
+        // Если закрываем сайдбар — сбрасываем всё состояние фуллскрина
+        if (!show) {
+            sidebar.classList.remove('full-viewport');
+            document.body.style.overflow = 'auto'; // Возвращаем скролл страницы
+
+            if (headerPanel) {
+                headerPanel.style.display = 'flex'; // Гарантированно возвращаем панель
+                headerPanel.style.opacity = '1';
+            }
+
+            if (fsBtn) {
+                fsBtn.innerText = 'open_in_full';
+            }
+
+            // Возвращаем стандартную ширину сайдбара
+            sidebar.classList.remove('sidebar-expanded');
+        }
+    },
+
+    // Методы для модального окна фидбека
+    openFeedbackModal() {
+        document.getElementById('feedback-modal').classList.remove('hidden');
+    },
+
+    closeFeedbackModal() {
+        document.getElementById('feedback-modal').classList.add('hidden');
+        document.getElementById('lesson-feedback-input').value = '';
+    },
+
+    // Добавь внутрь объекта sidebarManager:
+
+    toggleFullScreen() {
+        const sidebar = document.getElementById('sidebar');
+        const fsBtn = document.getElementById('fullscreen-btn').querySelector('.material-icons');
+        const headerPanel = document.querySelector('.header-panel'); // Находим прогресс-бар
+
+        const isFull = sidebar.classList.toggle('full-viewport');
+
+        if (isFull) {
+            fsBtn.innerText = 'close_fullscreen';
+            if (headerPanel) headerPanel.style.opacity = '0'; // Плавно скрываем
+            sidebar.classList.add('sidebar-expanded');
+        } else {
+            fsBtn.innerText = 'open_in_full';
+            if (headerPanel) headerPanel.style.opacity = '1'; // Показываем обратно
+
+            // Возвращаем размер в зависимости от того, открыт ли урок
+            if (document.getElementById('lesson-list-container').classList.contains('hidden')) {
+                 sidebar.classList.add('sidebar-expanded');
+            } else {
+                 sidebar.classList.remove('sidebar-expanded');
+            }
+        }
     },
 
     // 1. Загрузка чекпоинта (список уроков)
@@ -77,12 +134,18 @@ const sidebarManager = {
             return;
         }
 
-        // Отрисовка
+        // Отрисовка с новым дизайном карточек
         container.innerHTML = lessons.map(lesson => `
             <div class="lesson-card" onclick="sidebarManager.loadLessonTheory(${lesson.id})">
-                <span class="material-icons">description</span>
-                <div class="lesson-info">
-                    <h3>${lesson.title || "Без названия"}</h3>
+                <div class="lesson-card-icon">
+                    <span class="material-icons">auto_stories</span>
+                </div>
+                <div class="lesson-card-info">
+                    <h4>${lesson.title || "Без названия"}</h4>
+                    <p>${lesson.description || "Нажми, чтобы открыть теорию"}</p>
+                </div>
+                <div class="lesson-card-status">
+                    <span class="material-icons">chevron_right</span>
                 </div>
             </div>
         `).join('');
@@ -117,50 +180,84 @@ const sidebarManager = {
     },
 
     // Добавь это внутрь объекта sidebarManager
+    // Внутри объекта sidebarManager добавь/обнови:
+
     async sendFeedback() {
         const feedbackInput = document.getElementById('lesson-feedback-input');
+        const inputWrapper = feedbackInput.closest('.input-wrapper');
         const statusLabel = document.getElementById('feedback-status');
         const sendBtn = document.getElementById('send-feedback-btn');
 
         const feedbackText = feedbackInput.value.trim();
         if (!feedbackText) return;
 
-        // roadmapId мы берем из глобальной переменной window.roadmapId
-        const roadmapId = window.roadmapId;
-
         sendBtn.disabled = true;
-        sendBtn.innerText = "Отправка...";
+        sendBtn.innerText = "Анализируем...";
 
         try {
-            const response = await fetch(`/api/v1/roadmap/${roadmapId}/feedback`, {
+            const response = await fetch(`/api/v1/roadmap/${window.roadmapId}/feedback`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain' // Твой контроллер принимает @RequestBody String
-                },
+                headers: { 'Content-Type': 'text/plain' },
                 body: feedbackText
             });
 
             if (response.ok) {
-                feedbackInput.value = '';
-                statusLabel.classList.remove('hidden');
-                sendBtn.classList.add('hidden');
+                const updatedConfig = await response.json(); // Получаем RoadmapConfig
 
-                // Скрываем сообщение через 5 секунд и возвращаем кнопку
+                statusLabel.classList.remove('hidden');
+                inputWrapper.style.display = 'none'; // Прячем поле ввода
+                sendBtn.style.display = 'none'; // Прячем кнопку
+
+                // Показываем обновленные теги
+                this.renderUserPreferences(updatedConfig);
+
                 setTimeout(() => {
+                    this.closeFeedbackModal();
+                    // Сброс интерфейса для следующего раза
                     statusLabel.classList.add('hidden');
-                    sendBtn.classList.remove('hidden');
+                    inputWrapper.style.display = 'block';
+                    sendBtn.style.display = 'block';
                     sendBtn.disabled = false;
-                    sendBtn.innerHTML = '<span class="material-icons">send</span> Отправить фидбек';
-                }, 5000);
-            } else {
-                throw new Error("Ошибка сервера");
+                    sendBtn.innerText = "Отправить";
+                    // Очистка контейнера тегов
+                    const prefContainer = document.getElementById('user-prefs-container');
+                    if (prefContainer) prefContainer.innerHTML = '';
+                }, 7000); // Даем 7 секунд рассмотреть изменения
             }
         } catch (err) {
             console.error("Feedback error:", err);
-            alert("Не удалось отправить отзыв. Попробуй позже.");
+            alert("Не удалось обновить профиль.");
             sendBtn.disabled = false;
-            sendBtn.innerHTML = '<span class="material-icons">send</span> Отправить фидбек';
         }
+    },
+
+    renderUserPreferences(config) {
+        const modalBody = document.querySelector('#feedback-modal .modal-content');
+        let prefContainer = document.getElementById('user-prefs-container');
+
+        if (!prefContainer) {
+            prefContainer = document.createElement('div');
+            prefContainer.id = 'user-prefs-container';
+            prefContainer.className = 'user-preferences-display';
+            // Вставляем перед кнопками или после заголовка статуса
+            modalBody.appendChild(prefContainer);
+        }
+
+        const tags = [
+            { icon: 'psychology', text: config.mainDomain },
+            { icon: 'trending_up', text: config.targetLevel },
+            { icon: 'history_edu', text: config.learningStyle },
+            { icon: 'record_voice_over', text: config.toneOfVoice }
+        ];
+
+        prefContainer.innerHTML = tags
+            .filter(t => t.text) // Показываем только заполненные
+            .map(t => `
+                <div class="pref-tag">
+                    <span class="material-icons">${t.icon}</span>
+                    ${t.text}
+                </div>
+            `).join('');
     },
 
     // Переключение состояний внутри сайдбара

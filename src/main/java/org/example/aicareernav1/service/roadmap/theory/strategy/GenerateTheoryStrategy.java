@@ -1,11 +1,13 @@
 package org.example.aicareernav1.service.roadmap.theory.strategy;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.external.pythonRAG.ChunkResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.GatewayResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.SaveRequest;
 import org.example.aicareernav1.dto.external.pythonRAG.SearchRequest;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Lesson;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.LessonContext;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Theory;
 
@@ -13,6 +15,7 @@ import org.example.aicareernav1.mapper.RagIntegrationMapper;
 import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
 import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.integration.PythonIntegrationService;
+import org.example.aicareernav1.service.roadmap.ContextCollectorService;
 import org.example.aicareernav1.service.roadmap.RoadmapConfigService;
 import org.example.aicareernav1.service.roadmap.prompt.TheoryPrompts;
 import org.example.aicareernav1.service.util.LlmResponseParserService;
@@ -23,6 +26,7 @@ import java.util.List;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
@@ -30,6 +34,7 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
     private final PythonIntegrationService pythonClient;
     // Предположим, тут ваш сервис для работы с LLM (GigaChat/GPT/Claude)
     private final YandexGptService llmService;
+    private final ContextCollectorService contextCollectorService;
     private final LlmResponseParserService llmParser;
     private final RagIntegrationMapper ragMapper;
     private final RoadmapConfigService configService;
@@ -37,7 +42,7 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
 
     @Override
     public boolean supports(String status) {
-        return "NEED_GENERATION".equals(status) || "NOT_FOUND".equals(status);
+        return "NEED_GENERATION".equals(status) || "NOT_FOUND".equals(status) || "READY_LESSON".equals(status);//todo: после учлучшения семантического поиска убрать Ready_lessson
     }
 
     @Override
@@ -59,13 +64,23 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
 
         LlmResponseParserService.ParsedLlmContent cleanGeneratedMarkdown = llmParser.parseTheoryResponse(rawLlmResponse);
 
-        lesson.setSummary(cleanGeneratedMarkdown.getSummary());
+
 
         Theory theory = Theory.builder()
                 .text(cleanGeneratedMarkdown.getContent())
                 .tags(cleanGeneratedMarkdown.getTags())
                 .lesson(lesson)
                 .build();
+
+        lesson.setTheory(theory);
+
+        LessonContext lessonContext = LessonContext.builder()
+                .lesson(lesson)
+                .summary(cleanGeneratedMarkdown.getSummary())
+                .shortContext(contextCollectorService.getShortContextFromLesson(lesson))
+                .build();
+
+        lesson.setContext(lessonContext);
 
 
         // 4. Создание SaveRequest для Python RAG
@@ -74,7 +89,6 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
         // 5. Асинхронное сохранение в Python
         pythonClient.saveProcessedContent(saveRequest);
 
-        lesson.setTheory(theory);
         return theory;
     }
 
@@ -82,7 +96,8 @@ public class GenerateTheoryStrategy implements TheoryProcessingStrategy {
         String chunksText = chunks.stream()
                 .map(ChunkResponse::getContent)
                 .collect(Collectors.joining("\n---\n"));
-
-        return llmService.sendMessage(TheoryPrompts.getGenerateTheoryPrompt(userQuery, chunksText, contextLearning, mainDomain, context));
+        String prompt = TheoryPrompts.getGenerateTheoryPrompt(userQuery, chunksText, contextLearning, mainDomain, context);
+        log.info("Промпт {}", prompt);
+        return llmService.sendMessage(prompt);
     }
 }

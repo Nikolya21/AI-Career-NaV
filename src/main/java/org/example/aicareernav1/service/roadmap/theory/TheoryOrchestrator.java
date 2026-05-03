@@ -46,13 +46,14 @@ public class TheoryOrchestrator {
         Roadmap roadmap = roadmapRepository.findByLessonId(lessonId)
                 .orElseThrow(() -> new EntityNotFoundException("Roadmap not found"));
         List<String> excludedIds = roadmapRepository.findAllExcludedExternalIds(roadmap.getId());
+        log.info("Айди уроков, которые уже выдавались: {}", excludedIds.toString());
         // 3. Если нет — идем в Python
         SearchRequest request = SearchRequest.builder()
                 .query(adaptationQuery)
                 .excludedParentIds(excludedIds)
                 .build();
         GatewayResponse response = pythonClient.searchInRag(request);
-        log.info("GatewayResponse from python FastApi: {}", response.toString());
+        log.info("GatewayResponse from python FastApi with uuid: {}", response.getParentId());
 
         // 4. Выбираем и применяем стратегию
         Theory theory = strategies.stream()

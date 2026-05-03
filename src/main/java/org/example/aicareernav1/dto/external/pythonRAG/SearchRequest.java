@@ -30,7 +30,7 @@ public class SearchRequest {
 
     @JsonProperty("rerank_threshold")
     @Builder.Default
-    private Double rerankThreshold = 0.6;
+    private Double rerankThreshold = 0.85;
 
     @JsonProperty("assemble_article")
     @Builder.Default
