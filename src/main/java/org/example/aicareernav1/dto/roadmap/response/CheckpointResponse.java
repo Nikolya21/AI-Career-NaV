@@ -22,4 +22,6 @@ public class CheckpointResponse {
   private Long sourceLessonId;
   private Long roadmapId;
   private ModuleResponse module;
+  private Integer totalLessons;
+  private Integer completedLessons;
 }

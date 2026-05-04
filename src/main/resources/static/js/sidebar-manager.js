@@ -1,6 +1,7 @@
 const sidebarManager = {
     currentCheckpointId: null,
     currentLessonId: null, // Добавляем новое поле
+    loadedLessons: [],
 
     // Открыть/закрыть сайдбар
     toggle(show) {
@@ -95,7 +96,13 @@ const sidebarManager = {
                 }
 
                 console.log("Extracted Lessons:", lessons);
+                this.loadedLessons = lessons;
                 this.renderLessons(lessons);
+
+                // Обновляем прогресс-бар, так как могли появиться новые уроки
+                if (typeof window.updateProgressBar === 'function') {
+                    window.updateProgressBar();
+                }
 
             } catch (err) {
                 console.error("Sidebar error:", err);
@@ -134,21 +141,28 @@ const sidebarManager = {
             return;
         }
 
-        // Отрисовка с новым дизайном карточек
-        container.innerHTML = lessons.map(lesson => `
-            <div class="lesson-card" onclick="sidebarManager.loadLessonTheory(${lesson.id})">
-                <div class="lesson-card-icon">
-                    <span class="material-icons">auto_stories</span>
-                </div>
-                <div class="lesson-card-info">
-                    <h4>${lesson.title || "Без названия"}</h4>
-                    <p>${lesson.description || "Нажми, чтобы открыть теорию"}</p>
-                </div>
-                <div class="lesson-card-status">
-                    <span class="material-icons">chevron_right</span>
-                </div>
-            </div>
-        `).join('');
+        container.innerHTML = lessons.map(lesson => {
+                // Проверяем, есть ли теория (используем флаг из DTO или проверяем объект)
+                const isCompleted = lesson.theoryExists || (lesson.theory && lesson.theory.text);
+                const iconName = isCompleted ? 'check_circle' : 'auto_stories';
+                const cardClass = isCompleted ? 'lesson-card completed' : 'lesson-card';
+                const statusText = isCompleted ? 'Теория готова к изучению' : (lesson.description || "Нажми, чтобы открыть теорию");
+
+                return `
+                    <div class="${cardClass}" onclick="sidebarManager.loadLessonTheory(${lesson.id})">
+                        <div class="lesson-card-icon">
+                            <span class="material-icons">${iconName}</span>
+                        </div>
+                        <div class="lesson-card-info">
+                            <h4>${lesson.title || "Без названия"}</h4>
+                            <p>${statusText}</p>
+                        </div>
+                        <div class="lesson-card-status">
+                            <span class="material-icons">chevron_right</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
     },
 
     // 2. Ленивая загрузка теории конкретного урока
@@ -164,6 +178,20 @@ const sidebarManager = {
             if (!response.ok) throw new Error("Lesson not found");
 
             const data = await response.json();
+            if (data.theory && data.theory.text) {
+                const lesson = this.loadedLessons.find(l => l.id === lessonId);
+                if (lesson) {
+                    lesson.theoryExists = true; // Ставим флаг для рендеринга
+                    // Вызываем перекраску узла на карте
+                    this.updateNodeColorOnMap(this.currentCheckpointId);
+                }
+
+                // --- ДОБАВИТЬ СЮДА ---
+                // Теория готова -> урок засчитан -> прогресс вырос!
+                if (typeof window.updateProgressBar === 'function') {
+                    window.updateProgressBar();
+                }
+            }
 
             const markdownContent = data.theory ? data.theory.text : "";
 
@@ -177,6 +205,31 @@ const sidebarManager = {
             console.error("Ошибка загрузки урока:", err);
             theoryContainer.innerHTML = '<p class="error">Не удалось загрузить теорию</p>';
         }
+    },
+
+    // Новый метод для динамического обновления цвета узла
+    updateNodeColorOnMap(checkpointId) {
+        if (typeof nodes === 'undefined' || !nodes.get(checkpointId)) return;
+
+        const total = this.loadedLessons.length;
+        const completed = this.loadedLessons.filter(l => l.theoryExists || (l.theory && l.theory.text)).length;
+
+        let newColor = '#BDC1C6';
+        if (completed === total && total > 0) {
+            newColor = '#34a853'; // Все зеленые
+        } else if (completed > 0) {
+            newColor = '#f4af54'; // Часть зеленых
+        }
+
+        // Мгновенно обновляем узел в vis.js без перезагрузки всей карты
+        nodes.update({
+            id: checkpointId,
+            color: {
+                background: newColor,
+                highlight: { background: newColor },
+                hover: { background: newColor }
+            }
+        });
     },
 
     // Добавь это внутрь объекта sidebarManager
@@ -266,6 +319,10 @@ const sidebarManager = {
         document.getElementById('lesson-detail-container').classList.add('hidden');
         // Убираем широкий класс, возвращая сайдбар к 450px
         document.getElementById('sidebar').classList.remove('sidebar-expanded');
+
+        if (this.loadedLessons.length > 0) {
+                this.renderLessons(this.loadedLessons);
+            }
     },
 
     showDetail() {

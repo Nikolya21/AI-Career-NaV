@@ -173,11 +173,29 @@ body {
 /* 4. ЗАЛИВКА (FILL) — ГРАДИЕНТ GEMINI */
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #4285F4, #9B72CB) !important;
+    background: linear-gradient(
+            90deg,
+            #4285F4 0%,
+            #4285F4 30%,  /* Синий до 30% */
+            #f4af54 35%,  /* Резкий переход к оранжевому */
+            #f4af54 65%,  /* Оранжевый до 65% */
+            #34a853 70%,  /* Резкий переход к зеленому */
+            #34a853 100%
+        ) !important;
+    background-size: 100vw !important; /* Используем vw или фиксированную ширину контейнера */
+
+    /* Если хедер имеет фиксированную ширину (как у тебя 270px-300px),
+       лучше указать ее, чтобы градиент ложился точно в границы. */
+    background-size: 270px 100% !important;
+    background-repeat: no-repeat;
+
+    background-attachment: fixed; /* Помогает сохранить позицию при движении */
+
     border-radius: 12px;
     transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 15px rgba(66, 133, 244, 0.3);
+    box-shadow: 0 0 12px rgba(66, 133, 244, 0.2);
 }
+
 
 .header-panel .progress-container span {
     font-size: 14px;

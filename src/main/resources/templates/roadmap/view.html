@@ -25,9 +25,9 @@
     <span th:text="${jobTitle}" style="font-weight: 500;">Вакансия</span>
     <div class="progress-container">
         <div class="progress-track">
-            <div class="progress-fill" th:style="'width:' + ${progress} + '%'"></div>
+            <div id="progress-fill" class="progress-fill" th:style="'width:' + ${progress} + '%'"></div>
         </div>
-        <span th:text="${progress} + '%'">0%</span>
+        <span id="progress-percentage" th:text="${progress} + '%'">0%</span>
     </div>
 </div>
 

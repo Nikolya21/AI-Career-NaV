@@ -36,12 +36,13 @@ function resetText(nodeId, fullText) {
 let activeImpulses = [];
 
 class Impulse {
-    constructor(fromNode, toNode, edge) {
+    constructor(fromNode, toNode, edge, color) {
         this.from = network.getPosition(fromNode);
         this.to = network.getPosition(toNode);
+        this.edge = edge;
         this.progress = 0;
         this.speed = 0.015; // Скорость волны
-        this.color = '#4285F4'; // Цвет импульса
+        this.color = color; // Цвет импульса
     }
 
     update() {
@@ -61,7 +62,7 @@ class Impulse {
         ctx.fillStyle = this.color;
 
         // Добавляем свечение (glow effect)
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.shadowColor = this.color;
 
         ctx.fill();
@@ -135,7 +136,11 @@ function setupEventListeners() {
 
             // Загружаем контент в сайдбар[cite: 4]
             if (typeof sidebarManager !== 'undefined') {
-                sidebarManager.loadCheckpoint(selectedId);
+                await sidebarManager.loadCheckpoint(selectedId);
+
+                // СРАЗУ ПОСЛЕ ЗАГРУЗКИ:
+                // Если это был первый заход и уроки создались,
+                // прогресс изменится (так как totalLessons вырос)
             }
         }
     });
@@ -162,40 +167,49 @@ async function handleRootClick() {
 }
 
 // Подсветка ребер: увеличение толщины и наложение тени
+/* */
 function highlightConnectedEdges(nodeId) {
-    // Сначала сбросим стили всех ребер до дефолтных
     resetEdgesStyle();
+
+    const nodeData = nodes.get(nodeId);
+    const nodeColor = (typeof nodeData.color === 'object') ? nodeData.color.background : nodeData.color;
 
     const connectedEdges = network.getConnectedEdges(nodeId);
 
     connectedEdges.forEach(edgeId => {
         edges.update({
             id: edgeId,
-            width: 4, // Увеличиваем толщину (было 2)
+            width: 4,
+            // Красим ребро строго в цвет узла, без синих примесей
+            color: { color: nodeColor, highlight: nodeColor, hover: nodeColor },
             shadow: {
                 enabled: true,
-                color: 'rgba(66, 133, 244, 0.4)',
-                size: 10,
-                x: 0,
-                y: 0
-            },
-            color: { color: '#4285F4' } // Красим в активный синий
+                color: nodeColor,
+                size: 10
+            }
         });
+
+        const edge = edges.get(edgeId);
+        const targetNodeId = (edge.from === nodeId) ? edge.to : edge.from;
+        activeImpulses.push(new Impulse(nodeId, targetNodeId, edge, nodeColor));
     });
+
+    if (activeImpulses.length > 0) animate();
 }
 
 function handleNodeImpulse(nodeId) {
+    const nodeData = nodes.get(nodeId);
+    const nodeColor = (typeof nodeData.color === 'object') ? nodeData.color.background : nodeData.color;
     const connectedEdges = network.getConnectedEdges(nodeId);
 
     connectedEdges.forEach(edgeId => {
         const edge = edges.get(edgeId);
-        // Определяем направление импульса (ОТ наведенного узла К соседям)
         const targetNodeId = (edge.from === nodeId) ? edge.to : edge.from;
 
-        activeImpulses.push(new Impulse(nodeId, targetNodeId, edge));
+        // ДОБАВЬ edge аргументом:
+        activeImpulses.push(new Impulse(nodeId, targetNodeId, edge, nodeColor));
     });
 
-    // Запускаем цикл анимации, если он еще не активен
     if (activeImpulses.length > 0) animate();
 }
 
@@ -214,6 +228,7 @@ function resetEdgesStyle() {
 
 document.addEventListener('DOMContentLoaded', () => {
     loadRoadmapFromServer();
+    updateProgressBar(); // Первый запуск при загрузке страниц
 });
 
 async function loadRoadmapFromServer() {
@@ -308,9 +323,14 @@ function initGraph(data) {
     const container = document.getElementById('roadmap-container');
     const options = {
         nodes: {
-                font: {
-                    face: 'Google Sans',
+            font: { face: 'Google Sans' },
+            borderWidth: 2,
+            // Выключаем стандартное синее выделение
+            chosen: {
+                node: function(values, id, selected, hovering) {
+                    // Мы не меняем цвет рамки на синий, оставляем как есть
                 }
+            }
         },
         physics: {
             enabled: true,
@@ -321,8 +341,6 @@ function initGraph(data) {
             width: 2,
             color: {
                 color: '#80868B', // Более темный серый (вместо бледного #DADCE0)
-                highlight: '#1a73e8', // Насыщенный синий при клике
-                hover: '#5f6368'
             },
             arrows: {
                 to: { enabled: false }
@@ -360,17 +378,44 @@ function renderCheckpointNode(cp, topicNodeId) {
         return;
     }
 
+    // Базовый цвет (серый для неначатых)
     let nodeColor = '#BDC1C6';
-    if (cp.status === 'COMPLETED') nodeColor = '#34A853';
-    if (cp.status === 'ACTIVE') nodeColor = '#4285F4';
+
+    // Логика для MAIN чекпоинтов
+    if (cp.type === 'MAIN') {
+        const total = cp.totalLessons || 0;
+        const completed = cp.completedLessons || 0;
+
+        if (completed === total && total > 0) {
+            nodeColor = '#34a853'; // Зеленый (все уроки пройдены)
+        } else if (completed > 0) {
+            nodeColor = '#f4af54'; // Оранжевый (есть начатые уроки)
+        }
+    } else {
+        // Логика для остальных типов (например, DEEPEN)
+        if (cp.status === 'COMPLETED') nodeColor = '#34A853';
+        if (cp.status === 'ACTIVE') nodeColor = '#4285F4';
+    }
 
     if (!nodes.get(cp.id)) {
         nodes.add({
             id: cp.id,
             label: truncateLabel(cp.title || "Без названия"),
-            fullTitle: cp.title || "Без названия", // СОХРАНЯЕМ ТУТ
-            title: "", // Показываем полное имя при наведении
-            color: nodeColor,
+            fullTitle: cp.title || "Без названия",
+            title: "",
+            // ЗАМЕНЯЕМ color: nodeColor НА ОБЪЕКТ НИЖЕ:
+            color: {
+                background: nodeColor,
+                border: '#ffffff',
+                highlight: {
+                    background: nodeColor, // Цвет при клике (остается прежним)
+                    border: '#4285F4'      // Синяя рамка для акцента
+                },
+                hover: {
+                    background: nodeColor, // Цвет при наведении (остается прежним)
+                    border: '#ffffff'
+                }
+            },
             shape: 'dot',
             size: 16
         });
@@ -420,3 +465,23 @@ function hideNodeTooltip() {
         if (tooltip) tooltip.classList.add('hidden');
     }, 300);
 }
+
+window.updateProgressBar = async function() {
+    const roadmapId = window.roadmapId;
+    if (!roadmapId) return;
+
+    try {
+        const response = await fetch(`/api/v1/roadmap/${roadmapId}/progress`);
+        if (response.ok) {
+            const progress = await response.json(); // Получаем те самые 29.3
+
+            const fill = document.getElementById('progress-fill');
+            const text = document.getElementById('progress-percentage');
+
+            if (fill) fill.style.width = progress + '%';
+            if (text) text.innerText = Math.round(progress) + '%';
+        }
+    } catch (e) {
+        console.error("Ошибка обновления прогресс-бара", e);
+    }
+};

@@ -244,6 +244,18 @@
     color: #5F6368;
 }
 
+/* Состояние иконки, если теория уже есть */
+.lesson-card.completed .lesson-card-icon {
+    background: rgba(52, 168, 83, 0.1); /* Нежно-зеленый фон */
+    color: #34A853; /* Зеленый Google */
+}
+
+/* Изменяем текст описания для начатых уроков */
+.lesson-card.completed .lesson-card-info p {
+    color: #34A853;
+    font-weight: 500;
+}
+
 /* 5. ТЕОРИЯ И КОД */
 #theory-content {
     line-height: 1.6;
