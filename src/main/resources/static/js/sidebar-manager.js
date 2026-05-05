@@ -196,10 +196,16 @@ const sidebarManager = {
             const markdownContent = data.theory ? data.theory.text : "";
 
             if (window.marked && markdownContent) {
-                theoryContainer.innerHTML = marked.parse(markdownContent); // Исправлено на theoryContainer
-            } else {
-                theoryContainer.innerText = markdownContent || "Контент временно недоступен";
-            }
+                    // 1. Рендерим Markdown в HTML
+                    theoryContainer.innerHTML = marked.parse(markdownContent);
+
+                    // 2. Ищем все блоки <pre><code> и подсвечиваем их
+                    theoryContainer.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                } else {
+                    theoryContainer.innerText = markdownContent || "Контент временно недоступен";
+                }
             // Рендерим Markdown
         } catch (err) {
             console.error("Ошибка загрузки урока:", err);

@@ -15,13 +15,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Проверяем confirmBtn (он у нас есть в модалке)
+    /*[cite: 5] */
+    // Внутри confirmBtn.addEventListener('click', ...)
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async () => {
             const text = document.getElementById('deepen-input').value;
             if (!text) return;
 
+            // 1. Мгновенно закрываем модалку, не дожидаясь ответа сервера
             closeDeepenModal();
-            showGlobalLoader(true);
+
+            // 2. Вместо лоадера на весь экран можно добавить легкую индикацию
+            // на самой родительской вершине (опционально)
 
             try {
                 const response = await fetch(`/api/v1/roadmap/lesson/${window.currentDeepenLessonId}/deepen`, {
@@ -33,47 +38,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     const newCp = await response.json();
 
-                    // Динамическое добавление в граф (без перезагрузки!)
-                    nodes.add({
-                        id: newCp.id,
-                        label: newCp.title,
-                        color: '#4285F4', // Новый всегда ACTIVE
-                        shape: 'dot',
-                        size: 16
-                    });
-
-                    edges.add({
-                        from: newCp.parentCheckpointId,
-                        to: newCp.id,
-                        dashes: true,
-                        color: '#4285F4'
-                    });
-
-                    // Включаем физику, чтобы узел нашел место
-                    network.setOptions({
-                        physics: {
-                            enabled: true,
-                            stabilization: {
-                                enabled: true,
-                                iterations: 200 // Даем графу "продышаться" и найти место
-                            }
-                        }
-                    });
-                    // Вместо setTimeout используем событие стабилизации
-                    network.once("stabilized", function() {
-                        // Не выключаем физику совсем, а просто останавливаем активный расчет,
-                        // чтобы пользователь мог двигать узлы, и они возвращались на место
-                        network.setOptions({ physics: { enabled: true, stabilization: false } });
-                    });
+                    // 3. Вызываем функцию "магического" добавления узла
+                    createNewNodeAnimated(newCp);
                 }
             } catch (err) {
-                alert("Ошибка связи с ИИ");
-            } finally {
-                showGlobalLoader(false);
+                console.error("Ошибка связи с ИИ:", err);
+                // Вместо алерта лучше использовать неброское уведомление (toast)
             }
         });
     }
 });
+
+function startLongAcceleratingPulse() {
+    const bgWrapper = document.querySelector('.bg-wrapper');
+    if (!bgWrapper) return;
+
+    bgWrapper.classList.add('bg-active-pulse');
+
+    let currentDuration = 1.0; // Начинаем с очень спокойного ритма (1 сек)
+    const minDuration = 0.15;  // Пик частоты (0.15 сек)
+    const totalTime = 17000;   // Целевое время 17 сек
+    const stepTime = 500;      // Обновляем скорость каждые полсекунды
+    const steps = totalTime / stepTime;
+    const durationDecrement = (currentDuration - minDuration) / steps;
+
+    bgWrapper.style.setProperty('--pulse-duration', `${currentDuration}s`);
+
+    const accelInterval = setInterval(() => {
+        if (currentDuration > minDuration) {
+            currentDuration -= durationDecrement;
+            bgWrapper.style.setProperty('--pulse-duration', `${currentDuration}s`);
+        } else {
+            // Если сервер еще не ответил, а 17 сек прошло — остаемся на пике
+            bgWrapper.style.setProperty('--pulse-duration', `${minDuration}s`);
+        }
+    }, stepTime);
+
+    bgWrapper.dataset.accelInterval = accelInterval;
+}
+
+// Вызывай это СРАЗУ при клике на кнопку отправки в модалке
+document.getElementById('confirm-deepen-btn').onclick = function() {
+    startLongAcceleratingPulse();
+    // Дальше твой Fetch/Axios запрос на сервер...
+};
 
 const deepenManager = {
     // Этот метод вызывается кнопкой "Углубиться" из сайдбара урока

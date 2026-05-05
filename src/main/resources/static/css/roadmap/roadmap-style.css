@@ -132,6 +132,24 @@ body {
     /* Граница для эффекта блеска на краях */
     border: 1px solid rgba(255, 255, 255, 0.4) !important;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    cursor: default;
+}
+
+/* 2. Эффект при наведении */
+.header-panel:hover {
+    /* Слегка увеличиваем (на 2%) */
+    transform: scale(1.02);
+
+    /* Добавляем мягкое синеватое свечение (Google Blue с низкой прозрачностью) */
+    box-shadow: 0 15px 45px rgba(66, 133, 244, 0.15);
+
+    /* Можно чуть усилить яркость границы для эффекта подсветки */
+    border: 1px solid rgba(66, 133, 244, 0.3) !important;
+
+    /* Делаем стекло чуть менее прозрачным при взаимодействии */
+    background: rgba(255, 255, 255, 0.35) !important;
 }
 
 /* Контейнер для шкалы и процентов */
@@ -141,6 +159,8 @@ body {
     gap: 15px;
     width: 100%; /* Занимает всю ширину закругленной панели */
 }
+
+
 
 /* 2. ТЕКСТ ВНУТРИ */
 .header-panel span {
@@ -468,4 +488,44 @@ body {
 @keyframes rotate-gradient {
     from { --angle: 0deg; }
     to { --angle: 360deg; }
+}
+
+@keyframes pulse-glow {
+    0% { stops-color: rgba(66, 133, 244, 0.2); }
+    50% { stop-color: rgba(66, 133, 244, 0.5); }
+    100% { stop-color: rgba(66, 133, 244, 0.2); }
+}
+
+/* Анимация быстрого пульса для лого */
+@keyframes hyperPulse {
+    0% { transform: scale(1); filter: brightness(1) saturate(100%); }
+    100% { transform: scale(1.3); filter: brightness(1.5) saturate(150%); }
+}
+
+/* Мелкая, "электрическая" вибрация */
+@keyframes ai-thinking-pulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.02); filter: brightness(1.15) saturate(110%); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Оверлей теперь пульсирует в такт, создавая эффект мерцания экрана */
+@keyframes ai-overlay-blink {
+    0% { opacity: 0.7; }
+    100% { opacity: 0.4; }
+}
+
+/* Анимация вспышек для оверлея */
+@keyframes overlayFlash {
+    0% { opacity: 0.8; }
+    100% { opacity: 0.4; } /* Оверлей становится прозрачнее, открывая яркий фон */
+}
+
+.bg-active-pulse .layer-2 {
+    /* Используем cubic-bezier для более "аналогового" ощущения */
+    animation: ai-thinking-pulse var(--pulse-duration, 0.8s) infinite cubic-bezier(0.45, 0.05, 0.55, 0.95) !important;
+}
+
+.bg-active-pulse .bg-overlay {
+    animation: ai-overlay-blink var(--pulse-duration, 0.8s) infinite alternate ease-in-out !important;
 }

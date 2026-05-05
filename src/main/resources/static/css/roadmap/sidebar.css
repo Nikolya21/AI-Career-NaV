@@ -263,20 +263,23 @@
     color: #3C4043;
 }
 
+/* Удалить это, так как hljs сам управляет фоном */
 #theory-content pre {
-    background: #202124; /* Темная тема для кода — святое */
-    color: #ffffff;
-    padding: 15px;
+    /* background: #202124;
+    color: #ffffff; */
+    padding: 0; /* Сбрасываем, hljs добавит свои отступы */
     border-radius: 12px;
-    margin: 20px 0;
+    overflow: hidden;
 }
-
 /* Инлайновый код в тексте */
 #theory-content :not(pre) > code {
-    background: rgba(0, 0, 0, 0.05);
-    color: #d93025;
-    padding: 2px 5px;
-    border-radius: 4px;
+    background: rgba(66, 133, 244, 0.08); /* Светло-синий фон */
+    color: #1a73e8; /* Синий Google */
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: 'Roboto Mono', 'Monaco', monospace; /* IDE шрифт */
+    font-size: 0.9em;
+    font-weight: 500;
 }
 
 /* 6. КНОПКА УГЛУБИТЬСЯ (Gemini style) */

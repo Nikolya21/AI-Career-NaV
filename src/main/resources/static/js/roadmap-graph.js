@@ -168,20 +168,21 @@ async function handleRootClick() {
 
 // Подсветка ребер: увеличение толщины и наложение тени
 /* */
+/*[cite: 6] */
+/* */
+/* */
 function highlightConnectedEdges(nodeId) {
     resetEdgesStyle();
 
     const nodeData = nodes.get(nodeId);
     const nodeColor = (typeof nodeData.color === 'object') ? nodeData.color.background : nodeData.color;
-
     const connectedEdges = network.getConnectedEdges(nodeId);
 
     connectedEdges.forEach(edgeId => {
         edges.update({
             id: edgeId,
-            width: 4,
-            // Красим ребро строго в цвет узла, без синих примесей
-            color: { color: nodeColor, highlight: nodeColor, hover: nodeColor },
+            width: 3,
+            // МЫ НЕ ТРОГАЕМ color: { inherit: 'both' }, он уже там есть и работает правильно
             shadow: {
                 enabled: true,
                 color: nodeColor,
@@ -219,8 +220,8 @@ function resetEdgesStyle() {
         edges.update({
             id: edge.id,
             width: 2,
-            shadow: { enabled: false },
-            color: { color: '#9AA0A6' }
+            shadow: { enabled: false }
+            // Не нужно заново выставлять цвет, если в initGraph он настроен через inherit
         });
     });
 }
@@ -341,6 +342,7 @@ function initGraph(data) {
             width: 2,
             color: {
                 color: '#80868B', // Более темный серый (вместо бледного #DADCE0)
+                inherit: 'both',
             },
             arrows: {
                 to: { enabled: false }
@@ -353,6 +355,7 @@ function initGraph(data) {
                 x: 1,
                 y: 1
             },
+            chosen: false,
             // Возвращаем стандартную плавность линий, которая была в vis-network изначально
             smooth: {
                 enabled: true,
@@ -464,6 +467,81 @@ function hideNodeTooltip() {
         const tooltip = document.getElementById('node-tooltip');
         if (tooltip) tooltip.classList.add('hidden');
     }, 300);
+}
+
+/*[cite: 5, 6] */
+/* */
+function createNewNodeAnimated(newCp) {
+    const bgWrapper = document.querySelector('.bg-wrapper');
+
+    const parentId = newCp.parentCheckpointId;
+    const newNodeId = newCp.id;
+    const parentPos = network.getPosition(parentId);
+
+    // Определяем цвет на основе статуса
+    const nodeColor = (newCp.status === 'COMPLETED') ? '#34A853' : '#4285F4';
+
+    // 1. Создаем узел прямо в позиции родителя
+    nodes.add({
+        id: newNodeId,
+        label: truncateLabel(newCp.title),
+        fullTitle: newCp.title,
+        color: {
+            background: nodeColor,
+            border: '#ffffff',
+            highlight: { background: nodeColor, border: '#4285F4' },
+            hover: { background: nodeColor, border: '#ffffff' }
+        },
+        shape: 'dot',
+        size: 1, // Начинаем с точки для эффекта появления[cite: 4]
+        x: parentPos.x,
+        y: parentPos.y
+    });
+
+    // 2. Добавляем пунктирное ребро[cite: 3]
+    edges.add({
+        id: `edge_${newNodeId}`,
+        from: parentId,
+        to: newNodeId,
+        dashes: true,
+        color: { color: '#BDC1C6' },
+        width: 1.5
+    });
+
+    // 3. Анимация роста (scale up)[cite: 4]
+    let currentSize = 1;
+    const targetSize = 16;
+    function grow() {
+        if (currentSize < targetSize) {
+            currentSize += 1;
+            nodes.update({ id: newNodeId, size: currentSize });
+            requestAnimationFrame(grow);
+        }
+    }
+
+    // 4. Включаем динамику, чтобы узел отлетел на свободное место[cite: 3]
+    network.setOptions({ physics: { enabled: true, stabilization: false } });
+
+    // Запускаем твой фирменный импульс по новому ребру[cite: 4]
+    const edge = edges.get(`edge_${newNodeId}`);
+
+    grow();
+
+    // 5. Стабилизируем граф и обновляем общий прогресс
+    setTimeout(() => {
+            if (bgWrapper) {
+                clearInterval(bgWrapper.dataset.accelInterval);
+
+                // Плавный выход: сначала замедляем, потом убираем класс
+                bgWrapper.style.setProperty('--pulse-duration', '1s');
+
+                setTimeout(() => {
+                    bgWrapper.classList.remove('bg-active-pulse');
+                    bgWrapper.style.removeProperty('--pulse-duration');
+                }, 500);
+            }
+            network.setOptions({ physics: { enabled: true, stabilization: true } });
+        }, 2000);
 }
 
 window.updateProgressBar = async function() {
