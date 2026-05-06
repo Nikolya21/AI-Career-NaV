@@ -5,6 +5,7 @@
     <title th:text="${jobTitle}">Roadmap View</title>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <link rel="stylesheet" th:href="@{/css/roadmap/roadmap-style.css}">
     <link rel="stylesheet" th:href="@{/css/roadmap/sidebar.css}">
@@ -28,13 +29,21 @@
 
 <div id="roadmap-container"></div>
 
-<div class="header-panel">
+<div class="header-panel" onclick="toggleRoadmapConfig(event)">
     <span th:text="${jobTitle}" style="font-weight: 500;">Вакансия</span>
     <div class="progress-container">
         <div class="progress-track">
             <div id="progress-fill" class="progress-fill" th:style="'width:' + ${progress} + '%'"></div>
         </div>
         <span id="progress-percentage" th:text="${progress} + '%'">0%</span>
+
+        <div id="roadmap-config-dropdown" class="config-dropdown hidden">
+            <div class="config-content">
+                <div id="config-loader" class="small-spinner hidden"></div>
+                <div id="config-items" class="user-preferences-display">
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -2,6 +2,7 @@ package org.example.aicareernav1.service.roadmap;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.config.RoadmapConfigUpdateDTO;
@@ -71,6 +72,12 @@ public class RoadmapConfigService {
         return roadmap.getConfig();
     }
 
+    @Transactional
+    public RoadmapConfig getRoadmapConfigByRoadmap(Roadmap roadmap) {
+        return roadmapRepository.findConfigByRoadmapId(roadmap.getId())
+          .orElseThrow(() -> new EntityNotFoundException("RoadmapConfig not found"));
+    }
+
     /**
      * Точечное обновление полей, чтобы не затереть существующие данные null-значениями
      */
@@ -104,8 +111,8 @@ public class RoadmapConfigService {
 
         // 3. Возвращаем структурированную строку, которая "прошивает" контекст в мозги ИИ
         return String.format(
-                "Domain: %s, Level: %s, Style: %s, Tone: %s",
-                domain, level, style, tone
+          "Domain: %s, Level: %s, Style: %s, Tone: %s",
+          domain, level, style, tone
         );
     }
 
@@ -115,11 +122,11 @@ public class RoadmapConfigService {
 
     public RoadmapConfig createDefaultConfig() {
         return RoadmapConfig.builder()
-                .mainDomain("Software Engineering")
-                .targetLevel("Standart")
-                .learningStyle("Standard technical explanation")
-                .toneOfVoice("Neutral mentor")
-                .maxTags(5)
-                .build();
+          .mainDomain("Software Engineering")
+          .targetLevel("Standart")
+          .learningStyle("Standard technical explanation")
+          .toneOfVoice("Neutral mentor")
+          .maxTags(5)
+          .build();
     }
 }

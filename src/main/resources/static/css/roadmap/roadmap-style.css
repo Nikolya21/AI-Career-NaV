@@ -21,9 +21,9 @@ html, body {
 }
 
 @property --angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
 }
 
 :root {
@@ -154,12 +154,126 @@ body {
 
 /* Контейнер для шкалы и процентов */
 .progress-container {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 15px;
     width: 100%; /* Занимает всю ширину закругленной панели */
 }
 
+.config-dropdown {
+    position: absolute;
+    /* Позиционируем точно под баром */
+    top: calc(100% + 15px);
+    left: 50%;
+    /* Центрируем идеально по горизонтали */
+    transform: translateX(-50%) scaleY(1);
+
+    /* Фиксированная ширина, чтобы не разъезжалось */
+    width: 290px;
+
+    /* ЧИСТОЕ СТЕКЛО */
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(25px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+
+    /* ГРАНИЦА И ТЕНЬ С СИНЕЙ ПОДСВЕТКОЙ */
+    border: 1px solid rgba(66, 133, 244, 0.25) !important; /* Нежно-синий бордер */
+    border-radius: 20px;
+    /* Тень с легким синим ореолом */
+    box-shadow: 0 10px 35px rgba(66, 133, 244, 0.15) !important;
+
+    padding: 18px;
+    z-index: 5000 !important; /* Максимальный приоритет, выше графа! */
+
+    /* Анимация */
+    transform-origin: top center;
+    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+    opacity: 1;
+}
+
+.config-dropdown.hidden {
+    display: block !important;
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0);
+    pointer-events: none;
+}
+
+.config-dropdown .user-preferences-display {
+    display: flex;
+    flex-direction: column; /* Теги идут строго друг под другом */
+    gap: 10px; /* Расстояние между тегами */
+    width: 100%;
+    align-items: flex-start; /* Прижимаем к левому краю внутри */
+}
+
+.config-dropdown .material-icons {
+    font-family: 'Material Icons' !important;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+
+    color: #4285F4; /* Твой синий цвет */
+    font-size: 20px;
+}
+
+/* Стили для иконок внутри дропдауна (используем твои из сайдбара) */
+.config-dropdown .pref-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    width: 100%; /* Тег занимает всю ширину дропдауна */
+    box-sizing: border-box;
+
+    /* СВЕТЛО-СИНИЙ ФОН И СИНИЙ ТЕКСТ */
+    background: rgba(66, 133, 244, 0.05) !important;
+    color: #1a73e8 !important; /* Чистый синий Google */
+    border: 1px solid rgba(66, 133, 244, 0.15);
+
+    padding: 8px 14px;
+    border-radius: 10px;
+
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: 'Google Sans', sans-serif !important;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.config-dropdown .pref-tag .material-icons {
+    font-family: 'Material Icons' !important;
+    font-size: 18px;
+    color: #4285F4 !important; /* Яркий синий для иконки */
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.config-dropdown .pref-tag:hover .material-icons {
+    transform: rotate(-5deg) scale(1.1);
+}
+
+.tag-text {
+    font-family: 'Google Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.tag-text-content {
+    font-family: 'Google Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    word-break: break-word; /* Чтобы длинные стили обучения не вылезали за края */
+}
 
 
 /* 2. ТЕКСТ ВНУТРИ */
@@ -201,7 +315,7 @@ body {
             #f4af54 65%,  /* Оранжевый до 65% */
             #34a853 70%,  /* Резкий переход к зеленому */
             #34a853 100%
-        ) !important;
+    ) !important;
     background-size: 100vw !important; /* Используем vw или фиксированную ширину контейнера */
 
     /* Если хедер имеет фиксированную ширину (как у тебя 270px-300px),
@@ -295,21 +409,21 @@ body {
 
     /* Твой теплый градиент без фиолетового */
     background: linear-gradient(
-        135deg,
-        #E34D4D 0%,
-        #F09341 25%,
-        #F7C14D 50%,
-        #5CB7A1 75%,
-        #4285F4 100%
+            135deg,
+            #E34D4D 0%,
+            #F09341 25%,
+            #F7C14D 50%,
+            #5CB7A1 75%,
+            #4285F4 100%
     ) !important;
 
     /* МАСКА: Рисует градиент только на границе в 2px, оставляя центр пустым */
     -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
     mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
 
@@ -400,8 +514,8 @@ body {
     z-index: -1;
     border-radius: 20px;
     background: conic-gradient(
-        from var(--angle),
-        #4285F4, #9b72cb, #d96570, #f4af54, #34a853, #4285F4
+            from var(--angle),
+            #4285F4, #9b72cb, #d96570, #f4af54, #34a853, #4285F4
     );
     opacity: 0;
     transition: opacity 0.3s ease;

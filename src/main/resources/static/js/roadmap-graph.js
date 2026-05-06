@@ -444,8 +444,8 @@ function renderCheckpointNode(cp, topicNodeId) {
         to: cp.id,
         dashes: (fromId !== topicNodeId && fromId !== 0),
         color: {
-                color: (fromId !== topicNodeId && fromId !== 0) ? '#BDC1C6' : '#9AA0A6'
-            },
+            color: (fromId !== topicNodeId && fromId !== 0) ? '#BDC1C6' : '#9AA0A6'
+        },
         width: 1.5 // Второстепенные связи можно оставить чуть тоньше
     });
 }
@@ -529,20 +529,71 @@ function createNewNodeAnimated(newCp) {
 
     // 5. Стабилизируем граф и обновляем общий прогресс
     setTimeout(() => {
-            if (bgWrapper) {
-                clearInterval(bgWrapper.dataset.accelInterval);
+        if (bgWrapper) {
+            clearInterval(bgWrapper.dataset.accelInterval);
 
-                // Плавный выход: сначала замедляем, потом убираем класс
-                bgWrapper.style.setProperty('--pulse-duration', '1s');
+            // Плавный выход: сначала замедляем, потом убираем класс
+            bgWrapper.style.setProperty('--pulse-duration', '1s');
 
-                setTimeout(() => {
-                    bgWrapper.classList.remove('bg-active-pulse');
-                    bgWrapper.style.removeProperty('--pulse-duration');
-                }, 500);
-            }
-            network.setOptions({ physics: { enabled: true, stabilization: true } });
-        }, 2000);
+            setTimeout(() => {
+                bgWrapper.classList.remove('bg-active-pulse');
+                bgWrapper.style.removeProperty('--pulse-duration');
+            }, 500);
+        }
+        network.setOptions({ physics: { enabled: true, stabilization: true } });
+    }, 2000);
 }
+
+let configLoaded = false;
+
+// Явно вешаем в глобальную область
+window.toggleRoadmapConfig = async function(event) {
+    // Если кликнули по самому дропдауну, не закрываем его
+    if (event && event.target.closest('.config-dropdown')) {
+        event.stopPropagation();
+        return;
+    }
+
+    const dropdown = document.getElementById('roadmap-config-dropdown');
+    const itemsContainer = document.getElementById('config-items');
+
+    if (!dropdown) return;
+
+    dropdown.classList.toggle('hidden');
+
+    // Если открыли и данные еще не подгружены
+    if (!dropdown.classList.contains('hidden') && !window.configLoaded) {
+        itemsContainer.innerHTML = '<div class="small-spinner"></div>';
+
+        try {
+            const response = await fetch(`/api/v1/roadmap/${window.roadmapId}/roadmap-config`);
+            if (!response.ok) throw new Error("Server error");
+
+            const config = await response.json();
+
+            const tags = [
+                { icon: 'psychology', text: config.mainDomain },
+                { icon: 'trending_up', text: config.targetLevel },
+                { icon: 'history_edu', text: config.learningStyle },
+                { icon: 'record_voice_over', text: config.toneOfVoice }
+            ];
+
+            itemsContainer.innerHTML = tags
+                .filter(t => t.text && t.text.trim() !== "") // Убираем пустые поля
+                .map(t => `
+                    <div class="pref-tag">
+                        <span class="material-icons">${t.icon}</span>
+                        <span class="tag-text-content">${t.text}</span>
+                    </div>
+                `).join('');
+
+            window.configLoaded = true;
+        } catch (err) {
+            itemsContainer.innerHTML = "Ошибка загрузки данных";
+            console.error(err);
+        }
+    }
+};
 
 window.updateProgressBar = async function() {
     const roadmapId = window.roadmapId;

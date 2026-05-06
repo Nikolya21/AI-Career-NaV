@@ -10,6 +10,7 @@ import org.example.aicareernav1.dto.roadmap.response.RoadmapResponse;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.service.roadmap.LessonService;
+import org.example.aicareernav1.service.roadmap.RoadmapConfigService;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.example.aicareernav1.service.user.impl.UserServiceImpl;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class RoadmapController {
 
   private final RoadmapService roadmapService;
+  private final RoadmapConfigService roadmapConfigService;
   private final UserServiceImpl userService;
   private final LessonService lessonService;
 
@@ -98,6 +100,12 @@ public class RoadmapController {
     log.info("API: Получен фидбек для Roadmap ID: {}", id);
     roadmapService.processUserFeedback(id, feedback);
     return ResponseEntity.ok(roadmapService.processUserFeedback(id, feedback));
+  }
+
+  @GetMapping("/{id}/roadmap-config")
+  public ResponseEntity<RoadmapConfig> getRoadmapConfig(@PathVariable Long id) {
+    log.info("API: Получен фидбек для Roadmap ID: {}", id);
+    return ResponseEntity.ok(roadmapConfigService.getRoadmapConfigByRoadmap(roadmapService.getRoadmapById(id)));
   }
 
   /**
