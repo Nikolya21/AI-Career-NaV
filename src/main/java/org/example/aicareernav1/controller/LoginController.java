@@ -1,7 +1,6 @@
 package org.example.aicareernav1.controller;
 
 import java.util.Date;
-import org.apache.commons.logging.Log;
 import org.example.aicareernav1.dto.user.LoginRequestDto;
 import org.example.aicareernav1.model.user.User;
 import org.example.aicareernav1.service.user.UserService;
@@ -44,14 +43,15 @@ public class LoginController {
     }
 
     AuthenticationResult authResult = userService.authenticateUser(loginRequest);
-    User user = authResult.getUser();
-    Long userId = user.getId();
     if (authResult.isSuccess()) {
+      User user = authResult.getUser();
+      Long userId = user.getId();
       session.setAttribute("user", authResult.getUser());
       session.setAttribute("userEmail", loginRequest.getEmail());
       session.setAttribute("authenticated", true);
-      session.setAttribute("userName", loginRequest.getEmail().split("@")[0]);
-      session.setAttribute("registrationDate", new Date());
+      session.setAttribute("userName", user.getName() != null ? user.getName() : loginRequest.getEmail().split("@")[0]);
+      session.setAttribute("roadmapId", user.getRoadmapId());
+      session.setAttribute("registrationDate", user.getCreatedAt() != null ? Date.from(user.getCreatedAt()) : new Date());
       return "redirect:/personal-cabinet/" + userId;
     } else {
       model.addAttribute("errors", authResult.getErrors());

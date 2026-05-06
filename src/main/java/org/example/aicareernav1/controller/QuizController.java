@@ -100,6 +100,7 @@ public class QuizController {
 
         // 2. Формируем запрос на генерацию Roadmap
         RoadmapGenerationRequest request = new RoadmapGenerationRequest();
+        request.setUserId(userId);
         request.setTestResult(analysisResult);
         request.setJobTitle(user.getVacancyNow());
         request.setRequirements(user.getVacancyRequirements());

@@ -25,6 +25,7 @@ public class Roadmap {
     @EqualsAndHashCode.Include // Объект равен другому, если их ID совпадают
     private Long id;
 
+    @Column(name = "user_id", nullable = false)
     private Long userId; // Связь с пользователем
 
     private String targetJobTitle; // Название профессии (например, "Java Developer")

@@ -4,227 +4,87 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Личный кабинет | AI Career Nav</title>
-  <link href="https://googleapis.com" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #fff;
-      --accent: #007AFF;
-      --glass: rgba(255, 255, 255, 0.03);
-      --border: rgba(255, 255, 255, 0.1);
-      --error: #ff3b30;
-      --success: #34c759;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-
-    body {
-      background: #000;
-      color: white;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    /* Живой фон */
-    .bg-mesh {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: radial-gradient(at 0% 0%, rgba(0, 122, 255, 0.12) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(88, 86, 214, 0.1) 0px, transparent 50%);
-      z-index: -1;
-    }
-
-    .main-container {
-      width: 1050px;
-      height: 700px;
-      background: var(--glass);
-      backdrop-filter: blur(40px) saturate(150%);
-      border: 1px solid var(--border);
-      border-radius: 40px;
-      display: flex;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.6);
-    }
-
-    /* Сайдбар */
-    .sidebar {
-      width: 280px;
-      border-right: 1px solid var(--border);
-      padding: 50px 40px;
-      display: flex;
-      flex-direction: column;
-      background: rgba(255, 255, 255, 0.01);
-    }
-
-    .user-avatar {
-      width: 70px; height: 70px;
-      background: linear-gradient(135deg, #007AFF, #5856d6);
-      border-radius: 22px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 28px; font-weight: 700; margin-bottom: 30px;
-    }
-
-    .nav-item {
-      color: rgba(255,255,255,0.4);
-      margin: 12px 0;
-      cursor: pointer;
-      transition: 0.3s;
-      font-size: 16px;
-      text-decoration: none;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .nav-item.active { color: white; font-weight: 600; }
-    .nav-item:hover { color: white; transform: translateX(5px); }
-
-    /* Контент */
-    .content { flex: 1; padding: 60px; overflow-y: auto; text-align: left; }
-
-    h1 { font-size: 38px; margin-bottom: 8px; font-weight: 700; }
-    .status-text { color: rgba(255,255,255,0.4); margin-bottom: 40px; font-size: 14px; }
-
-    /* Зона загрузки */
-    .upload-zone {
-      background: rgba(255,255,255,0.02);
-      border: 2px dashed var(--border);
-      border-radius: 28px;
-      padding: 45px;
-      text-align: center;
-      cursor: pointer;
-      transition: 0.3s;
-      position: relative;
-    }
-    .upload-zone:hover, .upload-zone.dragover {
-      border-color: var(--accent);
-      background: rgba(0,122,255,0.08);
-    }
-
-    .loader {
-      display: none; width: 24px; height: 24px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 10px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .alert {
-      padding: 15px; border-radius: 14px; margin-bottom: 20px; font-size: 14px;
-      border: 1px solid transparent;
-    }
-    .alert-success { background: rgba(52, 199, 89, 0.1); color: var(--success); border-color: rgba(52,199,89,0.2); }
-    .alert-error { background: rgba(255, 59, 48, 0.1); color: var(--error); border-color: rgba(255,59,48,0.2); }
-
-    .resume-badge {
-      display: inline-flex; align-items: center; padding: 12px 20px;
-      background: rgba(255,255,255,0.06); border-radius: 16px;
-      margin-top: 20px; border: 1px solid var(--border);
-    }
-
-    .wishes-btn {
-      margin-top: 40px; display: inline-flex; align-items: center; gap: 12px;
-      padding: 18px 32px; background: #fff; color: #000; border-radius: 18px;
-      font-weight: 700; text-decoration: none; transition: 0.3s;
-    }
-    .wishes-btn:hover { background: var(--accent); color: #fff; transform: translateY(-3px); }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/personal-cabinet.css}">
 </head>
 <body>
 
-<div class="bg-mesh"></div>
-
-<div class="main-container">
-  <aside class="sidebar">
-    <div class="user-avatar"
-         th:text="${session.userName != null ? #strings.toUpperCase(session.userName.substring(0,1)) : 'U'}">U</div>
-    <a th:href="@{/personal-cabinet}" class="nav-item active">🏠 Кабинет</a>
-    <a class="nav-item">📊 Анализ резюме</a>
-    <a class="nav-item">💡 Советы ИИ</a>
-    <a th:href="@{/logout}" class="nav-item" style="margin-top: auto; color: var(--error)">🚪 Выход</a>
-  </aside>
-
-  <main class="content">
-    <h1 th:text="'Привет, ' + ${session.userName} + '!'">Привет!</h1>
-    <p class="status-text">
-      В системе с: <span th:text="${session.registrationDate != null ? #dates.format(session.registrationDate, 'dd.MM.yyyy') : 'н/д'}">01.01.2024</span>
-    </p>
-
-    <!-- Уведомления об успехе или ошибке -->
-    <div th:if="${session.uploadSuccess}" class="alert alert-success" th:text="${session.uploadSuccess}"></div>
-    <div th:if="${session.uploadError}" class="alert alert-error" th:text="${session.uploadError}"></div>
-
-    <!-- Форма загрузки -->
-    <form th:action="@{/personal-cabinet/upload}" method="POST" enctype="multipart/form-data" id="upload-form">
-      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <div id="idle-state">
-          <div style="font-size: 32px; margin-bottom: 10px;">☁️</div>
-          <p>Нажмите или перетащите резюме</p>
-          <p style="font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 5px;">Поддерживаются PDF и DOCX</p>
-        </div>
-
-        <div id="loading-state" style="display:none;">
-          <div class="loader"></div>
-          <p>Загрузка и анализ...</p>
-        </div>
-
-        <input type="file" id="file-input" name="resumeFile" onchange="startUpload()" hidden accept=".pdf,.docx">
-      </div>
-    </form>
-
-    <!-- Отображение загруженного файла -->
-    <div th:if="${session.resumeUploaded}" class="resume-badge">
-      <span style="margin-right: 15px; font-size: 20px;">📄</span>
-      <div style="text-align: left;">
-        <div style="font-size: 14px; font-weight: 600;" th:text="${session.resumeFilename}">resume.pdf</div>
-        <div style="font-size: 11px; color: rgba(255,255,255,0.4)"
-             th:text="'Обновлено: ' + ${#dates.format(session.resumeUploadDate, 'dd.MM HH:mm')}"></div>
-      </div>
-    </div>
-
-    <div style="margin-top: 20px;">
-      <a th:href="@{/wishes/form(userId=${session.userId})}" class="wishes-btn">🎯 Мои пожелания →</a>
-    </div>
-  </main>
+<div class="bg-wrapper">
+  <div class="bg-overlay"></div>
 </div>
 
-<script>
-  const form = document.getElementById('upload-form');
-  const fileInput = document.getElementById('file-input');
-  const idleState = document.getElementById('idle-state');
-  const loadingState = document.getElementById('loading-state');
-  const dropZone = document.getElementById('drop-zone');
+<div class="dashboard-container" id="cabinet-app"
+     th:attr="data-user-id=${userId}, data-current-roadmap-id=${currentRoadmapId != null ? currentRoadmapId : ''}">
+  <header>
+    <p class="kicker">AI Career Nav</p>
+    <h1 th:text="'Привет, ' + ${userName} + '!'">Привет!</h1>
+    <p class="subtitle">
+      В системе с: <span th:text="${registrationDate != null ? #dates.format(registrationDate, 'dd.MM.yyyy') : 'н/д'}">01.01.2024</span>.
+      Здесь можно создать новую roadmap, открыть старую или запустить ИИ-собеседование.
+    </p>
+  </header>
 
-  function startUpload() {
-    if (fileInput.files.length > 0) {
-      idleState.style.display = 'none';
-      loadingState.style.display = 'block';
-      form.submit();
-    }
-  }
+  <div class="layout-content">
+    <aside class="sidebar-actions">
+      <a th:href="@{/wishes/form(userId=${userId})}" class="action-btn-gradient">
+        <span class="material-icons">add_chart</span>
+        <span>Сгенерировать роадмапу</span>
+      </a>
 
-  // Drag and Drop логика
-  ['dragenter', 'dragover'].forEach(e => {
-    dropZone.addEventListener(e, (evt) => {
-      evt.preventDefault();
-      dropZone.classList.add('dragover');
-    });
-  });
+      <a th:href="@{/quiz-view/{userId}(userId=${userId})}" class="action-btn-gradient">
+        <span class="material-icons">smart_toy</span>
+        <span>ИИ собеседование</span>
+      </a>
 
-  ['dragleave', 'drop'].forEach(e => {
-    dropZone.addEventListener(e, (evt) => {
-      evt.preventDefault();
-      dropZone.classList.remove('dragover');
-    });
-  });
+      <div class="sidebar-panel" th:if="${currentRoadmapId != null}">
+        <div class="meta-row">
+          <div>
+            <p class="meta-title">Текущая roadmap</p>
+            <p class="meta-subtitle">Быстрый переход к активной дорожной карте.</p>
+          </div>
+          <a th:href="@{/roadmap/{id}(id=${currentRoadmapId})}" class="meta-link">
+            <span class="material-icons" style="font-size: 18px;">arrow_forward</span>
+            Открыть
+          </a>
+        </div>
+      </div>
 
-  dropZone.addEventListener('drop', (evt) => {
-    const files = evt.dataTransfer.files;
-    if (files.length > 0) {
-      fileInput.files = files;
-      startUpload();
-    }
-  });
+      <div class="sidebar-panel" th:if="${currentRoadmapId == null}">
+        <p class="meta-title">Пока нет активной roadmap</p>
+        <p class="meta-subtitle">Создайте первую дорожную карту, чтобы она появилась здесь и в списке справа.</p>
+      </div>
+    </aside>
+
+    <main class="roadmap-showcase">
+      <div class="showcase-header">
+        <div>
+          <span class="section-label">Ваши roadmap</span>
+          <h2>Открыть старую роадмапу</h2>
+        </div>
+        <p class="showcase-hint" id="roadmaps-status">Загружаем ваши roadmap...</p>
+      </div>
+
+      <div class="roadmap-grid" id="roadmaps-grid"></div>
+
+      <div class="empty-state hidden" id="roadmaps-empty">
+        <p>Пока нет сохранённых roadmap. Создайте первую, чтобы начать путь обучения.</p>
+        <div class="empty-actions">
+          <a th:href="@{/wishes/form(userId=${userId})}" class="primary-link">
+            <span class="material-icons" style="font-size: 18px;">add</span>
+            Создать roadmap
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  window.PERSONAL_CABINET_USER_ID = /*[[${userId}]]*/ null;
+  window.PERSONAL_CABINET_CURRENT_ROADMAP_ID = /*[[${currentRoadmapId}]]*/ null;
 </script>
+<script th:src="@{/js/personal-cabinet.js}"></script>
 
 </body>
 </html>

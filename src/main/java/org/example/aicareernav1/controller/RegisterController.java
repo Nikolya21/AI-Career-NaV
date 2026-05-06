@@ -16,9 +16,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import java.util.Date;
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Controller
@@ -83,7 +82,8 @@ public class RegisterController {
         session.setAttribute("authenticated", true);
         session.setAttribute("userName", userName);
         session.setAttribute("userId", userId);
-        session.setAttribute("registrationDate", authResult.getUser().getCreatedAt());
+        session.setAttribute("roadmapId", authResult.getUser().getRoadmapId());
+        session.setAttribute("registrationDate", authResult.getUser().getCreatedAt() != null ? Date.from(authResult.getUser().getCreatedAt()) : new Date());
 
         log.info("✅ Auto-login successful for user: {}", registrationDto.getEmail());
 

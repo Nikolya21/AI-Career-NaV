@@ -29,26 +29,28 @@ public interface RoadmapRepository extends JpaRepository<Roadmap, Long> {
     Optional<RoadmapConfig> findConfigByRoadmapId(@Param("roadmapId") Long roadmapId);
 
     @Query("""
-    SELECT DISTINCT t.externalId 
-    FROM Roadmap r 
-    JOIN r.topics top 
-    JOIN top.checkpoints cp 
-    JOIN cp.module m 
-    JOIN m.lessons l 
-    JOIN l.theory t 
+    SELECT DISTINCT t.externalId
+    FROM Roadmap r
+    JOIN r.topics top
+    JOIN top.checkpoints cp
+    JOIN cp.module m
+    JOIN m.lessons l
+    JOIN l.theory t
     WHERE r.id = :roadmapId AND t.externalId IS NOT NULL
 """)
     List<String> findAllExcludedExternalIds(@Param("roadmapId") Long roadmapId);
 
     @Query("""
-        SELECT r FROM Roadmap r 
-        JOIN r.topics t 
-        JOIN t.checkpoints cp 
-        JOIN cp.module m 
-        JOIN m.lessons l 
+        SELECT r FROM Roadmap r
+        JOIN r.topics t
+        JOIN t.checkpoints cp
+        JOIN cp.module m
+        JOIN m.lessons l
         WHERE l.id = :lessonId
     """)
     Optional<Roadmap> findByLessonId(@Param("lessonId") Long lessonId);
+
+    List<Roadmap> findAllByUserIdOrderByCreatedAtDesc(Long userId);
 
     @EntityGraph(attributePaths = {"topics.checkpoints.module.lessons"})
     Optional<Roadmap> findWithAllDetailsById(Long id);
