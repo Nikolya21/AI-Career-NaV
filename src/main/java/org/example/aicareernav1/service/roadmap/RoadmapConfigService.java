@@ -33,7 +33,7 @@ public class RoadmapConfigService {
      * Использует LLM для извлечения тегов и JsonUtils для безопасного парсинга.
      */
     @Transactional
-    public void updateConfigFromUserText(Roadmap roadmap, String userMessage) {
+    public RoadmapConfig updateConfigFromUserText(Roadmap roadmap, String userMessage) {
         RoadmapConfig currentConfig = roadmap.getConfig();
         if (currentConfig == null) {
             currentConfig = createDefaultConfig();
@@ -63,12 +63,12 @@ public class RoadmapConfigService {
                 roadmapRepository.save(roadmap);
                 log.info("Config successfully updated for Roadmap ID {}. New data: {}", roadmap.getId(), cleanedResponse);
             }
-
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize current config to JSON for Roadmap ID: {}", roadmap.getId());
         } catch (Exception e) {
             log.error("Critical error during config update for Roadmap ID: {}", roadmap.getId(), e);
         }
+        return roadmap.getConfig();
     }
 
     /**

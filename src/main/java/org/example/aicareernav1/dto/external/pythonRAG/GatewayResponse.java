@@ -1,5 +1,6 @@
 package org.example.aicareernav1.dto.external.pythonRAG;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,9 @@ import java.util.List;
 public class GatewayResponse {
     private String status; // READY_LESSON | NEED_GENERATION | NOT_FOUND
     private String content;
+
+    @JsonProperty("parent_id")
+    private String parentId;
     private List<String> resources = new ArrayList<>();
     private List<ChunkResponse> chunks = new ArrayList<>();
 }

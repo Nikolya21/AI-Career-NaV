@@ -59,90 +59,90 @@ public class UserServiceImpl implements UserService {
   private User toUser(UserEntity entity) {
     if (entity == null) return null;
     return User.builder()
-        .id(entity.getId())
-        .name(entity.getName())
-        .email(entity.getEmail())
-        .passwordHash(entity.getPasswordHash())
-        .vacancyNow(entity.getVacancyNow())
-        .roadmapId(entity.getRoadmapId())
-        .createdAt(entity.getCreatedAt())
-        .updatedAt(entity.getUpdatedAt())
-        .build();
+            .id(entity.getId())
+            .name(entity.getName())
+            .email(entity.getEmail())
+            .passwordHash(entity.getPasswordHash())
+            .vacancyNow(entity.getVacancyNow())
+            .roadmapId(entity.getRoadmapId())
+            .createdAt(entity.getCreatedAt())
+            .updatedAt(entity.getUpdatedAt())
+            .build();
   }
 
   private UserEntity toUserEntity(User user) {
     if (user == null) return null;
     return UserEntity.builder()
-        .id(user.getId())
-        .name(user.getName())
-        .email(user.getEmail())
-        .passwordHash(user.getPasswordHash())
-        .vacancyNow(user.getVacancyNow())
-        .roadmapId(user.getRoadmapId())
-        .createdAt(user.getCreatedAt())
-        .updatedAt(user.getUpdatedAt())
-        .build();
+            .id(user.getId())
+            .name(user.getName())
+            .email(user.getEmail())
+            .passwordHash(user.getPasswordHash())
+            .vacancyNow(user.getVacancyNow())
+            .roadmapId(user.getRoadmapId())
+            .createdAt(user.getCreatedAt())
+            .updatedAt(user.getUpdatedAt())
+            .build();
   }
 
   private CVData toCVData(CVDataEntity entity) {
     if (entity == null) return null;
     return CVData.builder()
-        .id(entity.getId())
-        .userId(entity.getUser().getId())
-        .file(null)
-        .information(entity.getInformation())
-        .uploadedAt(entity.getUploadedAt())
-        .build();
+            .id(entity.getId())
+            .userId(entity.getUser().getId())
+            .file(null)
+            .information(entity.getInformation())
+            .uploadedAt(entity.getUploadedAt())
+            .build();
   }
 
   private CVDataEntity toCVDataEntity(CVData data, UserEntity user) {
     if (data == null) return null;
     return CVDataEntity.builder()
-        .id(data.getId())
-        .user(user)
-        .information(data.getInformation())
-        .uploadedAt(data.getUploadedAt())
-        .build();
+            .id(data.getId())
+            .user(user)
+            .information(data.getInformation())
+            .uploadedAt(data.getUploadedAt())
+            .build();
   }
 
   private UserPreferences toUserPreferences(UserPreferencesEntity entity) {
     if (entity == null) return null;
     return UserPreferences.builder()
-        .id(entity.getId())
-        .userId(entity.getUser().getId())
-        .infoAboutPerson(entity.getInfoAboutPerson())
-        .build();
+            .id(entity.getId())
+            .userId(entity.getUser().getId())
+            .infoAboutPerson(entity.getInfoAboutPerson())
+            .build();
   }
 
   private UserPreferencesEntity toUserPreferencesEntity(UserPreferences preferences, UserEntity user) {
     if (preferences == null) return null;
     return UserPreferencesEntity.builder()
-        .id(preferences.getId())
-        .user(user)
-        .infoAboutPerson(preferences.getInfoAboutPerson())
-        .build();
+            .id(preferences.getId())
+            .user(user)
+            .infoAboutPerson(preferences.getInfoAboutPerson())
+            .build();
   }
 
   private UserSkills toUserSkills(UserSkillsEntity entity) {
     if (entity == null) return null;
     return UserSkills.builder()
-        .id(entity.getId())
-        .userId(entity.getUser().getId())
-        .fullCompliancePercentage(entity.getFullCompliancePercentage())
-        .skillGaps(entity.getSkillGaps())
-        .calculatedAt(entity.getCalculatedAt())
-        .build();
+            .id(entity.getId())
+            .userId(entity.getUser().getId())
+            .fullCompliancePercentage(entity.getFullCompliancePercentage())
+            .skillGaps(entity.getSkillGaps())
+            .calculatedAt(entity.getCalculatedAt())
+            .build();
   }
 
   private UserSkillsEntity toUserSkillsEntity(UserSkills skills, UserEntity user) {
     if (skills == null) return null;
     return UserSkillsEntity.builder()
-        .id(skills.getId())
-        .user(user)
-        .fullCompliancePercentage(skills.getFullCompliancePercentage())
-        .skillGaps(skills.getSkillGaps())
-        .calculatedAt(skills.getCalculatedAt())
-        .build();
+            .id(skills.getId())
+            .user(user)
+            .fullCompliancePercentage(skills.getFullCompliancePercentage())
+            .skillGaps(skills.getSkillGaps())
+            .calculatedAt(skills.getCalculatedAt())
+            .build();
   }
 
   // ========== Методы интерфейса ==========
@@ -150,8 +150,8 @@ public class UserServiceImpl implements UserService {
   @Override
   public RegistrationResult registerUser(UserRegistrationDto registrationDto) {
     List<String> validationErrors = RegistrationValidator.validate(
-        registrationDto,
-        this::isEmailAvailable
+            registrationDto,
+            this::isEmailAvailable
     );
 
     if (!validationErrors.isEmpty()) {
@@ -162,12 +162,12 @@ public class UserServiceImpl implements UserService {
 
     try {
       UserEntity userEntity = UserEntity.builder()
-          .name(registrationDto.getName())
-          .email(registrationDto.getEmail())
-          .passwordHash(PasswordEncoder.encode(registrationDto.getPassword()))
-          .vacancyNow(null)
-          .roadmapId(null)
-          .build();
+              .name(registrationDto.getName())
+              .email(registrationDto.getEmail())
+              .passwordHash(PasswordEncoder.encode(registrationDto.getPassword()))
+              .vacancyNow(null)
+              .roadmapId(null)
+              .build();
 
       UserEntity savedEntity = userJpaRepository.save(userEntity);
       log.info("User registered successfully with ID: {}", savedEntity.getId());
@@ -183,14 +183,14 @@ public class UserServiceImpl implements UserService {
   @Override
   public CVData getCVDataByUserId(Long userId) {
     CVDataEntity entity = cvDataJpaRepository.findByUser_Id(userId)
-        .orElseThrow(() -> new IllegalArgumentException("CV not found for user " + userId));
+            .orElseThrow(() -> new IllegalArgumentException("CV not found for user " + userId));
     return toCVData(entity);
   }
 
   @Override
   public UserPreferences saveUserPreferences(UserPreferences preferences, Long userId) {
     UserEntity user = userJpaRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
     UserPreferencesEntity entity = toUserPreferencesEntity(preferences, user);
     UserPreferencesEntity saved = userPreferencesJpaRepository.save(entity);
     return toUserPreferences(saved);
@@ -232,7 +232,7 @@ public class UserServiceImpl implements UserService {
     }
 
     UserEntity userEntity = userJpaRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+            .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
     // Возвращаем только нужные поля
     User profile = new User();
@@ -241,14 +241,15 @@ public class UserServiceImpl implements UserService {
     profile.setName(userEntity.getName());
     profile.setVacancyNow(userEntity.getVacancyNow());
     profile.setRoadmapId(userEntity.getRoadmapId());
+    profile.setCreatedAt(userEntity.getCreatedAt());
     return profile;
   }
 
   @Override
   public List<User> getAllUsers() {
     return userJpaRepository.findAll().stream()
-        .map(this::toUser)
-        .collect(Collectors.toList());
+            .map(this::toUser)
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -272,7 +273,7 @@ public class UserServiceImpl implements UserService {
 
     try {
       UserEntity userEntity = userJpaRepository.findById(userId)
-          .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+              .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
       userEntity.setVacancyNow(vacancy.trim());
       userJpaRepository.save(userEntity);
@@ -298,7 +299,7 @@ public class UserServiceImpl implements UserService {
 
     try {
       UserEntity userEntity = userJpaRepository.findById(userId)
-          .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+              .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
       userEntity.setRoadmapId(roadmapId);
       userJpaRepository.save(userEntity);
@@ -327,7 +328,7 @@ public class UserServiceImpl implements UserService {
 
     try {
       UserEntity userEntity = userJpaRepository.findById(userId)
-          .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+              .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
       UserSkillsEntity skillsEntity = toUserSkillsEntity(skills, userEntity);
       skillsEntity.setCalculatedAt(skills.getCalculatedAt()); // уже установлено
@@ -361,14 +362,14 @@ public class UserServiceImpl implements UserService {
 
     try {
       UserEntity userEntity = userJpaRepository.findById(userId)
-          .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+              .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
       String extractedText = extractTextFromFile(cvFile);
 
       CVDataEntity cvDataEntity = CVDataEntity.builder()
-          .user(userEntity)
-          .information(extractedText)
-          .build();
+              .user(userEntity)
+              .information(extractedText)
+              .build();
 
       cvDataJpaRepository.save(cvDataEntity);
       log.info("CV uploaded successfully for user ID: {}", userId);
@@ -393,8 +394,8 @@ public class UserServiceImpl implements UserService {
 
     try {
       return userPreferencesJpaRepository.findByUser_Id(userId)
-          .map(this::toUserPreferences)
-          .orElse(null);
+              .map(this::toUserPreferences)
+              .orElse(null);
     } catch (Exception e) {
       throw new RuntimeException("Системная ошибка при получении настроек: " + e.getMessage());
     }
@@ -413,10 +414,10 @@ public class UserServiceImpl implements UserService {
 
     try {
       UserEntity userEntity = userJpaRepository.findById(userId)
-          .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+              .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
       UserPreferencesEntity preferencesEntity = userPreferencesJpaRepository.findByUser_Id(userId)
-          .orElseGet(() -> UserPreferencesEntity.builder().user(userEntity).build());
+              .orElseGet(() -> UserPreferencesEntity.builder().user(userEntity).build());
 
       preferencesEntity.setInfoAboutPerson(newInfoAboutPerson.trim());
       userPreferencesJpaRepository.save(preferencesEntity);
@@ -467,7 +468,7 @@ public class UserServiceImpl implements UserService {
   private String extractTextFromDocx(File file) throws IOException {
     StringBuilder sb = new StringBuilder();
     try (FileInputStream fis = new FileInputStream(file);
-        XWPFDocument document = new XWPFDocument(fis)) {
+         XWPFDocument document = new XWPFDocument(fis)) {
       for (XWPFParagraph para : document.getParagraphs()) {
         sb.append(para.getText()).append("\n");
       }

@@ -1,11 +1,69 @@
 const sidebarManager = {
     currentCheckpointId: null,
     currentLessonId: null, // Добавляем новое поле
+    loadedLessons: [],
 
     // Открыть/закрыть сайдбар
     toggle(show) {
         const sidebar = document.getElementById('sidebar');
+        const headerPanel = document.querySelector('.header-panel');
+        const fsBtn = document.getElementById('fullscreen-btn')?.querySelector('.material-icons');
+
         sidebar.classList.toggle('sidebar-hidden', !show);
+
+        // Если закрываем сайдбар — сбрасываем всё состояние фуллскрина
+        if (!show) {
+            sidebar.classList.remove('full-viewport');
+            document.body.style.overflow = 'auto'; // Возвращаем скролл страницы
+
+            if (headerPanel) {
+                headerPanel.style.display = 'flex'; // Гарантированно возвращаем панель
+                headerPanel.style.opacity = '1';
+            }
+
+            if (fsBtn) {
+                fsBtn.innerText = 'open_in_full';
+            }
+
+            // Возвращаем стандартную ширину сайдбара
+            sidebar.classList.remove('sidebar-expanded');
+        }
+    },
+
+    // Методы для модального окна фидбека
+    openFeedbackModal() {
+        document.getElementById('feedback-modal').classList.remove('hidden');
+    },
+
+    closeFeedbackModal() {
+        document.getElementById('feedback-modal').classList.add('hidden');
+        document.getElementById('lesson-feedback-input').value = '';
+    },
+
+    // Добавь внутрь объекта sidebarManager:
+
+    toggleFullScreen() {
+        const sidebar = document.getElementById('sidebar');
+        const fsBtn = document.getElementById('fullscreen-btn').querySelector('.material-icons');
+        const headerPanel = document.querySelector('.header-panel'); // Находим прогресс-бар
+
+        const isFull = sidebar.classList.toggle('full-viewport');
+
+        if (isFull) {
+            fsBtn.innerText = 'close_fullscreen';
+            if (headerPanel) headerPanel.style.opacity = '0'; // Плавно скрываем
+            sidebar.classList.add('sidebar-expanded');
+        } else {
+            fsBtn.innerText = 'open_in_full';
+            if (headerPanel) headerPanel.style.opacity = '1'; // Показываем обратно
+
+            // Возвращаем размер в зависимости от того, открыт ли урок
+            if (document.getElementById('lesson-list-container').classList.contains('hidden')) {
+                 sidebar.classList.add('sidebar-expanded');
+            } else {
+                 sidebar.classList.remove('sidebar-expanded');
+            }
+        }
     },
 
     // 1. Загрузка чекпоинта (список уроков)
@@ -38,7 +96,13 @@ const sidebarManager = {
                 }
 
                 console.log("Extracted Lessons:", lessons);
+                this.loadedLessons = lessons;
                 this.renderLessons(lessons);
+
+                // Обновляем прогресс-бар, так как могли появиться новые уроки
+                if (typeof window.updateProgressBar === 'function') {
+                    window.updateProgressBar();
+                }
 
             } catch (err) {
                 console.error("Sidebar error:", err);
@@ -77,15 +141,28 @@ const sidebarManager = {
             return;
         }
 
-        // Отрисовка
-        container.innerHTML = lessons.map(lesson => `
-            <div class="lesson-card" onclick="sidebarManager.loadLessonTheory(${lesson.id})">
-                <span class="material-icons">description</span>
-                <div class="lesson-info">
-                    <h3>${lesson.title || "Без названия"}</h3>
-                </div>
-            </div>
-        `).join('');
+        container.innerHTML = lessons.map(lesson => {
+                // Проверяем, есть ли теория (используем флаг из DTO или проверяем объект)
+                const isCompleted = lesson.theoryExists || (lesson.theory && lesson.theory.text);
+                const iconName = isCompleted ? 'check_circle' : 'auto_stories';
+                const cardClass = isCompleted ? 'lesson-card completed' : 'lesson-card';
+                const statusText = isCompleted ? 'Теория готова к изучению' : (lesson.description || "Нажми, чтобы открыть теорию");
+
+                return `
+                    <div class="${cardClass}" onclick="sidebarManager.loadLessonTheory(${lesson.id})">
+                        <div class="lesson-card-icon">
+                            <span class="material-icons">${iconName}</span>
+                        </div>
+                        <div class="lesson-card-info">
+                            <h4>${lesson.title || "Без названия"}</h4>
+                            <p>${statusText}</p>
+                        </div>
+                        <div class="lesson-card-status">
+                            <span class="material-icons">chevron_right</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
     },
 
     // 2. Ленивая загрузка теории конкретного урока
@@ -101,14 +178,34 @@ const sidebarManager = {
             if (!response.ok) throw new Error("Lesson not found");
 
             const data = await response.json();
+            if (data.theory && data.theory.text) {
+                const lesson = this.loadedLessons.find(l => l.id === lessonId);
+                if (lesson) {
+                    lesson.theoryExists = true; // Ставим флаг для рендеринга
+                    // Вызываем перекраску узла на карте
+                    this.updateNodeColorOnMap(this.currentCheckpointId);
+                }
+
+                // --- ДОБАВИТЬ СЮДА ---
+                // Теория готова -> урок засчитан -> прогресс вырос!
+                if (typeof window.updateProgressBar === 'function') {
+                    window.updateProgressBar();
+                }
+            }
 
             const markdownContent = data.theory ? data.theory.text : "";
 
             if (window.marked && markdownContent) {
-                theoryContainer.innerHTML = marked.parse(markdownContent); // Исправлено на theoryContainer
-            } else {
-                theoryContainer.innerText = markdownContent || "Контент временно недоступен";
-            }
+                    // 1. Рендерим Markdown в HTML
+                    theoryContainer.innerHTML = marked.parse(markdownContent);
+
+                    // 2. Ищем все блоки <pre><code> и подсвечиваем их
+                    theoryContainer.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                } else {
+                    theoryContainer.innerText = markdownContent || "Контент временно недоступен";
+                }
             // Рендерим Markdown
         } catch (err) {
             console.error("Ошибка загрузки урока:", err);
@@ -116,51 +213,110 @@ const sidebarManager = {
         }
     },
 
+    // Новый метод для динамического обновления цвета узла
+    updateNodeColorOnMap(checkpointId) {
+        if (typeof nodes === 'undefined' || !nodes.get(checkpointId)) return;
+
+        const total = this.loadedLessons.length;
+        const completed = this.loadedLessons.filter(l => l.theoryExists || (l.theory && l.theory.text)).length;
+
+        let newColor = '#BDC1C6';
+        if (completed === total && total > 0) {
+            newColor = '#34a853'; // Все зеленые
+        } else if (completed > 0) {
+            newColor = '#f4af54'; // Часть зеленых
+        }
+
+        // Мгновенно обновляем узел в vis.js без перезагрузки всей карты
+        nodes.update({
+            id: checkpointId,
+            color: {
+                background: newColor,
+                highlight: { background: newColor },
+                hover: { background: newColor }
+            }
+        });
+    },
+
     // Добавь это внутрь объекта sidebarManager
+    // Внутри объекта sidebarManager добавь/обнови:
+
     async sendFeedback() {
         const feedbackInput = document.getElementById('lesson-feedback-input');
+        const inputWrapper = feedbackInput.closest('.input-wrapper');
         const statusLabel = document.getElementById('feedback-status');
         const sendBtn = document.getElementById('send-feedback-btn');
 
         const feedbackText = feedbackInput.value.trim();
         if (!feedbackText) return;
 
-        // roadmapId мы берем из глобальной переменной window.roadmapId
-        const roadmapId = window.roadmapId;
-
         sendBtn.disabled = true;
-        sendBtn.innerText = "Отправка...";
+        sendBtn.innerText = "Анализируем...";
 
         try {
-            const response = await fetch(`/api/v1/roadmap/${roadmapId}/feedback`, {
+            const response = await fetch(`/api/v1/roadmap/${window.roadmapId}/feedback`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain' // Твой контроллер принимает @RequestBody String
-                },
+                headers: { 'Content-Type': 'text/plain' },
                 body: feedbackText
             });
 
             if (response.ok) {
-                feedbackInput.value = '';
-                statusLabel.classList.remove('hidden');
-                sendBtn.classList.add('hidden');
+                const updatedConfig = await response.json(); // Получаем RoadmapConfig
 
-                // Скрываем сообщение через 5 секунд и возвращаем кнопку
+                statusLabel.classList.remove('hidden');
+                inputWrapper.style.display = 'none'; // Прячем поле ввода
+                sendBtn.style.display = 'none'; // Прячем кнопку
+
+                // Показываем обновленные теги
+                this.renderUserPreferences(updatedConfig);
+
                 setTimeout(() => {
+                    this.closeFeedbackModal();
+                    // Сброс интерфейса для следующего раза
                     statusLabel.classList.add('hidden');
-                    sendBtn.classList.remove('hidden');
+                    inputWrapper.style.display = 'block';
+                    sendBtn.style.display = 'block';
                     sendBtn.disabled = false;
-                    sendBtn.innerHTML = '<span class="material-icons">send</span> Отправить фидбек';
-                }, 5000);
-            } else {
-                throw new Error("Ошибка сервера");
+                    sendBtn.innerText = "Отправить";
+                    // Очистка контейнера тегов
+                    const prefContainer = document.getElementById('user-prefs-container');
+                    if (prefContainer) prefContainer.innerHTML = '';
+                }, 7000); // Даем 7 секунд рассмотреть изменения
             }
         } catch (err) {
             console.error("Feedback error:", err);
-            alert("Не удалось отправить отзыв. Попробуй позже.");
+            alert("Не удалось обновить профиль.");
             sendBtn.disabled = false;
-            sendBtn.innerHTML = '<span class="material-icons">send</span> Отправить фидбек';
         }
+    },
+
+    renderUserPreferences(config) {
+        const modalBody = document.querySelector('#feedback-modal .modal-content');
+        let prefContainer = document.getElementById('user-prefs-container');
+
+        if (!prefContainer) {
+            prefContainer = document.createElement('div');
+            prefContainer.id = 'user-prefs-container';
+            prefContainer.className = 'user-preferences-display';
+            // Вставляем перед кнопками или после заголовка статуса
+            modalBody.appendChild(prefContainer);
+        }
+
+        const tags = [
+            { icon: 'psychology', text: config.mainDomain },
+            { icon: 'trending_up', text: config.targetLevel },
+            { icon: 'history_edu', text: config.learningStyle },
+            { icon: 'record_voice_over', text: config.toneOfVoice }
+        ];
+
+        prefContainer.innerHTML = tags
+            .filter(t => t.text) // Показываем только заполненные
+            .map(t => `
+                <div class="pref-tag">
+                    <span class="material-icons">${t.icon}</span>
+                    ${t.text}
+                </div>
+            `).join('');
     },
 
     // Переключение состояний внутри сайдбара
@@ -169,6 +325,10 @@ const sidebarManager = {
         document.getElementById('lesson-detail-container').classList.add('hidden');
         // Убираем широкий класс, возвращая сайдбар к 450px
         document.getElementById('sidebar').classList.remove('sidebar-expanded');
+
+        if (this.loadedLessons.length > 0) {
+                this.renderLessons(this.loadedLessons);
+            }
     },
 
     showDetail() {

@@ -61,7 +61,32 @@ public interface RoadmapMapper {
   @Mapping(target = "roadmapId", source = "roadmap.id")
   @Mapping(target = "parentCheckpointId", source = "parentCheckpoint.id")
   @Mapping(target = "sourceLessonId", source = "sourceLesson.id")
+  @Mapping(target = "totalLessons", ignore = true)
+  @Mapping(target = "completedLessons", ignore = true)
   CheckpointResponse toCheckpointResponse(Checkpoint checkpoint);
+
+  // 3. Тот самый метод диагностики/наполнения
+  @AfterMapping
+  // Используем CheckpointResponse.CheckpointResponseBuilder[cite: 10, 12]
+  default void fillProgress(Checkpoint checkpoint, @MappingTarget CheckpointResponse.CheckpointResponseBuilder response) {
+    if (checkpoint.getModule() != null && checkpoint.getModule().getLessons() != null) {
+      List<Lesson> lessons = checkpoint.getModule().getLessons();
+
+      Integer total = lessons.size();
+      Integer completed = (int) lessons.stream()
+              .filter(l -> l.getTheory() != null &&
+                      l.getTheory().getText() != null &&
+                      !l.getTheory().getText().isBlank())
+              .count();
+
+      response.totalLessons(total);
+      response.completedLessons(completed);
+    } else {
+      response.totalLessons(0);
+      response.completedLessons(0);
+    }
+  }
+
 
 
   /**
@@ -71,8 +96,8 @@ public interface RoadmapMapper {
     if (roadmap.getTopics() == null) return 0;
 
     return (int) roadmap.getTopics().stream()
-            .flatMap(topic -> topic.getCheckpoints().stream())
-            .filter(cp -> cp.getType() != CheckpointType.ROOT) // ROOT не считаем за учебный этап
+            .flatMap(t -> t.getCheckpoints().stream())
+            .filter(cp -> cp.getType() != CheckpointType.ROOT)
             .count();
   }
 
@@ -80,20 +105,45 @@ public interface RoadmapMapper {
    * Считает прогресс как % выполненных чекпоинтов (кроме ROOT).
    */
   default Double calculateProgress(Roadmap roadmap) {
-    if (roadmap.getTopics() == null) return 0.0;
+    if (roadmap.getTopics() == null || roadmap.getTopics().isEmpty()) {
+      return 0.0;
+    }
 
-    List<Checkpoint> allSteps = roadmap.getTopics().stream()
+    // 1. Собираем все чекпоинты (кроме ROOT)
+    List<Checkpoint> allCheckpoints = roadmap.getTopics().stream()
             .flatMap(t -> t.getCheckpoints().stream())
             .filter(cp -> cp.getType() != CheckpointType.ROOT)
             .toList();
 
-    if (allSteps.isEmpty()) return 0.0;
+    int totalLessons = 0;
+    int completedLessons = 0;
 
-    long completed = allSteps.stream()
-            .filter(cp -> cp.getStatus() == CheckpointStatus.COMPLETED)
-            .count();
+    // 2. Считаем уроки во всех чекпоинтах
+    for (Checkpoint cp : allCheckpoints) {
+      if (cp.getModule() != null && cp.getModule().getLessons() != null) {
+        List<Lesson> lessons = cp.getModule().getLessons();
+        totalLessons += lessons.size();
 
-    return (double) completed / allSteps.size() * 100;
+        completedLessons += (int) lessons.stream()
+                .filter(l -> l.getTheory() != null &&
+                        l.getTheory().getText() != null &&
+                        !l.getTheory().getText().isBlank())
+                .count();
+      } else {
+        totalLessons += 5;
+      }
+    }
+
+    // 3. Защита от деления на ноль
+    if (totalLessons == 0) {
+      return 0.0;
+    }
+
+    // 4. Считаем процент
+    double progress = (double) completedLessons / totalLessons * 100;
+
+    // Округлим до 1 знака после запятой для красоты
+    return Math.round(progress * 10.0) / 10.0;
   }
 
   // Маппинг конфигурации

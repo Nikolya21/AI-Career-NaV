@@ -1,120 +1,527 @@
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Убираем ползунок в контенте сайдбара */
+.sidebar-content {
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE */
+}
+
+.sidebar-content::-webkit-scrollbar {
+    width: 0px; /* Chrome/Safari */
+    display: none;
+}
+
+/* 1. ГЛАВНЫЙ КОНТЕЙНЕР САЙДБАРА */
 #sidebar {
-    position: fixed; right: 0; top: 0;
-    width: 450px; /* Исходная ширина списка */
-    height: 100vh;
-    background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.05);
-    z-index: 1000;
-    /* Добавляем width в transition для плавного выезда */
-    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
-    padding: 25px; box-sizing: border-box; overflow-y: auto;
-}
-/* Новый класс для широкой панели чтения */
-/* Используем связку ID и класса, чтобы точно перебить начальную ширину */
-#sidebar.sidebar-expanded {
-    width: 1200px;
-}
+    position: fixed;
+    right: 20px;
+    top: 20px;
+    bottom: 20px;
+    width: 450px;
+    z-index: 1500;
 
-.sidebar-hidden { transform: translateX(100%); }
+    /* Эффект стекла - делаем фон прозрачнее и усиливаем блюр */
+    background: rgba(255, 255, 255, 0.25) !important;
+    backdrop-filter: blur(30px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
 
-.lesson-card {
-    display: flex; align-items: center; gap: 15px; padding: 15px;
-    border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px;
-    cursor: pointer; transition: 0.2s;
-}
+    /* Границы и тени */
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 
-.lesson-card:hover { border-color: #4285F4; background: #f8faff; }
-
-.back-btn {
-    display: flex; align-items: center; gap: 5px; background: none;
-    border: none; color: #4285F4; cursor: pointer; margin-bottom: 20px;
-    font-weight: 500;
-}
-
-#theory-content { line-height: 1.6; color: #3c4043; }
-#theory-content h1, h2 { color: #202124; }
-
-#theory-content {
-    line-height: 1.6;
-    font-size: 15px;
-}
-#theory-content h1, #theory-content h2 {
-    border-bottom: 1px solid #eee;
-    padding-bottom: 8px;
-    margin-top: 24px;
-}
-/* Контейнер для кода */
-#theory-content pre {
-    background: #202124; /* Темный фон из твоих логов */
-    color: #ffffff;      /* Явный белый цвет текста */
-    padding: 15px;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 15px 0;      /* Добавим отступов сверху и снизу */
-}
-
-/* Сами символы кода внутри блока */
-#theory-content pre code {
-    background: transparent; /* Убираем серый фон, который мешает внутри pre */
-    color: #e8eaed;          /* Светло-серый оттенок для лучшей читаемости */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
     padding: 0;
-    font-family: 'Consolas', 'Monaco', monospace;
+    overflow: hidden;
+    font-family: 'Google Sans', sans-serif !important;
 }
 
-/* Оставляем серый фон только для инлайнового кода (внутри текста) */
-#theory-content :not(pre) > code {
-    background: #f1f3f4;
-    color: #d93025; /* Красненький цвет для выделения команд в тексте */
-    padding: 2px 5px;
-    border-radius: 4px;
+/* Состояния сайдбара */
+#sidebar.sidebar-hidden {
+    transform: translateX(120%);
 }
 
-.feedback-section {
-    margin-top: 40px;
+#sidebar.sidebar-expanded {
+    width: 1000px;
+}
+
+/* 2. КНОПКИ УПРАВЛЕНИЯ (внутри сайдбара) */
+.sidebar-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
     padding: 20px;
-    background: #f8f9fa;
+    background: transparent; /* Обязательно прозрачный! */
+}
+
+.control-btn {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 12px;
-    border: 1px solid #e8eaed;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
 }
 
-.feedback-label {
-    font-size: 14px;
-    color: #5f6368;
-    margin-bottom: 12px;
-    font-weight: 500;
+.control-btn.close-style {
+    background: rgba(66, 133, 244, 0.1); /* Светло-синий фон как у иконок уроков */
+    border: 1px solid rgba(66, 133, 244, 0.2);
+    color: #4285F4; /* Тот самый синий Google цвет */
+    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-#lesson-feedback-input {
+.control-btn.close-style:hover {
+    background: rgba(66, 133, 244, 0.2);
+    transform: scale(1.05);
+}
+
+.control-btn.close-style .material-icons {
+    font-size: 20px;
+}
+
+.control-btn img {
+    width: 20px !important;  /* Иконка внутри будет ровно 20px */
+    height: 20px !important;
+    object-fit: contain;     /* Сохраняем пропорции иконки */
+    display: block;
+}
+
+.control-btn:hover {
+    background: white;
+    transform: translateY(-2px);
+}
+
+/* Состояние "На весь экран" */
+#sidebar.full-viewport {
+    width: 95vw !important; /* Почти вся ширина экрана */
+    height: 92vh !important; /* Почти вся высота */
+    right: 2.5vw !important; /* Центрируем по горизонтали */
+    top: 4vh !important;
+    bottom: 4vh !important;
+
+    /* Дополнительный акцент на контент */
+    max-width: 1600px; /* Чтобы на ультрашироких мониторах текст не разъезжался */
+    margin: 0 auto;
+}
+
+/* Изменяем иконку при активном режиме */
+#sidebar.full-viewport #fullscreen-btn .material-icons {
+    color: #34A853; /* Можно сделать зеленой для индикации режима */
+}
+
+/* Адаптив: если контента много, центрируем содержимое */
+#sidebar.full-viewport .sidebar-content {
+    max-width: 1000px; /* Ограничиваем ширину текста для читаемости */
+    margin: 0 auto;
     width: 100%;
-    min-height: 80px;
-    padding: 12px;
-    border: 1px solid #dadce0;
-    border-radius: 8px;
-    resize: vertical;
-    font-family: inherit;
-    font-size: 14px;
-    margin-bottom: 10px;
-    box-sizing: border-box;
 }
 
-.btn-feedback {
+/* Скрываем прогресс-бар в хедере при фуллскрине */
+#sidebar.full-viewport ~ .header-panel {
+    display: none !important;
+}
+
+/* Скрываем стандартный скроллбар внутри сайдбара для красоты */
+#sidebar .sidebar-content::-webkit-scrollbar {
+    width: 0px; /* Скрываем в Chrome/Safari */
+    background: transparent;
+}
+
+#sidebar .sidebar-content {
+    scrollbar-width: none; /* Скрываем в Firefox */
+    -ms-overflow-style: none; /* Скрываем в IE/Edge */
+}
+
+/* Опционально: если хочешь скрыть и сам "ползунок" (scroll track) */
+#sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Кнопка возврата к списку уроков */
+.back-btn {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #1a73e8;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 6px;
+    background: rgba(66, 133, 244, 0.1); /* Нежно-синий фон */
+    border: 1px solid rgba(66, 133, 244, 0.2);
+    color: #1a73e8;
+    padding: 8px 16px;
+    border-radius: 12px;
     cursor: pointer;
+    font-size: 14px;
     font-weight: 500;
-    transition: background 0.2s;
+    font-family: inherit;
+    margin-bottom: 25px;
+    transition: all 0.2s ease;
+    width: fit-content; /* Чтобы кнопка не растягивалась на всю ширину */
 }
 
-.btn-feedback:hover { background: #1765cc; }
+.back-btn:hover {
+    background: rgba(66, 133, 244, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.2);
+}
+
+.back-btn .material-icons {
+    font-size: 18px; /* Делаем иконку стрелочки чуть меньше и аккуратнее */
+}
+
+/* 3. КОНТЕНТНАЯ ОБЛАСТЬ */
+.sidebar-content {
+    padding: 0 30px 30px;
+    overflow-y: auto;
+    flex: 1;
+    background: transparent !important; /* Чтобы не перекрывало стекло */
+}
+
+#sidebar-title {
+    font-weight: 500;
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: #202124;
+}
+
+/* 4. КАРТОЧКИ УРОКОВ (в списке) */
+.lesson-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.3); /* Тоже стеклянные */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.lesson-card:hover {
+    background: rgba(255, 255, 255, 0.6);
+    transform: translateX(-5px);
+    border-color: #4285F4;
+}
+
+.lesson-card-icon {
+    width: 36px;
+    height: 36px;
+    background: #E8F0FE;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4285F4;
+    flex-shrink: 0;
+}
+
+.lesson-card-info h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #202124;
+}
+
+.lesson-card-info p {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #5F6368;
+}
+
+/* Состояние иконки, если теория уже есть */
+.lesson-card.completed .lesson-card-icon {
+    background: rgba(52, 168, 83, 0.1); /* Нежно-зеленый фон */
+    color: #34A853; /* Зеленый Google */
+}
+
+/* Изменяем текст описания для начатых уроков */
+.lesson-card.completed .lesson-card-info p {
+    color: #34A853;
+    font-weight: 500;
+}
+
+/* 5. ТЕОРИЯ И КОД */
+#theory-content {
+    line-height: 1.6;
+    font-size: 16px;
+    color: #3C4043;
+}
+
+/* Удалить это, так как hljs сам управляет фоном */
+#theory-content pre {
+    /* background: #202124;
+    color: #ffffff; */
+    padding: 0; /* Сбрасываем, hljs добавит свои отступы */
+    border-radius: 12px;
+    overflow: hidden;
+}
+/* Инлайновый код в тексте */
+#theory-content :not(pre) > code {
+    background: rgba(66, 133, 244, 0.08); /* Светло-синий фон */
+    color: #1a73e8; /* Синий Google */
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: 'Roboto Mono', 'Monaco', monospace; /* IDE шрифт */
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+/* 6. КНОПКА УГЛУБИТЬСЯ (Gemini style) */
+.btn-deepen {
+    position: relative;
+    width: 100%;
+    padding: 16px;
+    border-radius: 18px;
+    background: white !important;
+    color: #3C4043 !important;
+    font-weight: 500;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: none;
+    outline: none;
+    z-index: 1;
+
+    /* Синеватое свечение из лого */
+    box-shadow: 0 8px 25px rgba(66, 133, 244, 0.2);
+    transition: all 0.3s ease;
+}
+
+/* Вращающийся градиент */
+/* Сама анимированная рамка */
+.btn-deepen::before {
+    content: '';
+    position: absolute;
+    inset: -2px; /* Толщина рамки */
+    z-index: -1;
+    border-radius: 20px; /* Чуть больше чем у кнопки */
+
+    /* Конический градиент, привязанный к переменной --angle */
+    background: conic-gradient(
+        from var(--angle),
+        #4285F4, /* Синий */
+        #9b72cb, /* Фиолетовый */
+        #d96570, /* Красный */
+        #f4af54, /* Оранжевый */
+        #34a853, /* Зеленый */
+        #4285F4  /* Замыкаем */
+    );
+
+    animation: spin 4s linear infinite;
+}
+
+/* Внутренняя часть кнопки (белая заливка) */
+.btn-deepen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    border-radius: 18px;
+    z-index: -1;
+}
+
+/* Анимация вращения по часовой стрелке */
+@keyframes spin {
+    from {
+        --angle: 0deg;
+    }
+    to {
+        --angle: 360deg;
+    }
+}
+
+.btn-deepen:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(66, 133, 244, 0.3);
+}
+/* Стили для иконки ✨ */
+.btn-deepen .sparkle {
+    font-size: 18px;
+}
+
+/* Интерактивная надпись в сайдбаре */
+.feedback-section-new {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    text-align: center;
+}
+
+.feedback-trigger-text {
+    font-family: 'Google Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: #5F6368;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    opacity: 0.7;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.2);
+    padding-bottom: 2px;
+}
+
+.feedback-trigger-text:hover {
+    color: #4285F4;
+    opacity: 1;
+    border-bottom-color: #4285F4;
+    transform: translateY(-1px);
+}
+
+/* Модалка фидбека наследует общие стили из твоего текущего кода */
+#feedback-modal .modal-content {
+    /* Стили подтянутся из .deepen-modal-glass */
+}
+
+/* Общий стиль для всех полей ввода в модалках (стеклянный эффект) */
+.input-wrapper {
+    position: relative;
+    width: 100%;
+    /* Ограничиваем общую ширину, если нужно сделать поле компактнее */
+    max-width: 420px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 20px;
+    margin: 15px 0 25px 0; /* Немного уменьшили отступы */
+    padding: 2px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    z-index: 1;
+}
+
+.input-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: -1px; /* Выход за границы основного блока */
+    z-index: -1;
+    border-radius: 21px; /* Чуть больше, чем у контейнера */
+    background: linear-gradient(
+        135deg,
+        #E34D4D 0%,
+        #F09341 25%,
+        #F7C14D 50%,
+        #5CB7A1 75%,
+        #4285F4 100%
+    );
+    opacity: 0; /* Изначально невидима */
+    transition: opacity 0.3s ease;
+}
+
+.input-wrapper textarea {
+    width: 100%;
+    /* Уменьшаем высоту поля */
+    min-height: 80px;
+    background: white !important;
+    border: none !important;
+    outline: none !important;
+    padding: 15px 20px;
+    border-radius: 19px;
+
+    /* Увеличиваем шрифт */
+    font-family: 'Google Sans', sans-serif;
+    font-size: 16px; /* Был слишком маленьким */
+    line-height: 1.5;
+    color: #3C4043;
+
+    resize: none;
+    display: block;
+    box-sizing: border-box;
+}
+
+/* Стили для плейсхолдера, чтобы он тоже был крупнее */
+.input-wrapper textarea::placeholder {
+    font-size: 16px;
+    color: #9AA0A6;
+    opacity: 1;
+}
+
+/* Эффект при фокусе на поле */
+.input-wrapper:focus-within {
+    border-color: transparent; /* Скрываем базовую серую границу */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.input-wrapper:focus-within::before {
+    opacity: 1; /* Рамка становится видимой при нажатии */
+}
 
 #feedback-status {
-    margin-top: 10px;
-    color: #1e8e3e;
+    font-family: 'Google Sans', sans-serif !important;
+    font-size: 18px; /* Сделали крупнее */
     font-weight: 500;
-    font-size: 14px;
+    color: #34A853; /* Фирменный зеленый Google */
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* Контейнер для тегов профиля */
+.user-preferences-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px; /* Увеличили расстояние между тегами */
+    margin-top: 10px;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Стили для отдельных тегов */
+.pref-tag {
+    background: rgba(66, 133, 244, 0.08); /* Чуть более заметный фон */
+    border: 1.5px solid rgba(66, 133, 244, 0.2);
+    color: #1a73e8;
+
+    padding: 10px 18px; /* Увеличили внутренние отступы */
+    border-radius: 14px; /* Более мягкое закругление */
+
+    font-family: 'Google Sans', sans-serif !important;
+    font-size: 15px; /* Увеличили размер текста */
+    font-weight: 500;
+
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Расстояние между иконкой и текстом */
+
+    box-shadow: 0 2px 6px rgba(66, 133, 244, 0.05); /* Легкая тень для объема */
+    transition: all 0.3s ease;
+}
+
+.pref-tag .material-icons {
+    font-size: 20px; /* Иконки стали виднее */
+    color: #4285F4;
+}
+
+.pref-tag {
+    animation: slideUp 0.4s ease-out forwards;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }

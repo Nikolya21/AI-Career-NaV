@@ -29,8 +29,9 @@ public class Lesson {
   @JsonManagedReference // "Главная" сторона, которую нужно сериализовать
   private Theory theory; // Теперь это объект
 
-  @Column(columnDefinition = "TEXT")
-  private String summary;
+  @OneToOne(mappedBy = "lesson", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonManagedReference
+  private LessonContext context;
 
   @ManyToOne
   @JoinColumn(name = "module_id")

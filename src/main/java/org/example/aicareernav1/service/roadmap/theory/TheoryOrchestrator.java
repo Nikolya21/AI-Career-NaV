@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.external.pythonRAG.GatewayResponse;
 import org.example.aicareernav1.dto.external.pythonRAG.SearchRequest;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Lesson;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.Theory;
 import org.example.aicareernav1.enums.CheckpointType;
@@ -42,13 +43,17 @@ public class TheoryOrchestrator {
         if (lesson.getTheory() != null) {
             return lesson.getTheory();
         }
-
+        Roadmap roadmap = roadmapRepository.findByLessonId(lessonId)
+                .orElseThrow(() -> new EntityNotFoundException("Roadmap not found"));
+        List<String> excludedIds = roadmapRepository.findAllExcludedExternalIds(roadmap.getId());
+        log.info("Айди уроков, которые уже выдавались: {}", excludedIds.toString());
         // 3. Если нет — идем в Python
         SearchRequest request = SearchRequest.builder()
                 .query(adaptationQuery)
+                .excludedParentIds(excludedIds)
                 .build();
         GatewayResponse response = pythonClient.searchInRag(request);
-        log.info("GatewayResponse from python FastApi: {}", response.toString());
+        log.info("GatewayResponse from python FastApi with uuid: {}", response.getParentId());
 
         // 4. Выбираем и применяем стратегию
         Theory theory = strategies.stream()

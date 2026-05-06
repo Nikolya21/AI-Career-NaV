@@ -9,28 +9,67 @@
     <link rel="stylesheet" th:href="@{/css/roadmap/roadmap-style.css}">
     <link rel="stylesheet" th:href="@{/css/roadmap/sidebar.css}">
 
+
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Тема Atom One Dark (как во многих IDE) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Поддержка Java и Python -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
 </head>
 <body>
+
+<div class="bg-wrapper">
+    <div class="bg-layer layer-1"></div>
+    <div class="bg-layer layer-2"></div>
+    <div class="bg-overlay"></div>
+</div>
 
 <div id="roadmap-container"></div>
 
 <div class="header-panel">
     <span th:text="${jobTitle}" style="font-weight: 500;">Вакансия</span>
-    <div class="progress-track">
-        <div class="progress-fill" th:style="'width:' + ${progress} + '%'"></div>
+    <div class="progress-container">
+        <div class="progress-track">
+            <div id="progress-fill" class="progress-fill" th:style="'width:' + ${progress} + '%'"></div>
+        </div>
+        <span id="progress-percentage" th:text="${progress} + '%'">0%</span>
     </div>
-    <span th:text="${progress} + '%'">0%</span>
 </div>
 
+<!-- МОДАЛКА 1: Уточнение темы (Уже была) -->
 <div id="deepen-modal" class="modal hidden">
-    <div class="modal-content">
-        <h4>Уточнение темы</h4>
-        <p>Что именно вы хотите изучить подробнее в этом блоке?</p>
-        <textarea id="deepen-input" placeholder="Например: хочу больше примеров на Spring Security..."></textarea>
+    <div class="modal-content deepen-modal-glass">
+        <div class="modal-logo-container">
+            <img th:src="@{/images/main.jpg}" alt="Logo" class="pulse-logo">
+        </div>
+
+        <h3>Уточнение темы</h3>
+        <div class="input-wrapper">
+            <textarea id="deepen-input" placeholder="Напишите, что именно вы хотите изучить подробнее..."></textarea>
+        </div>
         <div class="modal-actions">
             <button onclick="closeDeepenModal()" class="btn-secondary">Отмена</button>
-            <button id="confirm-deepen-btn" class="btn-primary">Создать этап</button>
+            <button id="confirm-deepen-btn" class="btn-primary">Углубиться</button>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛКА 2: Фидбек (НОВАЯ) -->
+<div id="feedback-modal" class="modal hidden">
+    <div class="modal-content deepen-modal-glass">
+        <h3>Как тебе обучение?</h3>
+        <div class="input-wrapper">
+            <!-- id сохранен для совместимости с JS -->
+            <textarea id="lesson-feedback-input" placeholder="Добавь пожелания..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button onclick="sidebarManager.closeFeedbackModal()" class="btn-secondary">Отмена</button>
+            <button id="send-feedback-btn" onclick="sidebarManager.sendFeedback()" class="btn-primary">Отправить</button>
+        </div>
+        <div id="feedback-status" class="hidden" style="margin-top: 15px; color: #34A853; font-weight: 500;">
+            Спасибо! Твои пожелания учтены 🚀
         </div>
     </div>
 </div>
@@ -40,38 +79,45 @@
     <p>ИИ строит новый маршрут...</p>
 </div>
 
+<!-- САЙДБАР -->
 <div id="sidebar" class="sidebar-hidden">
-    <div class="sidebar-content">
-        <div class="sidebar-header">
-            <h2 id="sidebar-title">Загрузка...</h2>
-            <button onclick="sidebarManager.toggle(false)" class="close-btn">
-                <span class="material-icons">close</span>
-            </button>
-        </div>
+    <div class="sidebar-controls">
+        <button id="fullscreen-btn" class="control-btn close-style" onclick="sidebarManager.toggleFullScreen()">
+            <span class="material-icons">open_in_full</span>
+        </button>
+        <button class="control-btn close-style" onclick="sidebarManager.toggle(false)">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
 
-        <div id="lesson-list-container"></div>
+    <div class="sidebar-content">
+        <h2 id="sidebar-title">Загрузка...</h2>
+        <p id="sidebar-description">Выберите тему для изучения</p>
+
+        <div id="lesson-list-container">
+            <div id="lessons-list"></div>
+        </div>
 
         <div id="lesson-detail-container" class="hidden">
             <button class="back-btn" onclick="sidebarManager.showList()">
                 <span class="material-icons">arrow_back</span> К списку уроков
             </button>
-            <div id="theory-content"></div>
+
+            <div id="theory-content" class="markdown-body"></div>
 
             <div class="lesson-actions">
                 <button class="btn-deepen" onclick="deepenManager.openModal()">
-                    <span class="material-icons">psychology</span> Углубиться в тему
+                    ✨ Углубиться в тему
                 </button>
             </div>
-            <div class="feedback-section">
-                <p class="feedback-label">Как тебе обучение? Можешь написать мне, чего тебе не хватает и т.д.</p>
-                <div class="feedback-input-group">
-                    <textarea id="lesson-feedback-input" placeholder="Например: добавь больше примеров кода для этого раздела..."></textarea>
-                    <button id="send-feedback-btn" class="btn-feedback" onclick="sidebarManager.sendFeedback()">
-                        <span class="material-icons">send</span>
-                        Отправить фидбек
-                    </button>
-                </div>
-                <div id="feedback-status" class="hidden">Спасибо! Твои пожелания учтены 🚀</div>
+
+            <!-- СЕКЦИЯ ФИДБЕКА (ОБНОВЛЕННАЯ) -->
+            <div class="feedback-section-new">
+                <span class="feedback-trigger-text"
+                      onclick="sidebarManager.openFeedbackModal()"
+                      title="здесь ты можешь сделать свое обучение чуть приятней:)">
+                    Как тебе обучение?
+                </span>
             </div>
         </div>
     </div>
@@ -83,9 +129,9 @@
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
 <script th:src="@{/js/roadmap-graph.js}"></script>
 <script th:src="@{/js/sidebar-manager.js}"></script>
 <script th:src="@{/js/deepen-manager.js}"></script>
+
 </body>
 </html>

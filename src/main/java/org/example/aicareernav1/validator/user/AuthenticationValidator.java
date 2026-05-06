@@ -12,7 +12,7 @@ public class AuthenticationValidator {
   }
 
   private static final Pattern EMAIL_PATTERN = Pattern.compile(
-      "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
   );
 
   public static List<String> validate(LoginRequestDto dto) {
@@ -32,10 +32,6 @@ public class AuthenticationValidator {
 
     if (password == null || password.trim().isEmpty()) {
       errors.add("Пароль не может быть пустым");
-    } else {
-      if (password.length() > 10) {
-        errors.add("Пароль не может быть длиннее 10 символов");
-      }
     }
 
     return errors;

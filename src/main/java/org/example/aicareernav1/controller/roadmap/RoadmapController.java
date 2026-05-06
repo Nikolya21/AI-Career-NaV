@@ -1,16 +1,19 @@
 package org.example.aicareernav1.controller.roadmap;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.LessonResponse;
 import org.example.aicareernav1.dto.roadmap.response.RoadmapResponse;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.service.roadmap.LessonService;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.example.aicareernav1.service.user.impl.UserServiceImpl;
 import org.example.aicareernav1.service.userService.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,10 +39,13 @@ public class RoadmapController {
    */
   //todo: redirect должен происходить по userId => по RoadmapId нужно искать UserId, но... пока такого функционала нет:) (Георгий блядотович спасибо!)
   @GetMapping("/{roadmapId}/root-action")
-  public ResponseEntity<Map<String, String>> getRootRedirect(@PathVariable Long roadmapId) {
+  public ResponseEntity<Map<String, String>> getRootRedirect(@PathVariable Long roadmapId, @SessionAttribute(name = "userId", required = false) Long userId) {
     // Ваша логика: куда именно должен попасть пользователь при клике на ROOT
-    UserEntity user = userService.getUserByRoadmapId(roadmapId);
-    String targetUrl = "/personal-cabinet/" + user.getId();
+    if (userId == null) {
+      // Если сессии нет или userId не найден — отправляем на логин
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String targetUrl = "/personal-cabinet/" + userId;
     Map<String, String> response = new HashMap<>();
     response.put("redirectUrl", targetUrl);
 
@@ -81,10 +87,10 @@ public class RoadmapController {
    * @param feedback текст отзыва
    */
   @PostMapping("/{id}/feedback")
-  public ResponseEntity<Void> sendFeedback(@PathVariable Long id, @RequestBody String feedback) {
+  public ResponseEntity<RoadmapConfig> sendFeedback(@PathVariable Long id, @RequestBody String feedback) {
     log.info("API: Получен фидбек для Roadmap ID: {}", id);
     roadmapService.processUserFeedback(id, feedback);
-    return ResponseEntity.accepted().build();
+    return ResponseEntity.ok(roadmapService.processUserFeedback(id, feedback));
   }
 
   /**

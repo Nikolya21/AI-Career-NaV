@@ -1,19 +1,229 @@
-:root {
-    --g-blue: #4285F4; --g-green: #34A853; --border: #DADCE0;
+/* Скрываем ползунки для всей страницы (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
 }
 
-body { font-family: 'Google Sans', sans-serif; margin: 0; background: #F8F9FA; overflow: hidden; }
+/* Скрываем для Firefox */
+html, body {
+    scrollbar-width: none;
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.vis-tooltip {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Принудительно убираем скролл у обертки графа, если он там есть */
+#roadmap-container {
+    overflow: hidden !important;
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root {
+    --g-blue: #4285F4;
+    --g-green: #34A853;
+    --bg-main: #FFFFFF; /* Чистый белый */
+    --border-light: rgba(0, 0, 0, 0.08);
+}
+
+body {
+    background-color: var(--bg-main);
+    color: #3C4043; /* Темно-серый текст Google для лучшей читаемости */
+}
+/* Контейнер для имиджевых слоев */
+.bg-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.bg-layer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: -5%;
+    left: -5%;
+    background-size: cover;
+    background-position: center;
+}
+
+/* Перенастраиваем слои на светлые */
+.layer-1 {
+    background-image: url('./img/main.jpg');
+    opacity: 0.1; /* Почти невидимая */
+    filter: blur(100px) saturate(50%); /* Размываем в мягкое облако */
+}
+
+.bg-overlay {
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8) 0%, #FFFFFF 80%);
+    z-index: -1;
+}
+
+.layer-2 {
+    position: absolute;
+    /* Растягиваем слой на весь экран, чтобы он не схлопывался */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    background-image: url('./img/beetwean2.jpg');
+    /* contain - впишет логотип, 60% - сделает его адекватного размера */
+
+    background-repeat: no-repeat;
+    background-position: center;
+
+    opacity: 0.55;
+    mix-blend-mode: screen;
+    z-index: -1;
+
+    /* Оставляем только scale в анимации, чтобы не дергать позицию */
+    animation: slowMovement 20s infinite alternate ease-in-out;
+}
+
+@keyframes slowMovement {
+    from {
+        transform: scale(1) translate(0, 0);
+    }
+    to {
+        transform: scale(1.1) translate(-1%, -1%); /* Легкое "дыхание" логотипа */
+    }
+}
+
 
 #roadmap-container { width: 100vw; height: 100vh; }
 
-/* Header */
+
+/* Светлый стеклянный хедер */
 .header-panel {
-    position: absolute; top: 20px; left: 20px; background: white;
-    padding: 12px 24px; border-radius: 30px; display: flex; align-items: center;
-    gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); z-index: 10;
+    position: fixed;
+    top: 25px;
+    left: 25px;
+    z-index: 2000;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+
+    /* Увеличиваем ширину и внутренние отступы */
+    min-width: 270px;
+    padding: 20px 23px;
+
+    /* Идеальное скругление */
+    border-radius: 28px !important;
+
+    /* ЧИСТОЕ СТЕКЛО (Берем из sidebar.css) */
+    background: rgba(255, 255, 255, 0.25) !important;
+    backdrop-filter: blur(30px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+
+    /* Граница для эффекта блеска на краях */
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    cursor: default;
 }
-.progress-track { width: 100px; height: 8px; background: #E8EAED; border-radius: 4px; }
-.progress-fill { height: 100%; background: var(--g-green); border-radius: 4px; transition: 0.5s; }
+
+/* 2. Эффект при наведении */
+.header-panel:hover {
+    /* Слегка увеличиваем (на 2%) */
+    transform: scale(1.02);
+
+    /* Добавляем мягкое синеватое свечение (Google Blue с низкой прозрачностью) */
+    box-shadow: 0 15px 45px rgba(66, 133, 244, 0.15);
+
+    /* Можно чуть усилить яркость границы для эффекта подсветки */
+    border: 1px solid rgba(66, 133, 244, 0.3) !important;
+
+    /* Делаем стекло чуть менее прозрачным при взаимодействии */
+    background: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Контейнер для шкалы и процентов */
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%; /* Занимает всю ширину закругленной панели */
+}
+
+
+
+/* 2. ТЕКСТ ВНУТРИ */
+.header-panel span {
+    font-family: 'Google Sans', sans-serif;
+    font-weight: 500;
+    color: #202124 !important; /* Темный текст для контраста со стеклом */
+    text-shadow: none !important;
+    font-size: 15px;
+}
+
+/* Уточним стиль процентов */
+.header-panel span:first-child {
+    font-family: 'Google Sans', sans-serif;
+    font-weight: 500;
+    font-size: 16px;
+    color: #202124 !important;
+    letter-spacing: 0.2px;
+}
+
+/* 3. ШКАЛА (TRACK) — ТЕПЕРЬ ВИДИМАЯ */
+.progress-track {
+    flex: 1; /* Растягивается максимально */
+    height: 8px;
+    background: rgba(0, 0, 0, 0.08) !important; /* Легкая тень подложки */
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 4. ЗАЛИВКА (FILL) — ГРАДИЕНТ GEMINI */
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(
+            90deg,
+            #4285F4 0%,
+            #4285F4 30%,  /* Синий до 30% */
+            #f4af54 35%,  /* Резкий переход к оранжевому */
+            #f4af54 65%,  /* Оранжевый до 65% */
+            #34a853 70%,  /* Резкий переход к зеленому */
+            #34a853 100%
+        ) !important;
+    background-size: 100vw !important; /* Используем vw или фиксированную ширину контейнера */
+
+    /* Если хедер имеет фиксированную ширину (как у тебя 270px-300px),
+       лучше указать ее, чтобы градиент ложился точно в границы. */
+    background-size: 270px 100% !important;
+    background-repeat: no-repeat;
+
+    background-attachment: fixed; /* Помогает сохранить позицию при движении */
+
+    border-radius: 12px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 12px rgba(66, 133, 244, 0.2);
+}
+
+
+.header-panel .progress-container span {
+    font-size: 14px;
+    font-weight: 500;
+    color: #3C4043;
+    min-width: 35px; /* Чтобы текст не прыгал при изменении цифр */
+}
+
 
 /* Tooltip & Modals */
 .hidden { display: none !important; }
@@ -27,19 +237,295 @@ body { font-family: 'Google Sans', sans-serif; margin: 0; background: #F8F9FA; o
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
+/* Контейнер модалки (фон) */
 .modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
 }
-.modal-content {
-    background: white; padding: 25px; border-radius: 12px; width: 400px;
-}
-textarea { width: 100%; height: 100px; margin: 15px 0; padding: 10px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; resize: none; }
 
-/* Loader */
-#global-loader {
-    position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.8);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000;
+/* Само окно с градиентной рамкой */
+/* Основное окно — эффект чистого стекла */
+.modal-content.deepen-modal-glass {
+    position: relative;
+    /* Возвращаем эффект чистого стекла */
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(35px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(35px) saturate(160%) !important;
+
+    padding: 50px 40px;
+    border-radius: 36px;
+    width: 550px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    /* Убираем обычный border, так как его заменит градиентная рамка */
+    border: none !important;
+    z-index: 1;
+    box-sizing: border-box;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1) !important;
 }
-.spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--g-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Внутренняя подложка для чистоты */
+.modal-content.deepen-modal-glass::after {
+    display: none !important;
+}
+
+.modal-logo-container {
+    display: none !important;
+}
+
+/* 2. ГРАДИЕНТНАЯ РАМКА (Магия маскировки) */
+.modal-content.deepen-modal-glass::before {
+    content: "";
+    position: absolute;
+    /* inset: 0 прижимает рамку к краю окна.
+       Если хочешь, чтобы она чуть "выглядывала", поставь -1px или -2px */
+    inset: -1px;
+    z-index: -1;
+    border-radius: 37px; /* Должно быть чуть больше, чем у окна (36px) */
+
+    /* Твой теплый градиент без фиолетового */
+    background: linear-gradient(
+        135deg,
+        #E34D4D 0%,
+        #F09341 25%,
+        #F7C14D 50%,
+        #5CB7A1 75%,
+        #4285F4 100%
+    ) !important;
+
+    /* МАСКА: Рисует градиент только на границе в 2px, оставляя центр пустым */
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+
+    padding: 2px; /* ТОЛЩИНА РАМКИ */
+    filter: blur(1px); /* Легкое свечение самой линии */
+    opacity: 0.8 !important;
+    pointer-events: none;
+}
+/* Стили логотипа и пульсация */
+.modal-logo-container {
+    margin-bottom: 20px;
+}
+
+.pulse-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 20px rgba(66, 133, 244, 0.3);
+    animation: logo-pulse 2s infinite ease-in-out;
+}
+
+@keyframes logo-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 20px rgba(66, 133, 244, 0.3); }
+    50% { transform: scale(1.1); box-shadow: 0 0 35px rgba(155, 114, 203, 0.5); }
+    100% { transform: scale(1); box-shadow: 0 0 20px rgba(66, 133, 244, 0.3); }
+}
+
+/* Заголовок и поле ввода */
+.modal-content h3 {
+    margin: 0 0 35px !important;
+    font-family: 'Google Sans', sans-serif !important;
+    /* 400 — это стандартная толщина, 500 — средняя. Ставим 400 для легкости */
+    font-weight: 400 !important;
+    font-size: 30px !important;
+    color: #202124 !important;
+    letter-spacing: -0.4px !important;
+    text-align: center !important;
+}
+
+.modal-content textarea:focus {
+    border-color: #4285F4;
+}
+
+/* Кнопки в модалке */
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+    width: 100%;
+}
+
+.modal-actions button {
+    flex: 1;
+    padding: 18px;
+    border-radius: 20px;
+    font-family: 'Google Sans', sans-serif;
+    font-size: 16px; /* Чуть крупнее */
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none !important;
+    outline: none !important;
+}
+
+.btn-secondary { background: #f1f3f4; color: #5f6368; }
+.btn-primary { background: #4285F4; color: white; }
+.btn-primary:hover { background: #3367d6; box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3); }
+
+/* Контейнер для textarea, чтобы позиционировать рамку */
+
+.input-wrapper {
+    position: relative;
+    width: 100%;
+    margin: 15px 0;
+    padding: 2px; /* Это и будет толщина нашей рамки */
+    border-radius: 20px;
+    background: transparent;
+    isolation: isolate; /* Создает новый контекст наложения, чтобы z-index работал корректно */
+}
+
+/* Сама анимированная рамка */
+.input-wrapper::before {
+    content: '';
+    position: absolute;
+    /* Важно: inset: 0 привязан к границам .input-wrapper */
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: -1;
+    border-radius: 20px;
+    background: conic-gradient(
+        from var(--angle),
+        #4285F4, #9b72cb, #d96570, #f4af54, #34a853, #4285F4
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+/* Анимация при фокусе на дочерний textarea */
+.input-wrapper:focus-within::before {
+    opacity: 1;
+    animation: rotate-gradient 4s linear infinite;
+}
+
+
+.modal-content textarea#deepen-input {
+    width: 100% !important;
+    height: 150px !important;
+    margin: 0 !important; /* Важно: отступы теперь контролирует .input-wrapper */
+    padding: 20px !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+    background: #FFFFFF !important; /* Чисто белый, чтобы не просвечивал градиент */
+    font-family: 'Google Sans', sans-serif !important;
+    color: #3C4043 !important;
+    font-size: 18px !important; /* Увеличил, как ты просил */
+    resize: none;
+    outline: none !important;
+    position: relative;
+    z-index: 2; /* Чтобы текст был над рамкой */
+    display: block;
+    box-sizing: border-box;
+}
+
+/* Прячем дефолтную рамку при фокусе, чтобы она не конфликтовала с градиентом */
+.modal-content textarea#deepen-input:focus {
+    outline: none !important;
+    border-color: transparent !important;
+}
+
+/* Настройка плейсхолдера (текста-подсказки) */
+.modal-content textarea#deepen-input::placeholder {
+    font-family: 'Google Sans', sans-serif !important;
+    color: #70757a !important;
+    font-size: 16px !important;
+}
+
+/* Исправленный текст внутри лоадера */
+#global-loader {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.9); /* Чуть плотнее белый фон */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 4000; /* Выше всех модалок */
+
+    /* ШРИФТ КАК В ПРИЛОЖЕНИИ */
+    font-family: 'Google Sans', sans-serif;
+    color: #3C4043;
+}
+
+#global-loader span {
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+}
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.05);
+    border-top: 4px solid var(--g-blue);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    animation: spin-loader 0.8s linear infinite !important;
+}
+
+/* Анимация №1: Для физического вращения спиннера */
+@keyframes spin-loader {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Анимация для градиентной рамки (вращение только угла градиента) */
+@keyframes rotate-gradient {
+    from { --angle: 0deg; }
+    to { --angle: 360deg; }
+}
+
+@keyframes pulse-glow {
+    0% { stops-color: rgba(66, 133, 244, 0.2); }
+    50% { stop-color: rgba(66, 133, 244, 0.5); }
+    100% { stop-color: rgba(66, 133, 244, 0.2); }
+}
+
+/* Анимация быстрого пульса для лого */
+@keyframes hyperPulse {
+    0% { transform: scale(1); filter: brightness(1) saturate(100%); }
+    100% { transform: scale(1.3); filter: brightness(1.5) saturate(150%); }
+}
+
+/* Мелкая, "электрическая" вибрация */
+@keyframes ai-thinking-pulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.02); filter: brightness(1.15) saturate(110%); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Оверлей теперь пульсирует в такт, создавая эффект мерцания экрана */
+@keyframes ai-overlay-blink {
+    0% { opacity: 0.7; }
+    100% { opacity: 0.4; }
+}
+
+/* Анимация вспышек для оверлея */
+@keyframes overlayFlash {
+    0% { opacity: 0.8; }
+    100% { opacity: 0.4; } /* Оверлей становится прозрачнее, открывая яркий фон */
+}
+
+.bg-active-pulse .layer-2 {
+    /* Используем cubic-bezier для более "аналогового" ощущения */
+    animation: ai-thinking-pulse var(--pulse-duration, 0.8s) infinite cubic-bezier(0.45, 0.05, 0.55, 0.95) !important;
+}
+
+.bg-active-pulse .bg-overlay {
+    animation: ai-overlay-blink var(--pulse-duration, 0.8s) infinite alternate ease-in-out !important;
+}

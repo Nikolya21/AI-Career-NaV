@@ -12,4 +12,8 @@ public class LessonResponse {
   private String title;
   private TheoryResponse theory;
   private List<TaskResponse> tasks;
+
+  public boolean isTheoryExists() {
+    return theory != null && theory.getText() != null && !theory.getText().isEmpty();
+  }
 }

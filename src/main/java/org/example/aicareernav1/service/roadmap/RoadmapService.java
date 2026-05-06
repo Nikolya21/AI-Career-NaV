@@ -135,9 +135,19 @@ public class RoadmapService {
                     checkpoint
             );
         }
-
+        List<Lesson> lessons = checkpoint.getModule().getLessons();
+        int total = lessons.size();
+        int completed = 0;
+        for (Lesson lesson : lessons) {
+            if (lesson.getTheory() != null) {
+                completed++;
+            }
+        }
         // Если уже активирован — просто возвращаем текущее состояние
-        return roadmapMapper.toCheckpointResponse(checkpoint);
+        CheckpointResponse checkpointResponse = roadmapMapper.toCheckpointResponse(checkpoint);
+        checkpointResponse.setTotalLessons(total);
+        checkpointResponse.setCompletedLessons(completed);
+        return checkpointResponse;
     }
 
 
@@ -239,11 +249,11 @@ public class RoadmapService {
      * @param feedbackText текст отзыва (например: "слишком сложно", "хочу больше примеров кода").
      */
     @Transactional
-    public void processUserFeedback(Long roadmapId, String feedbackText) {
+    public RoadmapConfig processUserFeedback(Long roadmapId, String feedbackText) {
         Roadmap roadmap = roadmapRepository.findById(roadmapId)
                 .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
 
-        configService.updateConfigFromUserText(roadmap, feedbackText);
+        return configService.updateConfigFromUserText(roadmap, feedbackText);
     }
 
 
@@ -375,20 +385,72 @@ public class RoadmapService {
      */
     @Transactional(readOnly = true)
     public double calculateProgress(Long roadmapId) {
-        Roadmap roadmap = roadmapRepository.findById(roadmapId)
-                .orElseThrow(() -> new EntityNotFoundException("Roadmap не найден"));
+        log.info("==> Начинаю расчет прогресса для Roadmap ID: {}", roadmapId);
 
+        Roadmap roadmap = roadmapRepository.findById(roadmapId)
+                .orElseThrow(() -> {
+                    log.error("Roadmap с ID {} не найден в базе данных", roadmapId);
+                    return new EntityNotFoundException("Roadmap не найден");
+                });
+
+        if (roadmap.getTopics() == null || roadmap.getTopics().isEmpty()) {
+            log.warn("У Roadmap ID: {} отсутствуют темы (topics). Возвращаю 0.0", roadmapId);
+            return 0.0;
+        }
+
+        log.debug("Найдено тем: {}", roadmap.getTopics().size());
+
+        // 1. Собираем все чекпоинты (исключая ROOT)
         List<Checkpoint> allCheckpoints = roadmap.getTopics().stream()
                 .flatMap(t -> t.getCheckpoints().stream())
+                .filter(cp -> cp.getType() != CheckpointType.ROOT)
                 .toList();
 
-        if (allCheckpoints.isEmpty()) return 0.0;
+        log.info("Всего чекпоинтов для анализа: {}", allCheckpoints.size());
 
-        long completedCount = allCheckpoints.stream()
-                .filter(cp -> cp.getStatus() == CheckpointStatus.COMPLETED)
-                .count();
+        if (allCheckpoints.isEmpty()) {
+            log.info("Список чекпоинтов пуст после фильтрации ROOT");
+            return 0.0;
+        }
 
-        return (double) completedCount / allCheckpoints.size() * 100;
+        int totalLessons = 0;
+        int completedLessons = 0;
+
+        // 2. Считаем уроки
+        for (Checkpoint cp : allCheckpoints) {
+            log.debug("Обработка чекпоинта ID: {} (Type: {})", cp.getId(), cp.getType());
+
+            if (cp.getModule() != null && cp.getModule().getLessons() != null) {
+                List<Lesson> lessons = cp.getModule().getLessons();
+                totalLessons += lessons.size();
+
+                long completedInCheckpoint = lessons.stream()
+                        .filter(l -> l.getTheory() != null &&
+                                l.getTheory().getText() != null &&
+                                !l.getTheory().getText().isBlank())
+                        .count();
+
+                completedLessons += (int) completedInCheckpoint;
+                log.debug("Чекпоинт ID: {}: всего уроков {}, пройдено {}", cp.getId(), lessons.size(), completedInCheckpoint);
+            } else {
+                // Если модуля или уроков нет, прибавляем заглушку
+                log.trace("Чекпоинт ID: {} не имеет сгенерированного модуля/уроков. Добавляю +5 к общему весу", cp.getId());
+                totalLessons += 5;
+            }
+        }
+
+        log.info("Итоговый подсчет: totalLessons = {}, completedLessons = {}", totalLessons, completedLessons);
+
+        if (totalLessons == 0) {
+            log.warn("Общее количество уроков равно 0. Возможно, контент еще не был сгенерирован");
+            return 0.0;
+        }
+
+        double progress = (double) completedLessons / totalLessons * 100;
+        double roundedProgress = Math.round(progress * 10.0) / 10.0;
+
+        log.info("<== Расчет завершен. Прогресс для Roadmap {}: {}%", roadmapId, roundedProgress);
+        return roundedProgress;
     }
 
 

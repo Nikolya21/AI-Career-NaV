@@ -43,6 +43,10 @@ public class Checkpoint {
   @JsonBackReference
   private Roadmap roadmap;
 
+  @OneToOne(mappedBy = "checkpoint", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonManagedReference
+  private CheckpointContext context;
+
   @Column(columnDefinition = "TEXT")
   private String description; // Тот текст, который ты написал в скобках (например, "Пойми разницу между stack и heap")
 
