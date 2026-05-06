@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Личный кабинет | AI Career Nav</title>
+  <title>Личный кабинет | AI Career Navigator</title>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="stylesheet" th:href="@{/css/personal-cabinet.css}">
@@ -17,7 +17,7 @@
 <div class="dashboard-container" id="cabinet-app"
      th:attr="data-user-id=${userId}, data-current-roadmap-id=${currentRoadmapId != null ? currentRoadmapId : ''}">
   <header>
-    <p class="kicker">AI Career Nav</p>
+    <p class="kicker">AI Career Navigator</p>
     <h1 th:text="'Привет, ' + ${userName} + '!'">Привет!</h1>
     <p class="subtitle">
       В системе с: <span th:text="${registrationDate != null ? #dates.format(registrationDate, 'dd.MM.yyyy') : 'н/д'}">01.01.2024</span>.
@@ -32,7 +32,7 @@
         <span>Сгенерировать роадмапу</span>
       </a>
 
-      <a th:href="@{/quiz-view/{userId}(userId=${userId})}" class="action-btn-gradient">
+      <a th:href="@{/ml-interview}" class="action-btn-gradient">
         <span class="material-icons">smart_toy</span>
         <span>ИИ собеседование</span>
       </a>

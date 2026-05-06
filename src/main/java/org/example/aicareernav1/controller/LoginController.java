@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequiredArgsConstructor
 public class LoginController {
 
+  private static final String LOGIN_VIEW = "login";
+
   private final UserService userService;
 
   @GetMapping("/login")
@@ -30,7 +32,7 @@ public class LoginController {
       model.addAttribute("registered", true);
       model.addAttribute("registeredEmail", email);
     }
-    return "login"; // /jsp/login.jsp
+    return LOGIN_VIEW; // /jsp/login.jsp
   }
 
   @PostMapping("/login")
@@ -39,16 +41,16 @@ public class LoginController {
       HttpSession session,
       Model model) {
     if (result.hasErrors()) {
-      return "login";
+          return LOGIN_VIEW;
     }
 
     AuthenticationResult authResult = userService.authenticateUser(loginRequest);
     if (authResult.isSuccess()) {
       User user = authResult.getUser();
       Long userId = user.getId();
-      session.setAttribute("user", authResult.getUser());
       session.setAttribute("userEmail", loginRequest.getEmail());
       session.setAttribute("authenticated", true);
+      session.setAttribute("userId", userId);
       session.setAttribute("userName", user.getName() != null ? user.getName() : loginRequest.getEmail().split("@")[0]);
       session.setAttribute("roadmapId", user.getRoadmapId());
       session.setAttribute("registrationDate", user.getCreatedAt() != null ? Date.from(user.getCreatedAt()) : new Date());
@@ -56,7 +58,7 @@ public class LoginController {
     } else {
       model.addAttribute("errors", authResult.getErrors());
       model.addAttribute("email", loginRequest.getEmail());
-      return "login";
+      return LOGIN_VIEW;
     }
   }
 }
