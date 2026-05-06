@@ -1,8 +1,8 @@
 package org.example.aicareernav1.service.user.impl;
 
 import jakarta.persistence.EntityNotFoundException;
-import org.apache.pdfbox.pdmodel.PDDocument;
 import org.example.aicareernav1.dto.user.*;
+import org.example.aicareernav1.dto.roadmap.response.RoadmapCardResponse;
 import org.example.aicareernav1.model.user.*;
 import org.example.aicareernav1.model.user.entity.*;
 import org.example.aicareernav1.service.user.UserService;
@@ -10,18 +10,23 @@ import org.example.aicareernav1.service.user.model.AuthenticationResult;
 import org.example.aicareernav1.service.user.model.RegistrationResult;
 import org.example.aicareernav1.service.user.model.UpdateResult;
 import org.example.aicareernav1.service.user.util.PasswordEncoder;
+import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.example.aicareernav1.validator.user.AuthenticationValidator;
 import org.example.aicareernav1.validator.user.RegistrationValidator;
 import org.example.aicareernav1.repository.user.jpa.*;
+import org.example.aicareernav1.repository.roadmap.RoadmapRepository;
+import org.example.aicareernav1.entity.dynamicRoadmapEntity.Roadmap;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -38,6 +43,8 @@ public class UserServiceImpl implements UserService {
   private final CVDataJpaRepository cvDataJpaRepository;
   private final UserSkillsJpaRepository userSkillsJpaRepository;
   private final UserPreferencesJpaRepository userPreferencesJpaRepository;
+  private final RoadmapRepository roadmapRepository;
+  private final RoadmapService roadmapService;
 
   // ========== Вспомогательные методы конвертации ==========
 
@@ -313,6 +320,36 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
+  public List<RoadmapCardResponse> getRoadmapsByUserId(Long userId) {
+    if (userId == null || userId <= 0) {
+      return List.of();
+    }
+
+    UserEntity user = userJpaRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+    List<Roadmap> roadmaps = new ArrayList<>(roadmapRepository.findAllByUserIdOrderByCreatedAtDesc(userId));
+    if (user.getRoadmapId() != null && roadmaps.stream().noneMatch(r -> user.getRoadmapId().equals(r.getId()))) {
+      roadmapRepository.findById(user.getRoadmapId()).ifPresent(roadmaps::add);
+    }
+
+    roadmaps.sort(Comparator.comparing(Roadmap::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+    Long currentRoadmapId = user.getRoadmapId();
+
+    return roadmaps.stream()
+            .map(roadmap -> RoadmapCardResponse.builder()
+                    .id(roadmap.getId())
+                    .targetJobTitle(roadmap.getTargetJobTitle())
+                    .createdAt(roadmap.getCreatedAt() != null ? roadmap.getCreatedAt().format(formatter) : "н/д")
+                    .progress(roadmap.getId() != null ? roadmapService.calculateProgress(roadmap.getId()) : 0.0)
+                    .current(currentRoadmapId != null && currentRoadmapId.equals(roadmap.getId()))
+                    .build())
+            .collect(Collectors.toList());
+  }
+
+  @Override
   public UpdateResult updateSkills(UserSkills skills, Long userId) {
     if (skills == null) {
       return UpdateResult.error("Навыки не могут быть пустыми");
@@ -343,46 +380,6 @@ public class UserServiceImpl implements UserService {
     }
   }
 
-  @Override
-  public UpdateResult uploadCV(File cvFile, Long userId) {
-    if (cvFile == null) {
-      return UpdateResult.error("Файл не может быть пустым");
-    }
-
-    String fileName = cvFile.getName().toLowerCase();
-    if (!fileName.endsWith(".pdf") && !fileName.endsWith(".docx")) {
-      return UpdateResult.error("Файл должен быть в формате PDF или DOCX");
-    }
-
-    if (userId == null || userId <= 0) {
-      return UpdateResult.error("Неверный ID пользователя");
-    }
-
-    log.info("Uploading CV for user: {}", userId);
-
-    try {
-      UserEntity userEntity = userJpaRepository.findById(userId)
-              .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
-
-      String extractedText = extractTextFromFile(cvFile);
-
-      CVDataEntity cvDataEntity = CVDataEntity.builder()
-              .user(userEntity)
-              .information(extractedText)
-              .build();
-
-      cvDataJpaRepository.save(cvDataEntity);
-      log.info("CV uploaded successfully for user ID: {}", userId);
-      return UpdateResult.success();
-
-    } catch (IOException e) {
-      log.error("IO error reading CV file", e);
-      return UpdateResult.error("Ошибка чтения файла: " + e.getMessage());
-    } catch (Exception e) {
-      log.error("Error uploading CV", e);
-      return UpdateResult.error("Системная ошибка: " + e.getMessage());
-    }
-  }
 
   @Override
   public UserPreferences getUserPreferences(Long userId) {
@@ -447,23 +444,7 @@ public class UserServiceImpl implements UserService {
 
   // ========== Вспомогательные методы ==========
 
-  private String extractTextFromFile(File file) throws IOException {
-    String fileName = file.getName().toLowerCase();
-    if (fileName.endsWith(".pdf")) {
-      return extractTextFromPdf(file);
-    } else if (fileName.endsWith(".docx")) {
-      return extractTextFromDocx(file);
-    } else {
-      throw new IllegalArgumentException("Unsupported file format: " + fileName);
-    }
-  }
 
-  private String extractTextFromPdf(File file) throws IOException {
-    try (PDDocument document = PDDocument.load(file)) {
-      PDFTextStripper stripper = new PDFTextStripper();
-      return stripper.getText(document);
-    }
-  }
 
   private String extractTextFromDocx(File file) throws IOException {
     StringBuilder sb = new StringBuilder();

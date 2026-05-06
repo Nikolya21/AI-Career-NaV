@@ -79,12 +79,18 @@ public class RoadmapService {
     public RoadmapResponse generateFullRoadmap(RoadmapGenerationRequest request) {
         log.info("=== НАЧАЛО ГЕНЕРАЦИИ ROADMAP ДЛЯ: {} ===", request.getJobTitle());
 
+        Long userId = request.getUserId();
+        if (userId == null) {
+            throw new IllegalArgumentException("userId is required for roadmap generation");
+        }
+
         // 1. Создаем дефолтный конфиг (потом он будет меняться через Feedback)
         RoadmapConfig config = configService.createDefaultConfig();
         config.setMainDomain(request.getJobTitle());
 
         // 2. Создаем и сохраняем Roadmap
         Roadmap roadmap = roadmapRepository.save(Roadmap.builder()
+                .userId(userId)
                 .targetJobTitle("Roadmap for " + request.getJobTitle())
                 .config(config)
                 .build());

@@ -1,6 +1,7 @@
 package org.example.aicareernav1.service.user;
 
 import org.example.aicareernav1.dto.user.*;
+import org.example.aicareernav1.dto.roadmap.response.RoadmapCardResponse;
 import org.example.aicareernav1.model.user.CVData;
 import org.example.aicareernav1.model.user.User;
 import org.example.aicareernav1.model.user.UserPreferences;
@@ -31,7 +32,7 @@ public interface UserService {
 
   UpdateResult updateVacancy(String vacancy, Long userId);
   UpdateResult updateRoadmap(Long roadmapId, Long userId);
+  List<RoadmapCardResponse> getRoadmapsByUserId(Long userId);
 
-  UpdateResult uploadCV(File cv, Long userId);
   UpdateResult updateSkills(UserSkills skills, Long userId);
 }

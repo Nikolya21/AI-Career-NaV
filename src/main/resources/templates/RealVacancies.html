@@ -1,11 +1,22 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Реальные вакансии - Career Navigator</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #1f2937;
+      --secondary: #6b7280;
+      --accent: #6ea8ff;
+      --accent-strong: #4f83ff;
+      --glass: rgba(255, 255, 255, 0.62);
+      --glass-strong: rgba(255, 255, 255, 0.74);
+      --border: rgba(160, 184, 218, 0.28);
+      --shadow: 0 30px 80px rgba(128, 145, 173, 0.18);
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -15,55 +26,92 @@
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
-      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-      color: #fff;
+      color: var(--primary);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95) 0%, rgba(247,250,255,0.95) 36%, rgba(237,244,255,0.96) 70%, rgba(248,250,252,1) 100%);
       overflow-x: hidden;
     }
 
-    /* Animated background */
     body::before {
       content: '';
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%);
+      inset: 0;
+      background: url('/css/roadmap/img/beetwean2.jpg') center center / min(82vw, 1120px) no-repeat;
+      filter: drop-shadow(0 24px 70px rgba(153, 163, 185, 0.18));
+      opacity: 0.94;
       pointer-events: none;
       z-index: 0;
+      animation: orb-pulse 12s ease-in-out infinite;
     }
 
-    /* Header */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle, rgba(120, 179, 255, 0.18) 0%, rgba(120, 179, 255, 0.08) 28%, rgba(120, 179, 255, 0.02) 52%, transparent 70%);
+      filter: blur(18px);
+      pointer-events: none;
+      z-index: 0;
+      animation: orb-glow 12s ease-in-out infinite;
+    }
+
     .header {
       position: relative;
       z-index: 10;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.25rem 2.5rem;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      gap: 1rem;
+      padding: 1.15rem 2.25rem;
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(34px) saturate(175%);
+      -webkit-backdrop-filter: blur(34px) saturate(175%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.72);
+      box-shadow: 0 18px 40px rgba(128, 145, 173, 0.12);
+    }
+
+    .header-left,
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .cabinet-btn,
+    .logout-btn,
+    .back-btn,
+    .test-btn-white,
+    .vacancy-apply-btn {
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, color 0.25s ease;
     }
 
     .cabinet-btn {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.6rem 1.2rem;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 0.65rem 1.15rem;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(170, 196, 231, 0.34);
       border-radius: 12px;
-      color: #fff;
-      text-decoration: none;
-      font-weight: 500;
-      transition: all 0.3s ease;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.92rem;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
     }
 
-    .cabinet-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
+    .cabinet-btn:hover,
+    .logout-btn:hover,
+    .back-btn:hover,
+    .test-btn-white:hover,
+    .vacancy-apply-btn:hover {
       transform: translateY(-2px);
+    }
+
+    .cabinet-btn:hover,
+    .logout-btn:hover,
+    .back-btn:hover {
+      color: var(--accent-strong);
     }
 
     .logo {
@@ -75,82 +123,66 @@
     .logo-icon {
       width: 45px;
       height: 45px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 12px;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.5rem;
+      box-shadow: 0 10px 30px rgba(120, 145, 180, 0.14);
     }
 
     .logo h1 {
       font-size: 1.5rem;
       font-weight: 700;
-      background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
+      color: var(--primary);
     }
 
     .user-email {
-      padding: 0.5rem 1rem;
-      background: rgba(255, 255, 255, 0.1);
+      padding: 0.55rem 1rem;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(160, 184, 218, 0.26);
       border-radius: 25px;
       font-size: 0.85rem;
+      color: var(--primary);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.86);
     }
 
     .logout-btn {
-      padding: 0.6rem 1.2rem;
-      background: rgba(239, 68, 68, 0.2);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 0.65rem 1.15rem;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(170, 196, 231, 0.34);
       border-radius: 10px;
-      color: #fca5a5;
-      text-decoration: none;
-      transition: all 0.3s ease;
+      color: var(--primary);
+      font-weight: 600;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
     }
 
-    .logout-btn:hover {
-      background: rgba(239, 68, 68, 0.4);
-    }
-
-    /* Main Container */
     .main-container {
       position: relative;
       z-index: 5;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 2rem 1.5rem;
+      padding: 2rem 1.5rem 2.5rem;
     }
 
-    /* Back Button */
     .back-btn {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 0.75rem 1.25rem;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(170, 196, 231, 0.34);
       border-radius: 12px;
-      color: #fff;
-      text-decoration: none;
-      margin-bottom: 2rem;
-      transition: all 0.3s ease;
+      color: var(--primary);
+      margin-bottom: 1.75rem;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
+      font-weight: 600;
     }
 
-    .back-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateX(-5px);
-    }
-
-    /* Test Button - White Style */
     .test-button-wrapper {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 1.75rem;
     }
 
     .test-btn-white {
@@ -158,59 +190,115 @@
       align-items: center;
       gap: 0.75rem;
       padding: 1rem 2rem;
-      background: white;
-      border: none;
-      border-radius: 60px;
-      color: #0f0c29;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(170, 196, 231, 0.34);
+      border-radius: 999px;
+      color: var(--primary);
       font-size: 1rem;
       font-weight: 700;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-      letter-spacing: 0.3px;
+      box-shadow: 0 16px 34px rgba(120, 145, 180, 0.14);
+      letter-spacing: 0.2px;
     }
 
-    .test-btn-white:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-      background: linear-gradient(135deg, #fff, #f8f9ff);
+    .vacancies-header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+      position: relative;
+      z-index: 1;
     }
 
-    .test-btn-white:active {
-      transform: translateY(0);
+    .vacancies-header h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--primary);
+      letter-spacing: -0.03em;
     }
 
-    /* Vacancy Card */
+    .vacancies-header p {
+      color: var(--secondary);
+    }
+
+    .vacancy-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      border: 1px solid rgba(170, 196, 231, 0.34);
+      padding: 0 0.65rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      color: var(--accent-strong);
+      box-shadow: 0 10px 22px rgba(120, 145, 180, 0.12);
+    }
+
+    .info-box {
+      background: var(--glass);
+      border: 1px solid rgba(143, 186, 255, 0.24);
+      border-radius: 18px;
+      padding: 1.35rem 1.5rem;
+      margin-bottom: 1.75rem;
+      display: flex;
+      gap: 1rem;
+      backdrop-filter: blur(34px) saturate(175%);
+      -webkit-backdrop-filter: blur(34px) saturate(175%);
+      box-shadow: 0 18px 40px rgba(128, 145, 173, 0.12);
+    }
+
+    .info-box-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 10px 24px rgba(120, 145, 180, 0.12);
+      flex-shrink: 0;
+    }
+
+    .info-box-content h4 {
+      color: var(--primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .info-box-content p {
+      color: var(--secondary);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
     .vacancy-card {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255,255,255,0.5));
+      backdrop-filter: blur(34px) saturate(175%);
+      -webkit-backdrop-filter: blur(34px) saturate(175%);
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      border-radius: 34px;
       padding: 2rem;
       margin-bottom: 1.5rem;
-      transition: all 0.3s ease;
+      box-shadow: var(--shadow);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
 
     .vacancy-card:hover {
-      transform: translateY(-5px);
-      border-color: rgba(102, 126, 234, 0.5);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 34px 90px rgba(128, 145, 173, 0.2);
     }
 
     .vacancy-title {
       font-size: 1.5rem;
       font-weight: 700;
       margin-bottom: 0.75rem;
-      background: linear-gradient(135deg, #fff 0%, #c4b5fd 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--primary);
+      letter-spacing: -0.02em;
     }
 
     .vacancy-salary {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: #10b981;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #0f9d58;
       margin-bottom: 1rem;
     }
 
@@ -222,56 +310,63 @@
     }
 
     .detail-item {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255,255,255,0.7);
       padding: 1rem;
-      border-radius: 12px;
-      border-left: 3px solid #667eea;
+      border-radius: 14px;
+      border: 1px solid rgba(160, 184, 218, 0.24);
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
     }
 
     .detail-label {
       display: block;
       font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--secondary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 0.5rem;
+      font-weight: 700;
     }
 
     .detail-value {
       font-size: 1rem;
-      font-weight: 500;
-      color: #fff;
+      font-weight: 600;
+      color: var(--primary);
     }
 
-    .detail-value.company { color: #a5b4fc; }
-    .detail-value.experience { color: #fbbf24; }
-    .detail-value.age { color: #34d399; }
+    .detail-value.company { color: #4f83ff; }
+    .detail-value.experience { color: #b45309; }
+    .detail-value.age { color: #059669; }
 
     .requirements-title {
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 1rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      color: var(--primary);
     }
 
     .requirement-item {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 0.75rem 1rem;
-      margin: 0.5rem 0;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      border-left: 3px solid #8b5cf6;
+      background: rgba(255,255,255,0.72);
+      padding: 0.85rem 1rem;
+      margin: 0.55rem 0;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      border: 1px solid rgba(160, 184, 218, 0.22);
+      box-shadow: 0 10px 22px rgba(120, 145, 180, 0.07);
+      color: var(--primary);
+      line-height: 1.5;
     }
 
     .vacancy-meta {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 1rem;
       margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(160, 184, 218, 0.24);
     }
 
     .company-info {
@@ -281,84 +376,55 @@
     }
 
     .badge {
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
       font-size: 0.75rem;
-      font-weight: 500;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(120, 145, 180, 0.12);
     }
 
-    .badge-info { background: #3b82f6; color: white; }
-    .badge-warning { background: #f59e0b; color: white; }
-    .badge-success { background: #10b981; color: white; }
+    .badge-info { background: linear-gradient(180deg, #6ea8ff, #4f83ff); }
+    .badge-warning { background: linear-gradient(180deg, #f7b955, #f59e0b); }
+    .badge-success { background: linear-gradient(180deg, #34d399, #10b981); }
 
     .vacancy-apply-btn {
-      padding: 0.75rem 1.5rem;
-      background: linear-gradient(135deg, #10b981, #059669);
-      border: none;
-      border-radius: 10px;
-      color: white;
-      font-weight: 600;
+      padding: 0.82rem 1.45rem;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(170, 196, 231, 0.38);
+      border-radius: 12px;
+      color: var(--primary);
+      font-weight: 700;
       cursor: pointer;
-      transition: all 0.3s ease;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.12);
+      white-space: nowrap;
     }
 
     .vacancy-apply-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+      color: var(--accent-strong);
     }
 
-    /* Info Box */
-    .info-box {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
-      border: 1px solid rgba(139, 92, 246, 0.3);
-      border-radius: 16px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      display: flex;
-      gap: 1rem;
-    }
-
-    .info-box-icon {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #8b5cf6, #6366f1);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-    }
-
-    .info-box-content h4 {
-      color: #c4b5fd;
-      margin-bottom: 0.25rem;
-    }
-
-    .info-box-content p {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 0.9rem;
-    }
-
-    /* Error & Loader */
     .error-message {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: rgba(255, 235, 238, 0.82);
+      border: 1px solid rgba(239, 68, 68, 0.18);
       border-radius: 12px;
-      padding: 1rem;
+      padding: 1rem 1.1rem;
       text-align: center;
-      color: #fca5a5;
+      color: #c2414c;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
     }
 
     .loader-container {
       text-align: center;
-      padding: 3rem;
+      padding: 3rem 1rem;
+      color: var(--secondary);
     }
 
     .spinner {
       width: 50px;
       height: 50px;
-      border: 4px solid rgba(255, 255, 255, 0.1);
-      border-left-color: #667eea;
+      border: 4px solid rgba(160,184,218,0.22);
+      border-left-color: #6ea8ff;
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 1rem;
@@ -368,46 +434,63 @@
       to { transform: rotate(360deg); }
     }
 
-    .vacancies-header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-
-    .vacancies-header h2 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .vacancy-count {
-      background: #667eea;
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
-    }
-
     .no-skills {
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--secondary);
       font-style: italic;
       text-align: center;
       padding: 1rem;
+    }
+
+    @keyframes orb-pulse {
+      0%, 100% { transform: scale(0.98); opacity: 0.92; }
+      50% { transform: scale(1.02); opacity: 1; }
+    }
+
+    @keyframes orb-glow {
+      0%, 100% { transform: scale(0.98); opacity: 0.72; }
+      50% { transform: scale(1.03); opacity: 1; }
     }
 
     @media (max-width: 768px) {
       .header {
         flex-direction: column;
         gap: 1rem;
+        padding: 1rem;
         text-align: center;
       }
+
+      .header-left,
+      .user-info {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .main-container {
+        padding: 1.5rem 1rem 2rem;
+      }
+
+      .vacancy-card {
+        padding: 1.5rem;
+        border-radius: 24px;
+      }
+
       .vacancy-details-grid {
         grid-template-columns: 1fr;
       }
+
       .vacancy-meta {
         flex-direction: column;
-        gap: 1rem;
+        align-items: stretch;
       }
+
+      .vacancy-apply-btn,
       .test-btn-white {
-        padding: 0.75rem 1.5rem;
-        font-size: 0.9rem;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .vacancies-header h2 {
+        font-size: 1.65rem;
       }
     }
   </style>

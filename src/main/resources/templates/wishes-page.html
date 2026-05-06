@@ -1,153 +1,281 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Мои пожелания — AI Career Nav</title>
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #6f42c1;
-            --success-color: #28a745;
-            --bg-color: #f8f9fa;
+            --primary-color: #1f2937;
+            --secondary-color: #6b7280;
+            --accent-color: #6ea8ff;
+            --accent-strong: #4f83ff;
+            --success-color: #15803d;
+            --error-color: #c2414c;
+            --glass: rgba(255, 255, 255, 0.5);
+            --glass-strong: rgba(255, 255, 255, 0.7);
+            --border: rgba(255, 255, 255, 0.78);
+            --shadow: 0 30px 80px rgba(128, 145, 173, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background:
+                radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95) 0%, rgba(247,250,255,0.95) 36%, rgba(237,244,255,0.96) 70%, rgba(248,250,252,1) 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 24px;
+            overflow: hidden;
+            color: var(--primary-color);
+        }
+
+        .bg-orb {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .bg-orb::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: min(118vw, 1540px);
+            height: min(118vw, 1540px);
+            transform: translate(-50%, -50%);
+            background: url('/css/roadmap/img/beetwean2.jpg') center center / contain no-repeat;
+            filter: drop-shadow(0 30px 80px rgba(153, 163, 185, 0.24));
+            animation: orb-pulse 12s ease-in-out infinite;
+        }
+
+        .bg-orb::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: min(128vw, 1720px);
+            height: min(128vw, 1720px);
+            transform: translate(-50%, -52%);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(120, 179, 255, 0.2) 0%, rgba(120, 179, 255, 0.1) 28%, rgba(120, 179, 255, 0.03) 52%, transparent 70%);
+            filter: blur(18px);
+            animation: orb-glow 12s ease-in-out infinite;
+        }
+
+        .shadow-blur {
+            position: fixed;
+            left: 50%;
+            bottom: 56px;
+            width: 220px;
+            height: 28px;
+            transform: translateX(-50%);
+            border-radius: 50%;
+            background: rgba(140, 146, 160, 0.26);
+            filter: blur(10px);
+            z-index: -1;
+            animation: shadow-pulse 12s ease-in-out infinite;
         }
 
         .card {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            position: relative;
+            background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.42));
+            padding: 38px;
+            border-radius: 32px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
             width: 100%;
-            max-width: 600px;
+            max-width: 560px;
             text-align: center;
+            backdrop-filter: blur(34px) saturate(175%);
+            -webkit-backdrop-filter: blur(34px) saturate(175%);
+            transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(160, 198, 255, 0.32), rgba(255,255,255,0.3));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0.92;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(143, 186, 255, 0.72);
+            box-shadow: 0 38px 90px rgba(124, 149, 187, 0.22);
         }
 
         h2 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+            font-size: 32px;
+            letter-spacing: -0.03em;
         }
 
         p {
-            color: #666;
-            margin-bottom: 25px;
+            color: var(--secondary-color);
+            margin-bottom: 28px;
             line-height: 1.5;
+            font-size: 15px;
         }
 
         textarea {
             width: 100%;
-            height: 150px;
-            padding: 15px;
-            border: 2px solid #e1e4e8;
-            border-radius: 12px;
+            height: 170px;
+            padding: 16px 18px;
+            border: 1px solid rgba(160, 184, 218, 0.38);
+            border-radius: 18px;
             resize: vertical;
             font-size: 16px;
-            transition: border-color 0.3s;
+            transition: 0.28s ease;
             box-sizing: border-box;
             outline: none;
             font-family: inherit;
+            color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.68);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.88);
+        }
+
+        textarea::placeholder {
+            color: rgba(107, 114, 128, 0.78);
         }
 
         textarea:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+            border-color: rgba(111, 170, 255, 0.9);
+            background: rgba(255, 255, 255, 0.84);
+            box-shadow: 0 0 0 4px rgba(120, 175, 255, 0.16);
         }
 
         .button-stack {
             display: flex;
             flex-direction: column;
             gap: 12px;
-            margin-top: 25px;
+            margin-top: 26px;
+        }
+
+        .status-panel {
+            margin-top: 18px;
+            padding: 0;
+            border-radius: 18px;
+            border: none;
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            text-align: left;
+            min-height: 0;
+        }
+
+        .status-caption {
+            display: none;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(107, 114, 128, 0.82);
         }
 
         button {
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid transparent;
+            border-radius: 16px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+            box-shadow: 0 12px 26px rgba(120, 145, 180, 0.12);
         }
 
         button:active { transform: scale(0.98); }
 
         .btn-save {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
+            background: linear-gradient(180deg, #ffffff, #f3f7ff);
+            border-color: rgba(170, 196, 231, 0.38);
+            color: #1f2937;
         }
 
         .btn-save:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+            color: var(--accent-strong);
+            box-shadow: 0 16px 34px rgba(120, 145, 180, 0.18);
         }
 
         .btn-ai {
-            background: linear-gradient(135deg, #6f42c1, #8b5cf6);
-            color: white;
+            background: linear-gradient(180deg, #ffffff, #eef4ff);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            border-color: rgba(143, 186, 255, 0.42);
+            color: #1f2937;
         }
 
         .btn-ai:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(111, 66, 193, 0.4);
+            color: var(--accent-strong);
+            box-shadow: 0 16px 34px rgba(120, 145, 180, 0.18);
         }
 
         .btn-back {
-            background: #6c757d;
-            color: white;
+            background: rgba(255,255,255,0.62);
+            border-color: rgba(160, 184, 218, 0.32);
+            color: #1f2937;
         }
 
         .btn-back:hover {
-            background: #5a6268;
+            background: rgba(255,255,255,0.82);
             transform: translateY(-2px);
+            color: var(--accent-strong);
         }
 
         .status {
-            margin-top: 15px;
+            margin-top: 12px;
             font-size: 14px;
-            min-height: 40px;
-            padding: 8px;
-            border-radius: 8px;
+            min-height: auto;
+            padding: 0;
+            border-radius: 12px;
+            backdrop-filter: none;
+            border: none;
+            background: transparent;
         }
 
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        .status--success {
+            background: transparent;
+            color: var(--success-color);
+            border: none;
         }
 
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+        .status--error {
+            background: transparent;
+            color: var(--error-color);
+            border: none;
         }
 
-        .status.info {
-            background: #d1ecf1;
+        .status--info {
+            background: transparent;
             color: #0c5460;
-            border: 1px solid #bee5eb;
+            border: none;
         }
 
         .loader {
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 2px solid #fff;
+            border: 2px solid rgba(255,255,255,0.9);
             border-radius: 50%;
             border-top-color: transparent;
             animation: spin 1s linear infinite;
@@ -157,14 +285,52 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        @keyframes orb-pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(0.98); opacity: 0.9; }
+            50% { transform: translate(-50%, -50%) scale(1.02); opacity: 1; }
+        }
+
+        @keyframes orb-glow {
+            0%, 100% { transform: translate(-50%, -52%) scale(0.98); opacity: 0.7; }
+            50% { transform: translate(-50%, -52%) scale(1.03); opacity: 1; }
+        }
+
+        @keyframes shadow-pulse {
+            0%, 100% { transform: translateX(-50%) scale(0.96); opacity: 0.42; }
+            50% { transform: translateX(-50%) scale(1.04); opacity: 0.62; }
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 16px; }
+            .card { padding: 30px 20px; border-radius: 28px; }
+            h2 { font-size: 26px; }
+            textarea { height: 150px; }
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
     </style>
 </head>
 <body>
+
+<div class="bg-orb"></div>
+<div class="shadow-blur"></div>
 
 <div class="card">
     <h2>🎯 Чего вы хотите от карьеры?</h2>
     <p>Опишите ваши цели, желаемый стек или условия работы. Мы используем это для подбора вакансий.</p>
 
+    <label class="sr-only" for="wishesInput">Ваши пожелания к карьере</label>
     <textarea id="wishesInput" placeholder="Например: Хочу перейти из системного администрирования в Java-разработку, готов уделять учебе 10 часов в неделю..."></textarea>
 
     <div class="button-stack">
@@ -177,15 +343,14 @@
         </button>
     </div>
 
-    <div id="status" class="status"></div>
+    <div class="status-panel">
+        <span class="status-caption">Статус</span>
+        <div id="status" class="status"></div>
+    </div>
 </div>
 
-<!-- 1. Добавьте th:inline="javascript" в тег script -->
 <script th:inline="javascript">
-
-    // 2. Используем специальный синтаксис Thymeleaf.
-    // Если сервер пришлет ID, он подставится сюда. Если нет — останется null.
-    const userId = [[${userId}]];
+    const userId = /*[[${userId}]]*/ null;
 
     console.log("=== WISHES PAGE DEBUG ===");
     console.log("User ID from session:", userId);
@@ -196,19 +361,19 @@
         const message = input.value.trim();
 
         if (!message) {
-            statusDiv.className = "status error";
+            statusDiv.className = "status status--error";
             statusDiv.innerText = "⚠️ Пожалуйста, введите текст ваших пожеланий.";
             return;
         }
 
         // Проверка авторизации прямо в JS
         if (!userId) {
-            statusDiv.className = "status error";
+            statusDiv.className = "status status--error";
             statusDiv.innerText = "❌ Ошибка: ID пользователя не найден. Перезайдите в систему.";
             return;
         }
 
-        statusDiv.className = "status info";
+        statusDiv.className = "status status--info";
         statusDiv.innerHTML = '<span class="loader"></span> Сохранение...';
 
         try {
@@ -219,14 +384,18 @@
                 body: JSON.stringify({ wishesMessage: message })
             });
 
-            if (!response.ok) throw new Error("Ошибка сервера при сохранении");
+            if (!response.ok) {
+                statusDiv.className = "status status--error";
+                statusDiv.innerText = "❌ Ошибка сервера при сохранении";
+                return;
+            }
 
-            statusDiv.className = "status success";
+            statusDiv.className = "status status--success";
             statusDiv.innerText = "✅ Успешно сохранено! Перенаправляем...";
             setTimeout(() => window.location.href = "/choose-vacancy", 1500);
 
         } catch (error) {
-            statusDiv.className = "status error";
+            statusDiv.className = "status status--error";
             statusDiv.innerText = "❌ " + error.message;
         }
     }

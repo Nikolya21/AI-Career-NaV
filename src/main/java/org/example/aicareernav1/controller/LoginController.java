@@ -1,7 +1,6 @@
 package org.example.aicareernav1.controller;
 
 import java.util.Date;
-import org.apache.commons.logging.Log;
 import org.example.aicareernav1.dto.user.LoginRequestDto;
 import org.example.aicareernav1.model.user.User;
 import org.example.aicareernav1.service.user.UserService;
@@ -20,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequiredArgsConstructor
 public class LoginController {
 
+  private static final String LOGIN_VIEW = "login";
+
   private final UserService userService;
 
   @GetMapping("/login")
@@ -31,7 +32,7 @@ public class LoginController {
       model.addAttribute("registered", true);
       model.addAttribute("registeredEmail", email);
     }
-    return "login"; // /jsp/login.jsp
+    return LOGIN_VIEW; // /jsp/login.jsp
   }
 
   @PostMapping("/login")
@@ -40,23 +41,24 @@ public class LoginController {
       HttpSession session,
       Model model) {
     if (result.hasErrors()) {
-      return "login";
+          return LOGIN_VIEW;
     }
 
     AuthenticationResult authResult = userService.authenticateUser(loginRequest);
-    User user = authResult.getUser();
-    Long userId = user.getId();
     if (authResult.isSuccess()) {
-      session.setAttribute("user", authResult.getUser());
+      User user = authResult.getUser();
+      Long userId = user.getId();
       session.setAttribute("userEmail", loginRequest.getEmail());
       session.setAttribute("authenticated", true);
-      session.setAttribute("userName", loginRequest.getEmail().split("@")[0]);
-      session.setAttribute("registrationDate", new Date());
+      session.setAttribute("userId", userId);
+      session.setAttribute("userName", user.getName() != null ? user.getName() : loginRequest.getEmail().split("@")[0]);
+      session.setAttribute("roadmapId", user.getRoadmapId());
+      session.setAttribute("registrationDate", user.getCreatedAt() != null ? Date.from(user.getCreatedAt()) : new Date());
       return "redirect:/personal-cabinet/" + userId;
     } else {
       model.addAttribute("errors", authResult.getErrors());
       model.addAttribute("email", loginRequest.getEmail());
-      return "login";
+      return LOGIN_VIEW;
     }
   }
 }

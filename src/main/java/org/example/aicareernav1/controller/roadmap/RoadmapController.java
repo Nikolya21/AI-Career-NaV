@@ -1,23 +1,23 @@
 package org.example.aicareernav1.controller.roadmap;
 
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.aicareernav1.dto.roadmap.RoadmapGenerationRequest;
 import org.example.aicareernav1.dto.roadmap.response.CheckpointResponse;
 import org.example.aicareernav1.dto.roadmap.response.LessonResponse;
+import org.example.aicareernav1.dto.roadmap.response.RoadmapCardResponse;
 import org.example.aicareernav1.dto.roadmap.response.RoadmapResponse;
 import org.example.aicareernav1.entity.dynamicRoadmapEntity.RoadmapConfig;
 import org.example.aicareernav1.model.user.entity.UserEntity;
 import org.example.aicareernav1.service.roadmap.LessonService;
 import org.example.aicareernav1.service.roadmap.RoadmapService;
 import org.example.aicareernav1.service.user.impl.UserServiceImpl;
-import org.example.aicareernav1.service.userService.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -59,6 +59,7 @@ public class RoadmapController {
   @PostMapping("/generate")
   public ResponseEntity<RoadmapResponse> generateRoadmap(@RequestBody RoadmapGenerationRequest request, @RequestParam Long userId) {
     log.info("API: Запрос на полную генерацию Roadmap для вакансии: {}", request.getJobTitle());
+    request.setUserId(userId);
     RoadmapResponse roadmapResponse = roadmapService.generateFullRoadmap(request);
     roadmapService.processUserFeedback(roadmapResponse.getId(), request.getTestResult());
     UserEntity user = userService.getUserById(userId);
@@ -67,6 +68,12 @@ public class RoadmapController {
 
     log.info("✅ Roadmap успешно создан (ID: {}) и привязан к пользователю {}", roadmapResponse.getId(), userId);
     return ResponseEntity.ok(roadmapResponse);
+  }
+
+  @GetMapping("/user/{userId}")
+  public ResponseEntity<List<RoadmapCardResponse>> getUserRoadmaps(@PathVariable Long userId) {
+    log.info("API: Запрос списка roadmap для пользователя {}", userId);
+    return ResponseEntity.ok(userService.getRoadmapsByUserId(userId));
   }
 
   /**
