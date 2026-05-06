@@ -1,9 +1,9 @@
   <!DOCTYPE html>
-  <html xmlns:th="http://www.thymeleaf.org">
+  <html lang="ru" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Выбор вакансии - Career Navigator</title>
+    <title>Выбор вакансии - AI Career Navigator</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
       * {
@@ -200,7 +200,7 @@
       .main-container {
         position: relative;
         z-index: 5;
-        max-width: 900px;
+        max-width: 1080px;
         margin: 0 auto;
         padding: 3rem 1.5rem;
       }
@@ -653,7 +653,7 @@
 
     <div class="logo">
       <div class="logo-icon">🚀</div>
-      <h1>Career Navigator</h1>
+      <h1>AI Career Navigator</h1>
     </div>
 
     <div class="user-info">
@@ -743,6 +743,287 @@
           border-radius: 8px;
           font-weight: 600;
           cursor: pointer;
+        }
+      </style>
+
+      <style>
+        body {
+          min-height: 100vh;
+          background:
+            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95) 0%, rgba(247,250,255,0.95) 36%, rgba(237,244,255,0.96) 70%, rgba(248,250,252,1) 100%);
+          color: #1f2937;
+          overflow-x: hidden;
+        }
+
+        body::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+            background: url('/css/roadmap/img/beetwean2.jpg') center center / min(82vw, 1120px) no-repeat;
+            filter: drop-shadow(0 26px 72px rgba(153, 163, 185, 0.18));
+            opacity: 0.9;
+          pointer-events: none;
+          z-index: 0;
+          animation: orb-pulse 12s ease-in-out infinite;
+        }
+
+        body::after {
+          content: '';
+          position: fixed;
+          inset: 0;
+          background: radial-gradient(circle, rgba(120, 179, 255, 0.18) 0%, rgba(120, 179, 255, 0.08) 28%, rgba(120, 179, 255, 0.02) 52%, transparent 70%);
+          filter: blur(18px);
+          pointer-events: none;
+          z-index: 0;
+          animation: orb-glow 12s ease-in-out infinite;
+        }
+
+        .particles { display: none; }
+
+        .header,
+        .vacancy-card {
+          background: rgba(255, 255, 255, 0.58);
+          backdrop-filter: blur(34px) saturate(175%);
+          -webkit-backdrop-filter: blur(34px) saturate(175%);
+          border: 1px solid rgba(255, 255, 255, 0.78);
+          box-shadow: 0 30px 80px rgba(128, 145, 173, 0.16);
+        }
+
+        .header {
+          position: relative;
+          z-index: 10;
+          border-left: 0;
+          border-right: 0;
+          border-top: 0;
+          color: #1f2937;
+        }
+
+        .cabinet-btn,
+        .logout-btn {
+          background: linear-gradient(180deg, #ffffff, #f3f7ff);
+          color: #1f2937;
+          border: 1px solid rgba(170, 196, 231, 0.34);
+          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
+        }
+
+        .cabinet-btn:hover,
+        .logout-btn:hover {
+          background: linear-gradient(180deg, #ffffff, #eaf2ff);
+          color: #4f83ff;
+        }
+
+        .logo-icon {
+          background: linear-gradient(180deg, #ffffff, #eef4ff);
+          box-shadow: 0 10px 30px rgba(120, 145, 180, 0.14);
+        }
+
+        .logo h1 {
+          background: none;
+          -webkit-text-fill-color: initial;
+          color: #1f2937;
+        }
+
+        .user-email {
+          background: rgba(255,255,255,0.72);
+          border: 1px solid rgba(160, 184, 218, 0.26);
+          color: #1f2937;
+        }
+
+        .step-label,
+        .vacancy-header p,
+        .info-box-content p {
+          color: #6b7280;
+        }
+
+        .step-circle.pending,
+        .step-line {
+          background: rgba(160, 184, 218, 0.16);
+          border-color: rgba(160, 184, 218, 0.28);
+        }
+
+        .vacancy-card {
+          position: relative;
+          z-index: 5;
+          border-radius: 36px;
+          padding: 3rem;
+        }
+
+        .vacancy-header h2 {
+          font-size: 2.25rem;
+          line-height: 1.15;
+          background: none;
+          -webkit-text-fill-color: initial;
+          color: #1f2937;
+        }
+
+        .vacancy-header-icon,
+        .info-box-icon {
+          background: linear-gradient(180deg, #ffffff, #eef4ff);
+          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.14);
+        }
+
+        .info-box {
+          background: rgba(255,255,255,0.58);
+          border: 1px solid rgba(143, 186, 255, 0.24);
+          color: #1f2937;
+        }
+
+        .info-box-content h4,
+        .vacancy-title {
+          color: #1f2937;
+        }
+
+        .error-message {
+          background: rgba(255, 235, 238, 0.82);
+          border: 1px solid rgba(239, 68, 68, 0.18);
+          color: #c2414c;
+        }
+
+        .vacancy-label {
+          min-height: 108px;
+          padding: 1.65rem 1.75rem;
+          background: rgba(255,255,255,0.62);
+          border: 1px solid rgba(160, 184, 218, 0.28);
+          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
+        }
+
+        .vacancy-label:hover {
+          border-color: rgba(111, 170, 255, 0.56);
+          box-shadow: 0 16px 34px rgba(120, 145, 180, 0.14);
+        }
+
+        .vacancy-number {
+          width: 58px;
+          height: 58px;
+          font-size: 1.35rem;
+          border-color: rgba(160, 184, 218, 0.34);
+          color: #4b5563;
+        }
+
+        .vacancy-content {
+          padding-right: 0.5rem;
+        }
+
+        .check-icon {
+          width: 38px;
+          height: 38px;
+        }
+
+        .check-icon svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .vacancy-title {
+          font-size: 1.2rem;
+        }
+
+        .vacancy-subtitle {
+          color: #6b7280;
+        }
+
+        .check-icon {
+          box-shadow: 0 8px 20px rgba(16, 185, 129, 0.24);
+        }
+
+        .submit-btn {
+          padding: 1.35rem 2rem;
+          border-radius: 18px;
+          font-size: 1.05rem;
+          background: linear-gradient(180deg, #ffffff, #f3f7ff);
+          color: #1f2937;
+          border: 1px solid rgba(170, 196, 231, 0.38);
+        }
+
+        .submit-btn:not(:disabled):hover {
+          color: #4f83ff;
+        }
+
+        .submit-btn:disabled {
+          background: rgba(255,255,255,0.5);
+          color: rgba(31, 41, 55, 0.38);
+        }
+
+        .loader-container {
+          color: #6b7280;
+        }
+
+        .spinner {
+          border: 4px solid rgba(160,184,218,0.22);
+          border-left-color: #6ea8ff;
+        }
+
+        .vacancies-grid {
+          margin-top: 1.5rem;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        .vacancy-item {
+          background: rgba(255,255,255,0.7);
+          border: 1px solid rgba(160, 184, 218, 0.26);
+          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
+          color: #1f2937;
+        }
+
+        .vacancy-item:hover {
+          background: rgba(255,255,255,0.92);
+          border-color: rgba(111, 170, 255, 0.5);
+          box-shadow: 0 18px 36px rgba(120, 145, 180, 0.16);
+          transform: translateY(-4px);
+        }
+
+        .vacancy-item h3 { color: #1f2937; }
+
+        .vacancy-item p { color: #6b7280; }
+
+        .select-btn {
+          background: linear-gradient(180deg, #ffffff, #f3f7ff);
+          color: #1f2937;
+          border: 1px solid rgba(170, 196, 231, 0.34);
+        }
+
+        .select-btn:hover {
+          color: #4f83ff;
+        }
+
+        @keyframes orb-pulse {
+          0%, 100% { transform: scale(0.98); opacity: 0.92; }
+          50% { transform: scale(1.02); opacity: 1; }
+        }
+
+        @keyframes orb-glow {
+          0%, 100% { transform: scale(0.98); opacity: 0.72; }
+          50% { transform: scale(1.03); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+          .header {
+            backdrop-filter: blur(28px);
+          }
+
+          .main-container {
+            padding: 2rem 1rem;
+          }
+
+          .vacancy-card {
+            padding: 1.5rem;
+            border-radius: 24px;
+          }
+
+          .vacancy-label {
+            min-height: auto;
+            padding: 1.25rem;
+          }
+
+          .vacancy-number {
+            width: 46px;
+            height: 46px;
+            font-size: 1.1rem;
+          }
+
+          .vacancy-header h2 {
+            font-size: 1.65rem;
+          }
         }
       </style>
 
