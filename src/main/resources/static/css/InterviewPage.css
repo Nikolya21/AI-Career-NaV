@@ -57,9 +57,19 @@ body {
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary) 0%, #a855f7 100%);
+    /* Используем основные цвета Gemini: синий -> фиолетовый -> розовый */
+    background: linear-gradient(
+            90deg,
+            #4285F4 0%,
+            #9b72cb 50%,
+            #d96570 100%
+    );
     border-radius: 10px;
+    /* Плавная анимация при заполнении шкалы */
     transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Добавим небольшой блеск, чтобы шкала выглядела объемнее */
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
 }
 
 /* Layout Modes */
@@ -111,17 +121,31 @@ body {
 }
 
 .next-button {
-    background: var(--primary);
+    /* Объявляем градиент прямо здесь, чтобы не зависеть от :root */
+    background: conic-gradient(
+            from 180deg, /* Фиксированный угол вместо переменной */
+            #4285F4, #9b72cb, #d96570, #f4af54, #34a853, #4285F4
+    );
+
     color: white;
     border: none;
     padding: 14px 28px;
     border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
+
+    /* Убедимся, что кнопка имеет размеры и видна */
+    display: inline-block;
+    min-width: 150px;
+    text-align: center;
 }
 
-.next-button:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.next-button:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(66, 133, 244, 0.3);
+}
 
 /* IDE Window Design */
 .ide-window {
@@ -221,10 +245,16 @@ body {
 .loader {
     width: 40px;
     height: 40px;
-    border: 4px solid #e2e8f0;
-    border-top: 4px solid var(--primary);
     border-radius: 50%;
+    padding: 4px;
+    /* Прямое указание градиента */
+    background: conic-gradient(#4285F4, #9b72cb, #d96570, #f4af54, #34a853, #4285F4);
+
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+
     animation: spin 1s linear infinite;
-    margin-bottom: 15px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
