@@ -24,18 +24,17 @@ import java.util.Map;
 public class AudioProcessingController {
 
   private final WebClient webClient = WebClient.builder()
-      .baseUrl("http://localhost:5000")
+      .baseUrl("http://python-fastapi-service:5000")
       .build();
 
   @PostMapping("/api/process-audio")
   public Mono<ResponseEntity<Map>> processAudio(@RequestParam("audio") MultipartFile audioFile) {
     try {
-      // Подготавливаем multipart-запрос для Python
       MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
       body.add("audio", new ByteArrayResource(audioFile.getBytes()) {
         @Override
         public String getFilename() {
-          return "audio.webm";  // или .wav, в зависимости от того, что вы отправляете
+          return "audio.webm";
         }
       });
 
@@ -56,5 +55,4 @@ public class AudioProcessingController {
           .body(Map.of("error", "Ошибка чтения файла: " + e.getMessage())));
     }
   }
-
 }

@@ -10,6 +10,7 @@ import org.example.aicareernav1.service.gigachat.GigaChatService;
 import org.example.aicareernav1.service.parser.ParserService;
 import org.example.aicareernav1.service.yandexGpt.YandexGptService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Slf4j
 @Controller
@@ -314,5 +316,50 @@ public class DialogVacancyController {
   public String mlInterview() {
     return "ml-interview"; // имя HTML-шаблона
   }
+  @GetMapping("/api/interview/questions")
+  @ResponseBody
+  public ResponseEntity<List<String>> getInterviewQuestions(HttpSession session) {
+    Long userId = (Long) session.getAttribute("userId");
+    if (userId == null) {
+      return ResponseEntity.status(401).build();
+    }
 
+    String selectedVacancy = "Java Developer"; // Вакансия по умолчанию
+    Optional<UserEntity> userOpt = userRepository.findById(userId);
+
+    // Достаем вакансию из БД
+    if (userOpt.isPresent() && userOpt.get().getVacancyNow() != null && !userOpt.get().getVacancyNow().isEmpty()) {
+      selectedVacancy = userOpt.get().getVacancyNow();
+    }
+
+    log.info("🤖 Генерация вопросов для ML-интервью по вакансии: {}", selectedVacancy);
+
+    String prompt = "Ты — строгий технический интервьюер. Сгенерируй 3 профессиональных вопроса для собеседования на позицию: "
+        + selectedVacancy + ". Верни строго 3 вопроса, каждый с новой строки. Без нумерации, без списков и без лишнего текста.";
+
+    try {
+      String aiResponse = gptService.sendMessage(prompt);
+
+      // Парсим ответ нейросети по переносам строк и чистим случайные цифры
+      List<String> questions = Arrays.stream(aiResponse.split("\n"))
+          .map(String::trim)
+          .filter(q -> !q.isEmpty())
+          .map(q -> q.replaceFirst("^\\d+[\\.\\)]\\s*", "")) // Удаляем "1. ", "2) " если нейросеть их добавит
+          .limit(3)
+          .toList();
+
+      if (questions.size() < 3) {
+        throw new RuntimeException("Нейросеть вернула меньше 3 вопросов");
+      }
+      return ResponseEntity.ok(questions);
+    } catch (Exception e) {
+      log.error("❌ Ошибка при генерации вопросов: {}", e.getMessage());
+      // Fallback на случай, если нейросеть "упадет"
+      return ResponseEntity.ok(Arrays.asList(
+          "Расскажите о вашем релевантном опыте работы для этой должности.",
+          "С какими самыми сложными техническими задачами вы сталкивались?",
+          "Как вы подходите к решению нестандартных проблем в работе?"
+      ));
+    }
+  }
 }

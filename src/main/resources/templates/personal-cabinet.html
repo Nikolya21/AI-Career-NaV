@@ -181,9 +181,11 @@
       </div>
     </div>
 
-    <div style="margin-top: 20px;">
-      <a th:href="@{/wishes/form(userId=${session.userId})}" class="wishes-btn">🎯 Мои пожелания →</a>
+    <div style="margin-top: 40px; display: flex; gap: 15px;">
+      <a th:href="@{/wishes/form(userId=${session.userId})}" class="wishes-btn" style="margin-top: 0;">🎯 Мои пожелания</a>
+      <a th:href="@{/ml-interview}" class="wishes-btn" style="margin-top: 0; background: var(--accent); color: white; border: none; box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);">🤖 ML-Собеседование →</a>
     </div>
+  </main>
   </main>
 </div>
 

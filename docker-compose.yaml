@@ -19,6 +19,21 @@ services:
     networks:
       - shared-network
 
+  # Твой сервис на Python для ML (распознавание аудио и видео)
+  python-fastapi-service:
+    build: C:\Users\aweeexo\PycharmProjects\mlIntereview2
+    container_name: python-ai-service
+    ports:
+      - "5000:5000"
+    networks:
+      - shared-network
+    volumes:
+      - my_global_code_storage:/codes:rw
+
+  # Если у тебя есть еще один "старый" Python сервис на 8000, можешь добавить его сюда же ниже
+  # python-old-service:
+  #   ...
+
   java-app:
     build: .
     container_name: java-spring-app
@@ -27,13 +42,16 @@ services:
       - "8086:8086"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://java-db:5432/mydatabase
-      - PYTHON_SERVICE_URL=http://python-fastapi-service:8000
+      # Адрес для Java, хотя в контроллерах мы прописали его напрямую
+      - PYTHON_SERVICE_URL=http://python-fastapi-service:5000
     depends_on:
       - java-db
+      - python-fastapi-service
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      # Используем внутреннее имя тома, которое мапится на внешнее my_global_code_storage
       - temp_code_storage:/codes:rw
+      - ./src/main/resources/static:/app/src/main/resources/static
+      - ./src/main/resources/templates:/app/src/main/resources/templates
     networks:
       - shared-network
 
@@ -44,5 +62,7 @@ networks:
 
 volumes:
   temp_code_storage:
-    name: my_global_code_storage  # СТРОГО ЭТО ИМЯ используем в Java
+    name: my_global_code_storage
     driver: local
+  my_global_code_storage:
+    external: true
