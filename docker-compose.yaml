@@ -11,7 +11,7 @@ services:
     networks:
       - shared-network
 
-  redis:
+  redis_cache:
     image: 'redis:latest'
     container_name: redis_cache
     ports:
@@ -24,12 +24,14 @@ services:
     container_name: java-spring-app
     user: root
     ports:
-      - "8089:8086"
+      - "8086:8086"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://java-db:5432/mydatabase
       - PYTHON_SERVICE_URL=http://python-fastapi-service:8000
+      - REDIS_HOST=redis_cache
     depends_on:
       - java-db
+      - redis_cache
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - temp_code_storage:/codes:rw

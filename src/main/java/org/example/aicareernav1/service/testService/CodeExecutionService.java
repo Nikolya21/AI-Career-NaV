@@ -44,79 +44,71 @@ public class CodeExecutionService {
     private CodeExecutionResult runInDocker(String code, String file, String img, String cmd, String lang) {
         Path tempDir = null;
         try {
-            // Исправлено: используем относительный путь от корня проекта для совместимости с macOS/Windows
-            Path baseDir = Paths.get(System.getProperty("user.dir"), "codes");
+            // 1. Используем путь, к которому примонтирован Volume в docker-compose
+            Path baseDir = Paths.get("/codes");
             if (!Files.exists(baseDir)) {
                 Files.createDirectories(baseDir);
             }
 
-            // Создаем временную подпапку для конкретного запуска
+            // 2. Создаем временную подпапку
             tempDir = Files.createTempDirectory(baseDir, "sandbox_");
-            log.info("📁 Рабочая директория: {}", tempDir.toAbsolutePath());
+            String folderName = tempDir.getFileName().toString();
+            log.info("📁 Рабочая директория в контейнере: {}", tempDir.toAbsolutePath());
 
             Path filePath = tempDir.resolve(file);
 
-            // Записываем код в файл
+            // 3. Записываем код
             try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
                 fos.write(code.getBytes(StandardCharsets.UTF_8));
                 fos.flush();
                 fos.getFD().sync();
-                log.info("📄 Файл записан: {}, размер: {} байт",
-                  filePath.getFileName(), filePath.toFile().length());
             }
 
-            // Выставляем права доступа, чтобы пользователь 'executor' внутри контейнера мог прочитать файл
+            // Выставляем права, чтобы компилятор в другом контейнере мог прочитать файл
             tempDir.toFile().setWritable(true, false);
             tempDir.toFile().setReadable(true, false);
             tempDir.toFile().setExecutable(true, false);
             filePath.toFile().setReadable(true, false);
 
-            // Получаем абсолютный путь для монтирования в Docker
-            String absolutePathOnHost = tempDir.toAbsolutePath().toString();
+            // 4. ФОРМИРУЕМ КОМАНДУ ЧЕРЕЗ --mount
+            // Это исключает ошибку "too many colons", так как параметры передаются явно
+            String mountSpec = String.format(
+                    "type=volume,source=my_global_code_storage,target=/app,volume-subpath=%s",
+                    folderName
+            );
 
-            // Формируем команду запуска контейнера
-            // Используем Bind Mount (-v локальный_путь:/app), так как приложение запущено вне Docker
             String[] dockerCmd = {
-              "docker", "run", "--rm",
-              "--network", "none",
-              "--memory", "128m",
-              "-v", absolutePathOnHost + ":/app:rw",
-              "-w", "/app",
-              img, "sh", "-c", cmd
+                    "docker", "run", "--rm",
+                    "--network", "none",
+                    "--memory", "128m",
+                    "--mount", mountSpec, // Используем --mount вместо -v
+                    "-w", "/app",
+                    img, "sh", "-c", cmd
             };
 
-            log.info("🚀 Запуск контейнера: {}", String.join(" ", dockerCmd));
+            log.info("🚀 Запуск контейнера через mount: {}", String.join(" ", dockerCmd));
 
             Process proc = new ProcessBuilder(dockerCmd).start();
 
-            // Читаем потоки вывода асинхронно
             CompletableFuture<String> out = CompletableFuture.supplyAsync(() -> readStream(proc.getInputStream()));
             CompletableFuture<String> err = CompletableFuture.supplyAsync(() -> readStream(proc.getErrorStream()));
 
-            // Ограничиваем время выполнения (защита от бесконечных циклов)
             boolean finished = proc.waitFor(15, TimeUnit.SECONDS);
 
             if (!finished) {
                 proc.destroyForcibly();
-                log.error("⏳ Тайм-аут выполнения кода");
                 return CodeExecutionResult.builder().isTimeout(true).detectedLanguage(lang).build();
             }
 
-            String stdout = out.get(2, TimeUnit.SECONDS);
-            String stderr = err.get(2, TimeUnit.SECONDS);
-
             return CodeExecutionResult.builder()
-              .stdout(stdout)
-              .stderr(stderr)
-              .detectedLanguage(lang)
-              .build();
+                    .stdout(out.get(2, TimeUnit.SECONDS))
+                    .stderr(err.get(2, TimeUnit.SECONDS))
+                    .detectedLanguage(lang)
+                    .build();
 
         } catch (Exception e) {
             log.error("❌ Ошибка при выполнении кода в Docker", e);
             return CodeExecutionResult.builder().stderr("Internal execution error: " + e.getMessage()).build();
-        } finally {
-            // Для продакшена здесь стоит добавить удаление tempDir,
-            // но для отладки пока оставляем файлы на месте
         }
     }
 

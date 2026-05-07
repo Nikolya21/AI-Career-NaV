@@ -546,51 +546,59 @@ function createNewNodeAnimated(newCp) {
 
 let configLoaded = false;
 
-// Явно вешаем в глобальную область
-window.toggleRoadmapConfig = async function(event) {
-    // Если кликнули по самому дропдауну, не закрываем его
-    if (event && event.target.closest('.config-dropdown')) {
-        event.stopPropagation();
+window.toggleRoadmapConfig = async function() {
+    // 1. Берем ID именно такие, как у тебя в HTML
+    const dropdown = document.getElementById('roadmap-config-dropdown');
+    const itemsContainer = document.getElementById('config-items'); // Было config-items-container
+    const roadmapId = window.roadmapId;
+
+    if (!dropdown || !itemsContainer) {
+        console.error("Ошибка: Не найдены элементы dropdown или config-items");
         return;
     }
 
-    const dropdown = document.getElementById('roadmap-config-dropdown');
-    const itemsContainer = document.getElementById('config-items');
-
-    if (!dropdown) return;
-
+    const isOpening = dropdown.classList.contains('hidden');
     dropdown.classList.toggle('hidden');
 
-    // Если открыли и данные еще не подгружены
-    if (!dropdown.classList.contains('hidden') && !window.configLoaded) {
-        itemsContainer.innerHTML = '<div class="small-spinner"></div>';
+    // Если мы открываем панель — запрашиваем свежие данные
+    if (isOpening) {
+        if (!roadmapId) {
+            itemsContainer.innerHTML = '<div class="pref-tag">ID карты не найден</div>';
+            return;
+        }
+
+        // Очищаем старое, чтобы пользователь видел, что данные обновляются
+        itemsContainer.innerHTML = '<div class="pref-tag" style="opacity: 0.6;">Загрузка...</div>';
 
         try {
-            const response = await fetch(`/api/v1/roadmap/${window.roadmapId}/roadmap-config`);
-            if (!response.ok) throw new Error("Server error");
+            const response = await fetch(`/api/v1/roadmap/${roadmapId}/roadmap-config`);
+            if (response.ok) {
+                const config = await response.json();
 
-            const config = await response.json();
+                const tags = [
+                    { icon: 'psychology', text: config.mainDomain },
+                    { icon: 'trending_up', text: config.targetLevel },
+                    { icon: 'history_edu', text: config.learningStyle },
+                    { icon: 'record_voice_over', text: config.toneOfVoice }
+                ];
 
-            const tags = [
-                { icon: 'psychology', text: config.mainDomain },
-                { icon: 'trending_up', text: config.targetLevel },
-                { icon: 'history_edu', text: config.learningStyle },
-                { icon: 'record_voice_over', text: config.toneOfVoice }
-            ];
+                // Генерируем HTML только для заполненных полей
+                const html = tags
+                    .filter(t => t.text && t.text.trim() !== "")
+                    .map(t => `
+                        <div class="pref-tag">
+                            <span class="material-icons">${t.icon}</span>
+                            <span class="tag-text-content">${t.text}</span>
+                        </div>
+                    `).join('');
 
-            itemsContainer.innerHTML = tags
-                .filter(t => t.text && t.text.trim() !== "") // Убираем пустые поля
-                .map(t => `
-                    <div class="pref-tag">
-                        <span class="material-icons">${t.icon}</span>
-                        <span class="tag-text-content">${t.text}</span>
-                    </div>
-                `).join('');
-
-            window.configLoaded = true;
+                itemsContainer.innerHTML = html || '<div class="pref-tag">Настройки не заданы</div>';
+            } else {
+                itemsContainer.innerHTML = '<div class="pref-tag">Ошибка сервера</div>';
+            }
         } catch (err) {
-            itemsContainer.innerHTML = "Ошибка загрузки данных";
-            console.error(err);
+            console.error("Ошибка загрузки конфига:", err);
+            itemsContainer.innerHTML = '<div class="pref-tag">Ошибка сети</div>';
         }
     }
 };
