@@ -8,8 +8,8 @@
         :root {
             --primary-color: #1f2937;
             --secondary-color: #6b7280;
-            --accent-color: #6ea8ff;
-            --accent-strong: #4f83ff;
+            --accent-color: #3b82f6;
+            --accent-strong: #2563eb;
             --success-color: #15803d;
             --error-color: #c2414c;
             --glass: rgba(255, 255, 255, 0.5);
@@ -24,50 +24,31 @@
 
         body {
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background:
-                radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95) 0%, rgba(247,250,255,0.95) 36%, rgba(237,244,255,0.96) 70%, rgba(248,250,252,1) 100%);
+            background: #ffffff;  /* чистый белый фон */
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 24px;
-            overflow: hidden;
+            padding: 32px;
             color: var(--primary-color);
+            position: relative;
         }
 
-        .bg-orb {
+        /* Декоративная картинка как полупрозрачный слой */
+        body::before {
+            content: '';
             position: fixed;
             inset: 0;
-            overflow: hidden;
-            z-index: -1;
-        }
-
-        .bg-orb::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: min(118vw, 1540px);
-            height: min(118vw, 1540px);
-            transform: translate(-50%, -50%);
-            background: url('/css/roadmap/img/beetwean2.jpg') center center / contain no-repeat;
-            filter: drop-shadow(0 30px 80px rgba(153, 163, 185, 0.24));
+            background: url('/css/roadmap/img/beetwean2.jpg') center center / cover no-repeat;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 0;
             animation: orb-pulse 12s ease-in-out infinite;
         }
 
-        .bg-orb::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: min(128vw, 1720px);
-            height: min(128vw, 1720px);
-            transform: translate(-50%, -52%);
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(120, 179, 255, 0.2) 0%, rgba(120, 179, 255, 0.1) 28%, rgba(120, 179, 255, 0.03) 52%, transparent 70%);
-            filter: blur(18px);
-            animation: orb-glow 12s ease-in-out infinite;
+        body::after {
+            display: none;
         }
 
         .shadow-blur {
@@ -86,13 +67,14 @@
 
         .card {
             position: relative;
+            z-index: 2;
             background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.42));
-            padding: 38px;
+            padding: 48px 42px;
             border-radius: 32px;
             box-shadow: var(--shadow);
             border: 1px solid var(--border);
             width: 100%;
-            max-width: 560px;
+            max-width: 680px;   /* увеличенная ширина */
             text-align: center;
             backdrop-filter: blur(34px) saturate(175%);
             -webkit-backdrop-filter: blur(34px) saturate(175%);
@@ -105,7 +87,7 @@
             inset: 0;
             border-radius: inherit;
             padding: 1px;
-            background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(160, 198, 255, 0.32), rgba(255,255,255,0.3));
+            background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(59, 130, 246, 0.32), rgba(255,255,255,0.3));
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
@@ -115,32 +97,32 @@
 
         .card:hover {
             transform: translateY(-3px);
-            border-color: rgba(143, 186, 255, 0.72);
+            border-color: rgba(59, 130, 246, 0.72);
             box-shadow: 0 38px 90px rgba(124, 149, 187, 0.22);
         }
 
         h2 {
             color: var(--primary-color);
-            margin-bottom: 12px;
-            font-size: 32px;
+            margin-bottom: 16px;
+            font-size: 38px;    /* увеличен */
             letter-spacing: -0.03em;
         }
 
         p {
             color: var(--secondary-color);
-            margin-bottom: 28px;
-            line-height: 1.5;
-            font-size: 15px;
+            margin-bottom: 32px;
+            line-height: 1.55;
+            font-size: 18px;    /* увеличен */
         }
 
         textarea {
             width: 100%;
-            height: 170px;
-            padding: 16px 18px;
+            height: 200px;       /* чуть выше */
+            padding: 18px 20px;
             border: 1px solid rgba(160, 184, 218, 0.38);
-            border-radius: 18px;
+            border-radius: 20px;
             resize: vertical;
-            font-size: 16px;
+            font-size: 18px;     /* увеличен */
             transition: 0.28s ease;
             box-sizing: border-box;
             outline: none;
@@ -152,48 +134,37 @@
 
         textarea::placeholder {
             color: rgba(107, 114, 128, 0.78);
+            font-size: 16px;
         }
 
         textarea:focus {
-            border-color: rgba(111, 170, 255, 0.9);
+            border-color: rgba(59, 130, 246, 0.9);
             background: rgba(255, 255, 255, 0.84);
-            box-shadow: 0 0 0 4px rgba(120, 175, 255, 0.16);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16);
         }
 
         .button-stack {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 26px;
+            gap: 16px;
+            margin-top: 32px;
         }
 
         .status-panel {
-            margin-top: 18px;
+            margin-top: 24px;
             padding: 0;
             border-radius: 18px;
             border: none;
             background: transparent;
             backdrop-filter: none;
-            -webkit-backdrop-filter: none;
             text-align: left;
-            min-height: 0;
-        }
-
-        .status-caption {
-            display: none;
-            margin-bottom: 10px;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: rgba(107, 114, 128, 0.82);
         }
 
         button {
-            padding: 15px;
+            padding: 16px 20px;
             border: 1px solid transparent;
-            border-radius: 16px;
-            font-size: 16px;
+            border-radius: 20px;
+            font-size: 17px;
             font-weight: 700;
             cursor: pointer;
             transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
@@ -204,14 +175,14 @@
 
         .btn-save {
             background: linear-gradient(180deg, #ffffff, #f3f7ff);
-            border-color: rgba(170, 196, 231, 0.38);
+            border-color: rgba(59, 130, 246, 0.38);
             color: #1f2937;
         }
 
         .btn-save:hover {
             transform: translateY(-2px);
             color: var(--accent-strong);
-            box-shadow: 0 16px 34px rgba(120, 145, 180, 0.18);
+            box-shadow: 0 16px 34px rgba(59, 130, 246, 0.18);
         }
 
         .btn-ai {
@@ -220,14 +191,14 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            border-color: rgba(143, 186, 255, 0.42);
+            border-color: rgba(59, 130, 246, 0.42);
             color: #1f2937;
         }
 
         .btn-ai:hover {
             transform: translateY(-2px);
             color: var(--accent-strong);
-            box-shadow: 0 16px 34px rgba(120, 145, 180, 0.18);
+            box-shadow: 0 16px 34px rgba(59, 130, 246, 0.18);
         }
 
         .btn-back {
@@ -243,8 +214,8 @@
         }
 
         .status {
-            margin-top: 12px;
-            font-size: 14px;
+            margin-top: 16px;
+            font-size: 16px;    /* увеличен */
             min-height: auto;
             padding: 0;
             border-radius: 12px;
@@ -273,9 +244,9 @@
 
         .loader {
             display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.9);
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(59, 130, 246, 0.6);
             border-radius: 50%;
             border-top-color: transparent;
             animation: spin 1s linear infinite;
@@ -287,13 +258,8 @@
         }
 
         @keyframes orb-pulse {
-            0%, 100% { transform: translate(-50%, -50%) scale(0.98); opacity: 0.9; }
-            50% { transform: translate(-50%, -50%) scale(1.02); opacity: 1; }
-        }
-
-        @keyframes orb-glow {
-            0%, 100% { transform: translate(-50%, -52%) scale(0.98); opacity: 0.7; }
-            50% { transform: translate(-50%, -52%) scale(1.03); opacity: 1; }
+            0%, 100% { transform: scale(0.98); opacity: 0.9; }
+            50% { transform: scale(1.02); opacity: 1; }
         }
 
         @keyframes shadow-pulse {
@@ -302,11 +268,14 @@
         }
 
         @media (max-width: 640px) {
-            body { padding: 16px; }
-            .card { padding: 30px 20px; border-radius: 28px; }
-            h2 { font-size: 26px; }
-            textarea { height: 150px; }
+            body { padding: 20px; }
+            .card { padding: 32px 24px; max-width: 100%; }
+            h2 { font-size: 28px; }
+            p { font-size: 16px; }
+            textarea { font-size: 16px; height: 160px; }
+            button { padding: 14px 18px; font-size: 15px; }
         }
+
         .sr-only {
             position: absolute;
             width: 1px;
@@ -318,12 +287,10 @@
             white-space: nowrap;
             border: 0;
         }
-
     </style>
 </head>
 <body>
 
-<div class="bg-orb"></div>
 <div class="shadow-blur"></div>
 
 <div class="card">
@@ -344,7 +311,6 @@
     </div>
 
     <div class="status-panel">
-        <span class="status-caption">Статус</span>
         <div id="status" class="status"></div>
     </div>
 </div>
@@ -366,7 +332,6 @@
             return;
         }
 
-        // Проверка авторизации прямо в JS
         if (!userId) {
             statusDiv.className = "status status--error";
             statusDiv.innerText = "❌ Ошибка: ID пользователя не найден. Перезайдите в систему.";
@@ -412,7 +377,6 @@
         window.location.href = "/personal-cabinet";
     }
 </script>
-
 
 </body>
 </html>

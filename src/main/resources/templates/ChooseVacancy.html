@@ -1,1182 +1,846 @@
-  <!DOCTYPE html>
-  <html lang="ru" xmlns:th="http://www.thymeleaf.org">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Выбор вакансии - AI Career Navigator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Выбор вакансии - AI Career Navigator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-      body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        min-height: 100vh;
-        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-        color: #fff;
-        overflow-x: hidden;
-      }
+    :root {
+      --primary-blue: #3b82f6;
+      --primary-dark: #2563eb;
+      --primary-light: #60a5fa;
+      --primary-bg-light: #eff6ff;
+    }
 
-      /* Animated background */
-      body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background:
-            radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
-            radial-gradient(circle at 40% 40%, rgba(99, 102, 241, 0.2) 0%, transparent 40%);
-        pointer-events: none;
-        z-index: 0;
-      }
+    /* ----- ОСНОВНОЙ ФОН: ЧИСТЫЙ БЕЛЫЙ ----- */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      background: #ffffff;
+      color: #1f2937;
+      overflow-x: hidden;
+      position: relative;
+    }
 
-      /* Floating particles */
-      .particles {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        overflow: hidden;
-        z-index: 0;
-      }
+    /* Декоративная картинка – полупрозрачный слой поверх белого фона */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('/css/roadmap/img/beetwean2.jpg') center center / min(82vw, 1120px) no-repeat;
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-      .particle {
-        position: absolute;
-        width: 6px;
-        height: 6px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        animation: float 15s infinite;
-      }
+    body::after {
+      display: none;
+    }
 
-      .particle:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 20s; }
-      .particle:nth-child(2) { left: 20%; animation-delay: 2s; animation-duration: 18s; }
-      .particle:nth-child(3) { left: 30%; animation-delay: 4s; animation-duration: 22s; }
-      .particle:nth-child(4) { left: 40%; animation-delay: 1s; animation-duration: 19s; }
-      .particle:nth-child(5) { left: 50%; animation-delay: 3s; animation-duration: 21s; }
-      .particle:nth-child(6) { left: 60%; animation-delay: 5s; animation-duration: 17s; }
-      .particle:nth-child(7) { left: 70%; animation-delay: 2.5s; animation-duration: 23s; }
-      .particle:nth-child(8) { left: 80%; animation-delay: 1.5s; animation-duration: 16s; }
-      .particle:nth-child(9) { left: 90%; animation-delay: 4.5s; animation-duration: 20s; }
+    .particles {
+      display: none;
+    }
 
-      @keyframes float {
-        0%, 100% {
-          transform: translateY(100vh) rotate(0deg);
-          opacity: 0;
-        }
-        10% {
-          opacity: 1;
-        }
-        90% {
-          opacity: 1;
-        }
-        100% {
-          transform: translateY(-100vh) rotate(720deg);
-          opacity: 0;
-        }
-      }
+    /* Header */
+    .header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2.5rem;
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(34px) saturate(175%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.78);
+      box-shadow: 0 30px 80px rgba(128, 145, 173, 0.16);
+      color: #1f2937;
+    }
 
-      /* Header */
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .cabinet-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(170, 196, 231, 0.34);
+      border-radius: 12px;
+      color: #1f2937;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
+    }
+
+    .cabinet-btn:hover {
+      background: linear-gradient(180deg, #ffffff, #eaf2ff);
+      color: var(--primary-blue);
+      transform: translateY(-2px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 45px;
+      height: 45px;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 10px 30px rgba(120, 145, 180, 0.14);
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: none;
+      -webkit-text-fill-color: initial;
+      color: #1f2937;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-email {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(160, 184, 218, 0.26);
+      border-radius: 25px;
+      font-size: 0.85rem;
+      color: #1f2937;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      color: white;
+    }
+
+    .logout-btn {
+      padding: 0.6rem 1.2rem;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      color: #1f2937;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
+    }
+
+    .logout-btn:hover {
+      background: linear-gradient(180deg, #ffffff, #eaf2ff);
+      color: #ef4444;
+      transform: translateY(-2px);
+    }
+
+    .main-container {
+      position: relative;
+      z-index: 5;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    /* Progress indicator */
+    .progress-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .step-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .step-circle.completed {
+      background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      color: white;
+    }
+
+    .step-circle.active {
+      background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      animation: pulse 2s infinite;
+      color: white;
+    }
+
+    .step-circle.pending {
+      background: rgba(160, 184, 218, 0.16);
+      border: 2px solid rgba(160, 184, 218, 0.28);
+      color: #6b7280;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+      50% { box-shadow: 0 4px 25px rgba(59, 130, 246, 0.6); }
+    }
+
+    .step-label {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
+    .step-line {
+      width: 60px;
+      height: 3px;
+      background: rgba(160, 184, 218, 0.16);
+      border-radius: 2px;
+      margin: 0 0.5rem;
+    }
+
+    .step-line.completed {
+      background: linear-gradient(90deg, #10b981 0%, var(--primary-blue) 100%);
+    }
+
+    /* Vacancy Card */
+    .vacancy-card {
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(34px) saturate(175%);
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      border-radius: 36px;
+      padding: 3rem;
+      box-shadow: 0 30px 80px rgba(128, 145, 173, 0.16);
+      position: relative;
+      z-index: 5;
+    }
+
+    .vacancy-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .vacancy-header-icon {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.14);
+      animation: float-icon 3s ease-in-out infinite;
+    }
+
+    @keyframes float-icon {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .vacancy-header h2 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #1f2937;
+    }
+
+    .vacancy-header p {
+      color: #6b7280;
+      font-size: 1rem;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .info-box {
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(59, 130, 246, 0.24);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .info-box-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.14);
+    }
+
+    .info-box-content h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: #1f2937;
+    }
+
+    .info-box-content p {
+      font-size: 0.9rem;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+
+    .error-message {
+      background: rgba(255, 235, 238, 0.82);
+      border: 1px solid rgba(239, 68, 68, 0.18);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+      color: #c2414c;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .error-message::before {
+      content: '⚠️';
+      font-size: 1.2rem;
+    }
+
+    .vacancy-options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .vacancy-option {
+      position: relative;
+    }
+
+    .vacancy-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .vacancy-label {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1.65rem 1.75rem;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid rgba(160, 184, 218, 0.28);
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      min-height: 108px;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
+    }
+
+    .vacancy-label::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .vacancy-label:hover {
+      border-color: rgba(59, 130, 246, 0.56);
+      transform: translateX(5px);
+      box-shadow: 0 16px 34px rgba(120, 145, 180, 0.14);
+    }
+
+    .vacancy-label:hover::before {
+      opacity: 1;
+    }
+
+    .vacancy-option input[type="radio"]:checked + .vacancy-label {
+      border-color: var(--primary-blue);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.08) 100%);
+      box-shadow: 0 10px 40px rgba(59, 130, 246, 0.2);
+    }
+
+    .vacancy-option input[type="radio"]:checked + .vacancy-label .vacancy-number {
+      background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .vacancy-option input[type="radio"]:checked + .vacancy-label .check-icon {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .vacancy-number {
+      width: 58px;
+      height: 58px;
+      border: 2px solid rgba(160, 184, 218, 0.34);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.35rem;
+      color: #4b5563;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .vacancy-content {
+      flex: 1;
+      position: relative;
+      z-index: 1;
+      padding-right: 0.5rem;
+    }
+
+    .vacancy-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 0.25rem;
+    }
+
+    .vacancy-subtitle {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    .check-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.24);
+    }
+
+    .check-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: white;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 1.35rem 2rem;
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      border: 1px solid rgba(59, 130, 246, 0.38);
+      border-radius: 18px;
+      color: #1f2937;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .submit-btn:not(:disabled):hover {
+      transform: translateY(-3px);
+      color: var(--primary-blue);
+    }
+
+    .submit-btn:not(:disabled):hover::before {
+      left: 100%;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.5);
+      color: rgba(31, 41, 55, 0.38);
+      box-shadow: none;
+    }
+
+    .loader-container {
+      text-align: center;
+      padding: 2rem;
+      color: #6b7280;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(160, 184, 218, 0.22);
+      border-left-color: var(--primary-blue);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .vacancies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .vacancy-item {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(160, 184, 218, 0.26);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
+      color: #1f2937;
+    }
+
+    .vacancy-item:hover {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(59, 130, 246, 0.5);
+      box-shadow: 0 18px 36px rgba(120, 145, 180, 0.16);
+      transform: translateY(-4px);
+    }
+
+    .vacancy-item h3 {
+      color: #1f2937;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    .vacancy-item p {
+      color: #6b7280;
+    }
+
+    .select-btn {
+      background: linear-gradient(180deg, #ffffff, #f3f7ff);
+      color: #1f2937;
+      border: 1px solid rgba(59, 130, 246, 0.34);
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .select-btn:hover {
+      color: var(--primary-blue);
+    }
+
+    @media (max-width: 768px) {
       .header {
-        position: relative;
-        z-index: 10;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1.25rem 2.5rem;
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      }
-
-      .header-left {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .cabinet-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.6rem 1.2rem;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
-        color: #fff;
-        text-decoration: none;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-      }
-
-      .cabinet-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-      }
-
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-      }
-
-      .logo-icon {
-        width: 45px;
-        height: 45px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-      }
-
-      .logo h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-
-      .user-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .user-email {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 25px;
-        font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.9);
-      }
-
-      .user-avatar {
-        width: 28px;
-        height: 28px;
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.8rem;
-      }
-
-      .logout-btn {
-        padding: 0.6rem 1.2rem;
-        background: rgba(239, 68, 68, 0.2);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        border-radius: 10px;
-        color: #fca5a5;
-        text-decoration: none;
-        font-weight: 500;
-        font-size: 0.85rem;
-        transition: all 0.3s ease;
-      }
-
-      .logout-btn:hover {
-        background: rgba(239, 68, 68, 0.4);
-        transform: translateY(-2px);
-      }
-
-      /* Main Container */
-      .main-container {
-        position: relative;
-        z-index: 5;
-        max-width: 1080px;
-        margin: 0 auto;
-        padding: 3rem 1.5rem;
-      }
-
-      /* Progress indicator */
-      .progress-bar {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 2.5rem;
-      }
-
-      .progress-step {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .step-circle {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-      }
-
-      .step-circle.completed {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-      }
-
-      .step-circle.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        animation: pulse 2s infinite;
-      }
-
-      .step-circle.pending {
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px solid rgba(255, 255, 255, 0.2);
-      }
-
-      @keyframes pulse {
-        0%, 100% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
-        50% { box-shadow: 0 4px 25px rgba(102, 126, 234, 0.6); }
-      }
-
-      .step-label {
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      .step-line {
-        width: 60px;
-        height: 3px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
-        margin: 0 0.5rem;
-      }
-
-      .step-line.completed {
-        background: linear-gradient(90deg, #10b981 0%, #667eea 100%);
-      }
-
-      /* Vacancy Card */
-      .vacancy-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 24px;
-        padding: 2.5rem;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
-      }
-
-      .vacancy-header {
-        text-align: center;
-        margin-bottom: 2rem;
-      }
-
-
-      .vacancy-header-icon {
-        width: 70px;
-        height: 70px;
-        margin: 0 auto 1.5rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        animation: float-icon 3s ease-in-out infinite;
-      }
-
-      @keyframes float-icon {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-
-      .vacancy-header h2 {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0.75rem;
-        background: linear-gradient(135deg, #fff 0%, #c4b5fd 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-
-      .vacancy-header p {
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 1rem;
-        max-width: 500px;
-        margin: 0 auto;
-        line-height: 1.6;
-      }
-
-      /* Info Box */
-      .info-box {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
-        border: 1px solid rgba(139, 92, 246, 0.3);
-        border-radius: 16px;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-      }
-
-      .info-box-icon {
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-      }
-
-      .info-box-content h4 {
-        font-size: 0.95rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        color: #c4b5fd;
-      }
-
-      .info-box-content p {
-        font-size: 0.9rem;
-        color: rgba(255, 255, 255, 0.7);
-        line-height: 1.5;
-      }
-
-      /* Error Message */
-      .error-message {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
-        margin-bottom: 1.5rem;
-        color: #fca5a5;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-      }
-
-      .error-message::before {
-        content: '⚠️';
-        font-size: 1.2rem;
-      }
-
-      /* Vacancy Options */
-      .vacancy-options {
-        display: flex;
         flex-direction: column;
         gap: 1rem;
-        margin-bottom: 2rem;
+        padding: 1rem;
+        backdrop-filter: blur(28px);
       }
-
-      .vacancy-option {
-        position: relative;
+      .header-left, .user-info {
+        width: 100%;
+        justify-content: center;
       }
-
-      .vacancy-option input[type="radio"] {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
+      .logo {
+        order: -1;
       }
-
-      .vacancy-label {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
+      .main-container {
+        padding: 2rem 1rem;
+      }
+      .vacancy-card {
         padding: 1.5rem;
-        background: rgba(255, 255, 255, 0.03);
-        border: 2px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
+        border-radius: 24px;
       }
-
-      .vacancy-label::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
+      .vacancy-header h2 {
+        font-size: 1.65rem;
       }
-
-      .vacancy-label:hover {
-        border-color: rgba(102, 126, 234, 0.4);
-        transform: translateX(5px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      .progress-bar {
+        display: none;
       }
-
-      .vacancy-label:hover::before {
-        opacity: 1;
+      .vacancy-label {
+        min-height: auto;
+        padding: 1.25rem;
       }
-
-      .vacancy-option input[type="radio"]:checked + .vacancy-label {
-        border-color: #667eea;
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.1) 100%);
-        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.2);
-      }
-
-      .vacancy-option input[type="radio"]:checked + .vacancy-label .vacancy-number {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: transparent;
-        color: #fff;
-        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-      }
-
-      .vacancy-option input[type="radio"]:checked + .vacancy-label .check-icon {
-        opacity: 1;
-        transform: scale(1);
-      }
-
       .vacancy-number {
-        width: 50px;
-        height: 50px;
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1.25rem;
-        color: rgba(255, 255, 255, 0.6);
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-        position: relative;
-        z-index: 1;
-      }
-
-      .vacancy-content {
-        flex: 1;
-        position: relative;
-        z-index: 1;
-      }
-
-      .vacancy-title {
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: #fff;
-        margin-bottom: 0.25rem;
-      }
-
-      .vacancy-subtitle {
-        font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.5);
-      }
-
-      .check-icon {
-        width: 32px;
-        height: 32px;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transform: scale(0.5);
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-        position: relative;
-        z-index: 1;
-      }
-
-      .check-icon svg {
-        width: 16px;
-        height: 16px;
-      }
-
-      /* Submit Button */
-      .submit-btn {
-        width: 100%;
-        padding: 1.25rem 2rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 16px;
-        color: #fff;
-        font-family: inherit;
+        width: 46px;
+        height: 46px;
         font-size: 1.1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        position: relative;
-        overflow: hidden;
       }
-
-      .submit-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s ease;
+      .vacancy-title {
+        font-size: 1rem;
       }
-
-      .submit-btn:not(:disabled):hover {
-        transform: translateY(-3px);
-        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+      .submit-btn {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
       }
+    }
 
-      .submit-btn:not(:disabled):hover::before {
-        left: 100%;
-      }
+    .vacancy-option input[type="radio"]:focus + .vacancy-label {
+      outline: 2px solid var(--primary-blue);
+      outline-offset: 2px;
+    }
+    .cabinet-btn:focus,
+    .logout-btn:focus,
+    .submit-btn:focus {
+      outline: 2px solid var(--primary-blue);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
 
-      .submit-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-        box-shadow: none;
-      }
+<div class="particles"></div>
 
-      .submit-btn:active:not(:disabled) {
-        transform: translateY(-1px);
-      }
+<header class="header">
+  <div class="header-left">
+    <a th:href="@{/personal-cabinet}" class="cabinet-btn">
+      <span>👤</span> Личный кабинет
+    </a>
+  </div>
+  <div class="logo">
+    <div class="logo-icon">🚀</div>
+    <h1>AI Career Navigator</h1>
+  </div>
+  <div class="user-info">
+    <div class="user-email">
+      <div class="user-avatar">👤</div>
+      <span th:text="${userEmail}">user@example.com</span>
+    </div>
+    <a th:href="@{/logout}" class="logout-btn">Выйти</a>
+  </div>
+</header>
 
-      /* Responsive */
-      @media (max-width: 768px) {
-        .header {
-          flex-direction: column;
-          gap: 1rem;
-          padding: 1rem;
-        }
-
-        .header-left, .user-info {
-          width: 100%;
-          justify-content: center;
-        }
-
-        .logo {
-          order: -1;
-        }
-
-        .main-container {
-          padding: 2rem 1rem;
-        }
-
-        .vacancy-card {
-          padding: 1.5rem;
-          border-radius: 20px;
-        }
-
-        .vacancy-header h2 {
-          font-size: 1.5rem;
-        }
-
-        .progress-bar {
-          display: none;
-        }
-
-        .vacancy-label {
-          padding: 1.25rem;
-        }
-
-        .vacancy-number {
-          width: 42px;
-          height: 42px;
-          font-size: 1.1rem;
-        }
-
-        .vacancy-title {
-          font-size: 1rem;
-        }
-
-        .submit-btn {
-          padding: 1rem 1.5rem;
-          font-size: 1rem;
-        }
-      }
-
-      /* Focus states for accessibility */
-      .vacancy-option input[type="radio"]:focus + .vacancy-label {
-        outline: 2px solid #667eea;
-        outline-offset: 2px;
-      }
-
-      .cabinet-btn:focus,
-      .logout-btn:focus,
-      .submit-btn:focus {
-        outline: 2px solid #667eea;
-        outline-offset: 2px;
-      }
-    </style>
-  </head>
-  <body>
-
-  <!-- Floating particles -->
-  <div class="particles">
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
+<main class="main-container">
+  <div class="progress-bar">
+    <div class="progress-step">
+      <div class="step-circle completed">✓</div>
+      <span class="step-label">Диалог</span>
+    </div>
+    <div class="step-line completed"></div>
+    <div class="progress-step">
+      <div class="step-circle active">2</div>
+      <span class="step-label">Выбор</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-circle pending">3</div>
+      <span class="step-label">План</span>
+    </div>
   </div>
 
-  <!-- Header -->
-  <header class="header">
-    <div class="header-left">
-      <a th:href="@{/personal-cabinet}" class="cabinet-btn">
-        <span>👤</span> Личный кабинет
-      </a>
+  <div class="vacancy-card">
+    <div class="vacancy-header">
+      <div class="vacancy-header-icon">🎯</div>
+      <h2>Выбор целевой вакансии</h2>
+      <p>На основе вашего диалога мы подобрали наиболее подходящие вакансии специально для вас</p>
     </div>
 
-    <div class="logo">
-      <div class="logo-icon">🚀</div>
-      <h1>AI Career Navigator</h1>
+    <div id="vacancies-loader" class="loader-container">
+      <div class="spinner"></div>
+      <p>GigaChat подбирает лучшие вакансии для вас...</p>
     </div>
+    <div id="vacancies-grid" class="vacancies-grid" style="display: none;"></div>
 
-    <div class="user-info">
-      <div class="user-email">
-        <div class="user-avatar">👤</div>
-        <span th:text="${userEmail}">user@example.com</span>
-      </div>
-      <a th:href="@{/logout}" class="logout-btn">Выйти</a>
-    </div>
-  </header>
+    <div th:if="${error}" class="error-message" th:text="${error}"></div>
 
-  <!-- Main Content -->
-  <main class="main-container">
-
-    <!-- Progress Bar -->
-    <div class="progress-bar">
-      <div class="progress-step">
-        <div class="step-circle completed">✓</div>
-        <span class="step-label">Диалог</span>
-      </div>
-      <div class="step-line completed"></div>
-      <div class="progress-step">
-        <div class="step-circle active">2</div>
-        <span class="step-label">Выбор</span>
-      </div>
-      <div class="step-line"></div>
-      <div class="progress-step">
-        <div class="step-circle pending">3</div>
-        <span class="step-label">План</span>
+    <div class="info-box">
+      <div class="info-box-icon">💡</div>
+      <div class="info-box-content">
+        <h4>Рекомендация</h4>
+        <p>Выберите одну из предложенных вакансий. Мы создадим персонализированный план развития именно для этой профессии с учетом ваших навыков и целей.</p>
       </div>
     </div>
 
-    <!-- Vacancy Card -->
-    <div class="vacancy-card">
-      <div class="vacancy-header">
-        <div class="vacancy-header-icon">🎯</div>
-        <h2>Выбор целевой вакансии</h2>
-        <p>На основе вашего диалога мы подобрали наиболее подходящие вакансии специально для вас</p>
-      </div>
-      <!-- Контейнер для динамических вакансий -->
-      <div id="vacancies-loader" class="loader-container">
-        <div class="spinner"></div>
-        <p>GigaChat подбирает лучшие вакансии для вас...</p>
-      </div>
-
-      <div id="vacancies-grid" class="vacancies-grid" style="display: none;">
-        <!-- Сюда JavaScript вставит карточки -->
-      </div>
-
-      <style>
-        .loader-container { text-align: center; padding: 2rem; color: #a5b4fc; }
-        .spinner {
-          width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1);
-          border-left-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;
-          margin: 0 auto 1rem;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .vacancies-grid {
-          display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1.5rem; margin-top: 2rem;
-        }
-
-        .vacancy-item {
-          background: rgba(255, 255, 255, 0.07);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 16px;
-          padding: 1.5rem;
-          transition: all 0.3s ease;
-          cursor: pointer;
-          text-align: center;
-        }
-
-        .vacancy-item:hover {
-          background: rgba(102, 126, 234, 0.2);
-          transform: translateY(-5px);
-          border-color: #667eea;
-        }
-
-        .vacancy-item h3 { color: #fff; margin-bottom: 1rem; font-size: 1.2rem; }
-
-        .select-btn {
-          background: #667eea;
-          color: white;
-          border: none;
-          padding: 0.6rem 1.2rem;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-        }
-      </style>
-
-      <style>
-        body {
-          min-height: 100vh;
-          background:
-            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95) 0%, rgba(247,250,255,0.95) 36%, rgba(237,244,255,0.96) 70%, rgba(248,250,252,1) 100%);
-          color: #1f2937;
-          overflow-x: hidden;
-        }
-
-        body::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-            background: url('/css/roadmap/img/beetwean2.jpg') center center / min(82vw, 1120px) no-repeat;
-            filter: drop-shadow(0 26px 72px rgba(153, 163, 185, 0.18));
-            opacity: 0.9;
-          pointer-events: none;
-          z-index: 0;
-          animation: orb-pulse 12s ease-in-out infinite;
-        }
-
-        body::after {
-          content: '';
-          position: fixed;
-          inset: 0;
-          background: radial-gradient(circle, rgba(120, 179, 255, 0.18) 0%, rgba(120, 179, 255, 0.08) 28%, rgba(120, 179, 255, 0.02) 52%, transparent 70%);
-          filter: blur(18px);
-          pointer-events: none;
-          z-index: 0;
-          animation: orb-glow 12s ease-in-out infinite;
-        }
-
-        .particles { display: none; }
-
-        .header,
-        .vacancy-card {
-          background: rgba(255, 255, 255, 0.58);
-          backdrop-filter: blur(34px) saturate(175%);
-          -webkit-backdrop-filter: blur(34px) saturate(175%);
-          border: 1px solid rgba(255, 255, 255, 0.78);
-          box-shadow: 0 30px 80px rgba(128, 145, 173, 0.16);
-        }
-
-        .header {
-          position: relative;
-          z-index: 10;
-          border-left: 0;
-          border-right: 0;
-          border-top: 0;
-          color: #1f2937;
-        }
-
-        .cabinet-btn,
-        .logout-btn {
-          background: linear-gradient(180deg, #ffffff, #f3f7ff);
-          color: #1f2937;
-          border: 1px solid rgba(170, 196, 231, 0.34);
-          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
-        }
-
-        .cabinet-btn:hover,
-        .logout-btn:hover {
-          background: linear-gradient(180deg, #ffffff, #eaf2ff);
-          color: #4f83ff;
-        }
-
-        .logo-icon {
-          background: linear-gradient(180deg, #ffffff, #eef4ff);
-          box-shadow: 0 10px 30px rgba(120, 145, 180, 0.14);
-        }
-
-        .logo h1 {
-          background: none;
-          -webkit-text-fill-color: initial;
-          color: #1f2937;
-        }
-
-        .user-email {
-          background: rgba(255,255,255,0.72);
-          border: 1px solid rgba(160, 184, 218, 0.26);
-          color: #1f2937;
-        }
-
-        .step-label,
-        .vacancy-header p,
-        .info-box-content p {
-          color: #6b7280;
-        }
-
-        .step-circle.pending,
-        .step-line {
-          background: rgba(160, 184, 218, 0.16);
-          border-color: rgba(160, 184, 218, 0.28);
-        }
-
-        .vacancy-card {
-          position: relative;
-          z-index: 5;
-          border-radius: 36px;
-          padding: 3rem;
-        }
-
-        .vacancy-header h2 {
-          font-size: 2.25rem;
-          line-height: 1.15;
-          background: none;
-          -webkit-text-fill-color: initial;
-          color: #1f2937;
-        }
-
-        .vacancy-header-icon,
-        .info-box-icon {
-          background: linear-gradient(180deg, #ffffff, #eef4ff);
-          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.14);
-        }
-
-        .info-box {
-          background: rgba(255,255,255,0.58);
-          border: 1px solid rgba(143, 186, 255, 0.24);
-          color: #1f2937;
-        }
-
-        .info-box-content h4,
-        .vacancy-title {
-          color: #1f2937;
-        }
-
-        .error-message {
-          background: rgba(255, 235, 238, 0.82);
-          border: 1px solid rgba(239, 68, 68, 0.18);
-          color: #c2414c;
-        }
-
-        .vacancy-label {
-          min-height: 108px;
-          padding: 1.65rem 1.75rem;
-          background: rgba(255,255,255,0.62);
-          border: 1px solid rgba(160, 184, 218, 0.28);
-          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
-        }
-
-        .vacancy-label:hover {
-          border-color: rgba(111, 170, 255, 0.56);
-          box-shadow: 0 16px 34px rgba(120, 145, 180, 0.14);
-        }
-
-        .vacancy-number {
-          width: 58px;
-          height: 58px;
-          font-size: 1.35rem;
-          border-color: rgba(160, 184, 218, 0.34);
-          color: #4b5563;
-        }
-
-        .vacancy-content {
-          padding-right: 0.5rem;
-        }
-
-        .check-icon {
-          width: 38px;
-          height: 38px;
-        }
-
-        .check-icon svg {
-          width: 18px;
-          height: 18px;
-        }
-
-        .vacancy-title {
-          font-size: 1.2rem;
-        }
-
-        .vacancy-subtitle {
-          color: #6b7280;
-        }
-
-        .check-icon {
-          box-shadow: 0 8px 20px rgba(16, 185, 129, 0.24);
-        }
-
-        .submit-btn {
-          padding: 1.35rem 2rem;
-          border-radius: 18px;
-          font-size: 1.05rem;
-          background: linear-gradient(180deg, #ffffff, #f3f7ff);
-          color: #1f2937;
-          border: 1px solid rgba(170, 196, 231, 0.38);
-        }
-
-        .submit-btn:not(:disabled):hover {
-          color: #4f83ff;
-        }
-
-        .submit-btn:disabled {
-          background: rgba(255,255,255,0.5);
-          color: rgba(31, 41, 55, 0.38);
-        }
-
-        .loader-container {
-          color: #6b7280;
-        }
-
-        .spinner {
-          border: 4px solid rgba(160,184,218,0.22);
-          border-left-color: #6ea8ff;
-        }
-
-        .vacancies-grid {
-          margin-top: 1.5rem;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        }
-
-        .vacancy-item {
-          background: rgba(255,255,255,0.7);
-          border: 1px solid rgba(160, 184, 218, 0.26);
-          box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
-          color: #1f2937;
-        }
-
-        .vacancy-item:hover {
-          background: rgba(255,255,255,0.92);
-          border-color: rgba(111, 170, 255, 0.5);
-          box-shadow: 0 18px 36px rgba(120, 145, 180, 0.16);
-          transform: translateY(-4px);
-        }
-
-        .vacancy-item h3 { color: #1f2937; }
-
-        .vacancy-item p { color: #6b7280; }
-
-        .select-btn {
-          background: linear-gradient(180deg, #ffffff, #f3f7ff);
-          color: #1f2937;
-          border: 1px solid rgba(170, 196, 231, 0.34);
-        }
-
-        .select-btn:hover {
-          color: #4f83ff;
-        }
-
-        @keyframes orb-pulse {
-          0%, 100% { transform: scale(0.98); opacity: 0.92; }
-          50% { transform: scale(1.02); opacity: 1; }
-        }
-
-        @keyframes orb-glow {
-          0%, 100% { transform: scale(0.98); opacity: 0.72; }
-          50% { transform: scale(1.03); opacity: 1; }
-        }
-
-        @media (max-width: 768px) {
-          .header {
-            backdrop-filter: blur(28px);
-          }
-
-          .main-container {
-            padding: 2rem 1rem;
-          }
-
-          .vacancy-card {
-            padding: 1.5rem;
-            border-radius: 24px;
-          }
-
-          .vacancy-label {
-            min-height: auto;
-            padding: 1.25rem;
-          }
-
-          .vacancy-number {
-            width: 46px;
-            height: 46px;
-            font-size: 1.1rem;
-          }
-
-          .vacancy-header h2 {
-            font-size: 1.65rem;
-          }
-        }
-      </style>
-
-
-      <!-- Error Message -->
-      <div th:if="${error}" class="error-message" th:text="${error}"></div>
-
-      <!-- Info Box -->
-      <div class="info-box">
-        <div class="info-box-icon">💡</div>
-        <div class="info-box-content">
-          <h4>Рекомендация</h4>
-          <p>Выберите одну из предложенных вакансий. Мы создадим персонализированный план развития именно для этой профессии с учетом ваших навыков и целей.</p>
+    <form th:action="@{/choose-vacancy}" method="post" id="vacancyForm">
+      <div class="vacancy-options">
+        <div th:each="vacancy, iterStat : ${suggestedVacancies}" class="vacancy-option">
+          <input type="radio"
+                 th:id="'vacancy_' + ${iterStat.index}"
+                 name="selectedVacancy"
+                 th:value="${vacancy}"
+                 required>
+          <label th:for="'vacancy_' + ${iterStat.index}" class="vacancy-label">
+            <div class="vacancy-number" th:text="${iterStat.index + 1}">1</div>
+            <div class="vacancy-content">
+              <div class="vacancy-title" th:text="${vacancy}">Java Developer</div>
+              <div class="vacancy-subtitle">Нажмите, чтобы выбрать</div>
+            </div>
+            <div class="check-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+          </label>
         </div>
       </div>
+      <button type="submit" id="submitBtn" class="submit-btn" disabled>
+        <span>Выбрать вакансию</span>
+        <span>→</span>
+      </button>
+    </form>
 
-      <form th:action="@{/choose-vacancy}" method="post" id="vacancyForm">
-        <div class="vacancy-options">
-          <div th:each="vacancy, iterStat : ${suggestedVacancies}" class="vacancy-option">
-            <input type="radio"
-                   th:id="'vacancy_' + ${iterStat.index}"
-                   name="selectedVacancy"
-                   th:value="${vacancy}"
-                   required>
-            <label th:for="'vacancy_' + ${iterStat.index}" class="vacancy-label">
-              <div class="vacancy-number" th:text="${iterStat.index + 1}">1</div>
-              <div class="vacancy-content">
-                <div class="vacancy-title" th:text="${vacancy}">Java Developer</div>
-                <div class="vacancy-subtitle">Нажмите, чтобы выбрать</div>
-              </div>
-              <div class="check-icon">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <button type="submit" id="submitBtn" class="submit-btn" disabled>
-          <span>Выбрать вакансию</span>
-          <span>→</span>
-        </button>
-      </form>
-
-      <!-- Empty State -->
-      <div th:if="${suggestedVacancies == null or suggestedVacancies.isEmpty()}" class="error-message">
-        Не удалось подобрать вакансии. Пожалуйста, пройдите диалог заново.
-      </div>
+    <div th:if="${suggestedVacancies == null or suggestedVacancies.isEmpty()}" class="error-message">
+      Не удалось подобрать вакансии. Пожалуйста, пройдите диалог заново.
     </div>
-  </main>
+  </div>
+</main>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const submitBtn = document.getElementById('submitBtn');
-      const radioButtons = document.querySelectorAll('input[type="radio"][name="selectedVacancy"]');
-      const vacancyOptions = document.querySelectorAll('.vacancy-option');
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const submitBtn = document.getElementById('submitBtn');
+    const radioButtons = document.querySelectorAll('input[type="radio"][name="selectedVacancy"]');
+    const vacancyOptions = document.querySelectorAll('.vacancy-option');
 
-      if (submitBtn && radioButtons.length > 0) {
-        radioButtons.forEach((radio, index) => {
-          radio.addEventListener('change', function() {
-            submitBtn.disabled = false;
-
-            // Update subtitle text
-            vacancyOptions.forEach((option, i) => {
-              const subtitle = option.querySelector('.vacancy-subtitle');
-              if (i === index) {
-                subtitle.textContent = 'Выбрано ✓';
-                subtitle.style.color = '#10b981';
-              } else {
-                subtitle.textContent = 'Нажмите, чтобы выбрать';
-                subtitle.style.color = '';
-              }
-            });
-          });
-        });
-
-        // Add keyboard navigation
-        vacancyOptions.forEach((option, index) => {
-          option.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              radioButtons[index].checked = true;
-              radioButtons[index].dispatchEvent(new Event('change'));
+    if (submitBtn && radioButtons.length > 0) {
+      radioButtons.forEach((radio, index) => {
+        radio.addEventListener('change', function() {
+          submitBtn.disabled = false;
+          vacancyOptions.forEach((option, i) => {
+            const subtitle = option.querySelector('.vacancy-subtitle');
+            if (i === index) {
+              subtitle.textContent = 'Выбрано ✓';
+              subtitle.style.color = '#10b981';
+            } else {
+              subtitle.textContent = 'Нажмите, чтобы выбрать';
+              subtitle.style.color = '';
             }
           });
         });
-      }
+      });
 
-      // Add loading state on form submit
-      const form = document.querySelector('form');
-      if (form) {
-        form.addEventListener('submit', function() {
-          submitBtn.innerHTML = '<span class="loading-spinner"></span> Обработка...';
-          submitBtn.disabled = true;
+      vacancyOptions.forEach((option, index) => {
+        option.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            radioButtons[index].checked = true;
+            radioButtons[index].dispatchEvent(new Event('change'));
+          }
         });
-      }
-    });
-  </script>
-  <script th:inline="javascript">
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Получаем email пользователя из сессии (передан через model)
-      const userEmail = [[${userEmail}]];
+      });
+    }
 
-      const loader = document.getElementById('vacancies-loader');
-      const grid = document.getElementById('vacancies-grid');
+    const form = document.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', function() {
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Обработка...';
+        submitBtn.disabled = true;
+      });
+    }
+  });
+</script>
+<script th:inline="javascript">
+  document.addEventListener('DOMContentLoaded', async () => {
+    const userEmail = [[${userEmail}]];
+    const loader = document.getElementById('vacancies-loader');
+    const grid = document.getElementById('vacancies-grid');
 
-      try {
-        // Загружаем вакансии
-        const response = await fetch(`/api/vacancies/by-wishes?userId=1`);
-        const vacancies = await response.json();
+    try {
+      const response = await fetch(`/api/vacancies/by-wishes?userId=1`);
+      const vacancies = await response.json();
 
-        loader.style.display = 'none';
-        grid.style.display = 'grid';
+      loader.style.display = 'none';
+      grid.style.display = 'grid';
 
-        grid.innerHTML = vacancies.map(vacancy => `
+      grid.innerHTML = vacancies.map(vacancy => `
         <div class="vacancy-item" onclick="selectAndSaveVacancy('${vacancy}', '${userEmail}')">
           <h3>${vacancy}</h3>
-          <p style="color: #a5b4fc; font-size: 0.8rem; margin-bottom: 1rem;">Подходит по вашим пожеланиям</p>
+          <p style="color: #6b7280; font-size: 0.8rem; margin-bottom: 1rem;">Подходит по вашим пожеланиям</p>
           <button class="select-btn">Выбрать</button>
         </div>
       `).join('');
+    } catch (error) {
+      loader.innerHTML = '<p style="color: #ef4444;">Ошибка при загрузке вакансий. Попробуйте обновить страницу.</p>';
+    }
+  });
 
-      } catch (error) {
-        loader.innerHTML = '<p style="color: #ef4444;">Ошибка при загрузке вакансий. Попробуйте обновить страницу.</p>';
-      }
-    });
-
-    async function selectAndSaveVacancy(vacancyName, userEmail) {
-      try {
-        // Сохраняем вакансию в БД
-        const response = await fetch('/choose-vacancy', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `selectedVacancy=${encodeURIComponent(vacancyName)}`
-        });
-
-        if (response.ok) {
-          // Если сохранилось успешно, переходим к реальным вакансиям
-          window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
-        } else {
-          console.error('Ошибка при сохранении вакансии');
-          // Всё равно переходим, даже если ошибка
-          window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
-        }
-      } catch (error) {
-        console.error('Ошибка:', error);
+  async function selectAndSaveVacancy(vacancyName, userEmail) {
+    try {
+      const response = await fetch('/choose-vacancy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `selectedVacancy=${encodeURIComponent(vacancyName)}`
+      });
+      if (response.ok) {
+        window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
+      } else {
+        console.error('Ошибка при сохранении вакансии');
         window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
       }
+    } catch (error) {
+      console.error('Ошибка:', error);
+      window.location.href = `/real-vacancies?vacancy=${encodeURIComponent(vacancyName)}`;
     }
-  </script>
+  }
+</script>
 
-  </body>
-  </html>
+</body>
+</html>

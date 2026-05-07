@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Реальные вакансии - Career Navigator</title>
+  <title>Реальные вакансии - AI Career Navigator</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #1f2937;
       --secondary: #6b7280;
-      --accent: #6ea8ff;
-      --accent-strong: #4f83ff;
+      --accent: #3b82f6;
+      --accent-strong: #2563eb;
+      --accent-light: #60a5fa;
       --glass: rgba(255, 255, 255, 0.62);
       --glass-strong: rgba(255, 255, 255, 0.74);
       --border: rgba(160, 184, 218, 0.28);
@@ -27,32 +28,24 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       color: var(--primary);
-      background:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95) 0%, rgba(247,250,255,0.95) 36%, rgba(237,244,255,0.96) 70%, rgba(248,250,252,1) 100%);
+      background: #ffffff;  /* чистый белый фон */
       overflow-x: hidden;
+      position: relative;
     }
 
+    /* картинка как полупрозрачный декоративный слой */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       background: url('/css/roadmap/img/beetwean2.jpg') center center / min(82vw, 1120px) no-repeat;
-      filter: drop-shadow(0 24px 70px rgba(153, 163, 185, 0.18));
-      opacity: 0.94;
+      opacity: 0.12;        /* едва заметна, не мешает контрасту */
       pointer-events: none;
       z-index: 0;
-      animation: orb-pulse 12s ease-in-out infinite;
     }
 
     body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle, rgba(120, 179, 255, 0.18) 0%, rgba(120, 179, 255, 0.08) 28%, rgba(120, 179, 255, 0.02) 52%, transparent 70%);
-      filter: blur(18px);
-      pointer-events: none;
-      z-index: 0;
-      animation: orb-glow 12s ease-in-out infinite;
+      display: none;
     }
 
     .header {
@@ -235,7 +228,7 @@
 
     .info-box {
       background: var(--glass);
-      border: 1px solid rgba(143, 186, 255, 0.24);
+      border: 1px solid rgba(59, 130, 246, 0.24);
       border-radius: 18px;
       padding: 1.35rem 1.5rem;
       margin-bottom: 1.75rem;
@@ -333,7 +326,7 @@
       color: var(--primary);
     }
 
-    .detail-value.company { color: #4f83ff; }
+    .detail-value.company { color: var(--accent-strong); }
     .detail-value.experience { color: #b45309; }
     .detail-value.age { color: #059669; }
 
@@ -384,7 +377,7 @@
       box-shadow: 0 10px 20px rgba(120, 145, 180, 0.12);
     }
 
-    .badge-info { background: linear-gradient(180deg, #6ea8ff, #4f83ff); }
+    .badge-info { background: linear-gradient(180deg, var(--accent-light), var(--accent-strong)); }
     .badge-warning { background: linear-gradient(180deg, #f7b955, #f59e0b); }
     .badge-success { background: linear-gradient(180deg, #34d399, #10b981); }
 
@@ -424,7 +417,7 @@
       width: 50px;
       height: 50px;
       border: 4px solid rgba(160,184,218,0.22);
-      border-left-color: #6ea8ff;
+      border-left-color: var(--accent);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 1rem;
@@ -439,16 +432,6 @@
       font-style: italic;
       text-align: center;
       padding: 1rem;
-    }
-
-    @keyframes orb-pulse {
-      0%, 100% { transform: scale(0.98); opacity: 0.92; }
-      50% { transform: scale(1.02); opacity: 1; }
-    }
-
-    @keyframes orb-glow {
-      0%, 100% { transform: scale(0.98); opacity: 0.72; }
-      50% { transform: scale(1.03); opacity: 1; }
     }
 
     @media (max-width: 768px) {
@@ -523,7 +506,6 @@
     <p id="vacancyInfo"></p>
   </div>
 
-  <!-- Кнопка перехода к тесту - Белая красивая -->
   <div class="test-button-wrapper">
     <a th:href="@{'/quiz-view/' + ${session.userId}}" class="test-btn-white">
       📝 Пройти тест на профориентацию
@@ -548,7 +530,6 @@
 </div>
 
 <script>
-  // Получаем выбранную вакансию из URL или sessionStorage
   const urlParams = new URLSearchParams(window.location.search);
   let selectedVacancy = urlParams.get('vacancy') || sessionStorage.getItem('selectedVacancy');
 
@@ -633,7 +614,7 @@
     }
     return skills.map((skill, idx) => `
       <div class="requirement-item">
-        <span class="badge badge-primary" style="background: #667eea; margin-right: 8px;">${idx + 1}</span>
+        <span class="badge" style="background: var(--accent-strong); margin-right: 8px;">${idx + 1}</span>
         ${escapeHtml(skill)}
       </div>
     `).join('');
