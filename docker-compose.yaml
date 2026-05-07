@@ -19,23 +19,37 @@ services:
     networks:
       - shared-network
 
+  # Сервис на Python для ML
+  python-fastapi-service:
+    # ВНИМАНИЕ: Замени абсолютный путь на относительный, если перенесешь папку!
+    # Например: build: ./mlIntereview2
+    build: C:\Users\aweeexo\PycharmProjects\mlIntereview2
+    container_name: python-ai-service
+    ports:
+      - "5000:5000"
+    networks:
+      - shared-network
+    volumes:
+      - my_global_code_storage:/codes:rw
+
   java-app:
     build: .
     container_name: java-spring-app
     user: root
     ports:
-      - "8089:8086"
+      - "8086:8086"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://java-db:5432/mydatabase
-      - PYTHON_SERVICE_URL=http://python-fastapi-service:8000
+      - PYTHON_SERVICE_URL=http://python-fastapi-service:5000
     depends_on:
       - java-db
+      - python-fastapi-service
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - temp_code_storage:/codes:rw
-        # Пробрасываем статику (CSS/JS/Картинки)
+      # Используем единое имя тома
+      - my_global_code_storage:/codes:rw
+      # Убрано дублирование статики и шаблонов
       - ./src/main/resources/static:/app/src/main/resources/static
-      # Пробрасываем шаблоны (HTML/Thymeleaf)
       - ./src/main/resources/templates:/app/src/main/resources/templates
     networks:
       - shared-network
@@ -64,12 +78,10 @@ services:
 
 networks:
   shared-network:
-    external: true
     name: ai-career-network
+    # Убрано external: true, теперь Docker создаст сеть сам
 
 volumes:
-  # Теперь этот том зарегистрирован и Docker его увидит
   grafana-storage:
-  temp_code_storage:
-    name: my_global_code_storage
-    driver: local
+  my_global_code_storage:
+  # Том создастся автоматически, путаница с temp_code_storage убрана

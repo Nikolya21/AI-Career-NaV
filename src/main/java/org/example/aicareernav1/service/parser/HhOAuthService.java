@@ -31,6 +31,8 @@ public class HhOAuthService {
   private Instant expiresAt;
 
   private final WebClient webClient = WebClient.builder().build();
+  // ДОБАВЛЕН USER AGENT ДЛЯ АВТОРИЗАЦИИ
+  private static final String USER_AGENT = "AICareerNav/1.0 (qolchenkolaex@gmail.com)";
 
   public synchronized Mono<String> getAccessToken() {
     if (accessToken != null && expiresAt != null && Instant.now().isBefore(expiresAt)) {
@@ -47,6 +49,7 @@ public class HhOAuthService {
 
     return webClient.post()
         .uri(tokenUri)
+        .header(HttpHeaders.USER_AGENT, USER_AGENT) // ТЕПЕРЬ HH НАС ПУСТИТ
         .header(HttpHeaders.AUTHORIZATION, "Basic " + encoded)
         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
         .body(BodyInserters.fromFormData("grant_type", "client_credentials"))
@@ -58,9 +61,12 @@ public class HhOAuthService {
           if (expiresIn != null) {
             expiresAt = Instant.now().plusSeconds(expiresIn - 60);
           }
-          log.info("✅ Токен получен, истекает: {}", expiresAt);
+          log.info("✅ Токен успешно получен!");
           return accessToken;
         })
-        .doOnError(e -> log.error("❌ Ошибка получения токена: {}", e.getMessage()));
+        .onErrorResume(e -> {
+          log.error("❌ Ошибка получения токена: {}", e.getMessage());
+          return Mono.empty();
+        });
   }
 }

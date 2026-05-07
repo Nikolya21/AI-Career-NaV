@@ -1,659 +1,224 @@
 <!DOCTYPE html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Реальные вакансии - Career Navigator</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --primary: #1f2937;
-      --secondary: #6b7280;
-      --accent: #6ea8ff;
-      --accent-strong: #4f83ff;
-      --glass: rgba(255, 255, 255, 0.62);
-      --glass-strong: rgba(255, 255, 255, 0.74);
-      --border: rgba(160, 184, 218, 0.28);
-      --shadow: 0 30px 80px rgba(128, 145, 173, 0.18);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
-      color: var(--primary);
-      background:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95) 0%, rgba(247,250,255,0.95) 36%, rgba(237,244,255,0.96) 70%, rgba(248,250,252,1) 100%);
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4ebf5 50%, #d1def0 100%);
+      color: #1e293b;
       overflow-x: hidden;
     }
 
     body::before {
       content: '';
-      position: fixed;
-      inset: 0;
-      background: url('/css/roadmap/img/beetwean2.jpg') center center / min(82vw, 1120px) no-repeat;
-      filter: drop-shadow(0 24px 70px rgba(153, 163, 185, 0.18));
-      opacity: 0.94;
-      pointer-events: none;
-      z-index: 0;
-      animation: orb-pulse 12s ease-in-out infinite;
-    }
-
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle, rgba(120, 179, 255, 0.18) 0%, rgba(120, 179, 255, 0.08) 28%, rgba(120, 179, 255, 0.02) 52%, transparent 70%);
-      filter: blur(18px);
-      pointer-events: none;
-      z-index: 0;
-      animation: orb-glow 12s ease-in-out infinite;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+      z-index: 0; pointer-events: none;
     }
 
     .header {
-      position: relative;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      padding: 1.15rem 2.25rem;
-      background: rgba(255, 255, 255, 0.58);
-      backdrop-filter: blur(34px) saturate(175%);
-      -webkit-backdrop-filter: blur(34px) saturate(175%);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.72);
-      box-shadow: 0 18px 40px rgba(128, 145, 173, 0.12);
-    }
-
-    .header-left,
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .cabinet-btn,
-    .logout-btn,
-    .back-btn,
-    .test-btn-white,
-    .vacancy-apply-btn {
-      text-decoration: none;
-      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, color 0.25s ease;
-    }
-
-    .cabinet-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.65rem 1.15rem;
-      background: linear-gradient(180deg, #ffffff, #f3f7ff);
-      border: 1px solid rgba(170, 196, 231, 0.34);
-      border-radius: 12px;
-      color: var(--primary);
-      font-weight: 600;
-      font-size: 0.92rem;
-      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
-    }
-
-    .cabinet-btn:hover,
-    .logout-btn:hover,
-    .back-btn:hover,
-    .test-btn-white:hover,
-    .vacancy-apply-btn:hover {
-      transform: translateY(-2px);
-    }
-
-    .cabinet-btn:hover,
-    .logout-btn:hover,
-    .back-btn:hover {
-      color: var(--accent-strong);
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .logo-icon {
-      width: 45px;
-      height: 45px;
-      background: linear-gradient(180deg, #ffffff, #eef4ff);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      box-shadow: 0 10px 30px rgba(120, 145, 180, 0.14);
+      position: relative; z-index: 10;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.25rem 2.5rem;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
 
     .logo h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary);
+      font-size: 1.5rem; font-weight: 700;
+      background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
-    .user-email {
-      padding: 0.55rem 1rem;
-      background: rgba(255,255,255,0.72);
-      border: 1px solid rgba(160, 184, 218, 0.26);
-      border-radius: 25px;
-      font-size: 0.85rem;
-      color: var(--primary);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.86);
-    }
-
-    .logout-btn {
-      padding: 0.65rem 1.15rem;
-      background: linear-gradient(180deg, #ffffff, #f3f7ff);
-      border: 1px solid rgba(170, 196, 231, 0.34);
-      border-radius: 10px;
-      color: var(--primary);
-      font-weight: 600;
-      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
-    }
-
-    .main-container {
-      position: relative;
-      z-index: 5;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem 2.5rem;
-    }
+    .main-container { position: relative; z-index: 5; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
 
     .back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.25rem;
-      background: linear-gradient(180deg, #ffffff, #f3f7ff);
-      border: 1px solid rgba(170, 196, 231, 0.34);
-      border-radius: 12px;
-      color: var(--primary);
-      margin-bottom: 1.75rem;
-      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.1);
-      font-weight: 600;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 12px;
+      color: #475569; text-decoration: none; margin-bottom: 2rem; transition: 0.3s;
     }
+    .back-btn:hover { background: #fff; transform: translateX(-5px); }
 
-    .test-button-wrapper {
-      text-align: center;
-      margin-bottom: 1.75rem;
-    }
+    .vacancies-header { text-align: center; margin-bottom: 2rem; }
+    .vacancies-header h2 { font-size: 2.2rem; font-weight: 800; color: #0f172a; }
+    .vacancy-count { background: #e2e8f0; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
 
     .test-btn-white {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 1rem 2rem;
-      background: linear-gradient(180deg, #ffffff, #f3f7ff);
-      border: 1px solid rgba(170, 196, 231, 0.34);
-      border-radius: 999px;
-      color: var(--primary);
-      font-size: 1rem;
-      font-weight: 700;
-      box-shadow: 0 16px 34px rgba(120, 145, 180, 0.14);
-      letter-spacing: 0.2px;
-    }
-
-    .vacancies-header {
-      text-align: center;
-      margin-bottom: 1.75rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .vacancies-header h2 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      color: var(--primary);
-      letter-spacing: -0.03em;
-    }
-
-    .vacancies-header p {
-      color: var(--secondary);
-    }
-
-    .vacancy-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 28px;
-      height: 28px;
-      background: linear-gradient(180deg, #ffffff, #eef4ff);
-      border: 1px solid rgba(170, 196, 231, 0.34);
-      padding: 0 0.65rem;
-      border-radius: 999px;
-      font-size: 0.82rem;
-      color: var(--accent-strong);
-      box-shadow: 0 10px 22px rgba(120, 145, 180, 0.12);
+      display: inline-flex; align-items: center; gap: 0.75rem;
+      padding: 1rem 2rem; background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      border-radius: 60px; color: white; font-weight: 700; text-decoration: none;
+      transition: 0.3s; box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
     }
 
     .info-box {
-      background: var(--glass);
-      border: 1px solid rgba(143, 186, 255, 0.24);
-      border-radius: 18px;
-      padding: 1.35rem 1.5rem;
-      margin-bottom: 1.75rem;
-      display: flex;
-      gap: 1rem;
-      backdrop-filter: blur(34px) saturate(175%);
-      -webkit-backdrop-filter: blur(34px) saturate(175%);
-      box-shadow: 0 18px 40px rgba(128, 145, 173, 0.12);
-    }
-
-    .info-box-icon {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(180deg, #ffffff, #eef4ff);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      box-shadow: 0 10px 24px rgba(120, 145, 180, 0.12);
-      flex-shrink: 0;
-    }
-
-    .info-box-content h4 {
-      color: var(--primary);
-      margin-bottom: 0.25rem;
-    }
-
-    .info-box-content p {
-      color: var(--secondary);
-      font-size: 0.92rem;
-      line-height: 1.55;
+      background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);
+      border: 1px solid #fff; border-radius: 16px; padding: 1.5rem;
+      margin-bottom: 2rem; display: flex; gap: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.03);
     }
 
     .vacancy-card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255,255,255,0.5));
-      backdrop-filter: blur(34px) saturate(175%);
-      -webkit-backdrop-filter: blur(34px) saturate(175%);
-      border: 1px solid rgba(255, 255, 255, 0.78);
-      border-radius: 34px;
-      padding: 2rem;
-      margin-bottom: 1.5rem;
-      box-shadow: var(--shadow);
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 24px;
+      padding: 2rem; margin-bottom: 1.5rem; transition: 0.3s;
     }
+    .vacancy-card:hover { transform: translateY(-5px); background: #fff; border-color: rgba(99, 102, 241, 0.3); }
 
-    .vacancy-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 34px 90px rgba(128, 145, 173, 0.2);
-    }
+    .vacancy-title { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
+    .vacancy-salary { font-size: 1.2rem; font-weight: 600; color: #059669; margin-bottom: 1.2rem; }
 
-    .vacancy-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.75rem;
-      color: var(--primary);
-      letter-spacing: -0.02em;
-    }
+    .vacancy-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .detail-item { background: #f8fafc; padding: 1rem; border-radius: 12px; border-left: 3px solid #6366f1; }
+    .detail-label { display: block; font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+    .detail-value { font-size: 1rem; font-weight: 600; }
 
-    .vacancy-salary {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #0f9d58;
-      margin-bottom: 1rem;
-    }
+    .vacancy-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.05); }
+    .badge { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
 
-    .vacancy-details-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
+    /* Стили для разных источников */
+    .badge-hh { background: #e2e8f0; color: #475569; }
+    .badge-habr { background: #6366f1; color: white; }
 
-    .detail-item {
-      background: rgba(255,255,255,0.7);
-      padding: 1rem;
-      border-radius: 14px;
-      border: 1px solid rgba(160, 184, 218, 0.24);
-      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
-    }
+    .apply-btn { padding: 0.7rem 1.5rem; background: #10b981; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer; transition: 0.3s; }
+    .apply-btn:hover { background: #059669; transform: translateY(-2px); }
 
-    .detail-label {
-      display: block;
-      font-size: 0.75rem;
-      color: var(--secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.5rem;
-      font-weight: 700;
-    }
-
-    .detail-value {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    .detail-value.company { color: #4f83ff; }
-    .detail-value.experience { color: #b45309; }
-    .detail-value.age { color: #059669; }
-
-    .requirements-title {
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--primary);
-    }
-
-    .requirement-item {
-      background: rgba(255,255,255,0.72);
-      padding: 0.85rem 1rem;
-      margin: 0.55rem 0;
-      border-radius: 12px;
-      font-size: 0.92rem;
-      border: 1px solid rgba(160, 184, 218, 0.22);
-      box-shadow: 0 10px 22px rgba(120, 145, 180, 0.07);
-      color: var(--primary);
-      line-height: 1.5;
-    }
-
-    .vacancy-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      margin-top: 1.5rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid rgba(160, 184, 218, 0.24);
-    }
-
-    .company-info {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .badge {
-      padding: 0.3rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #fff;
-      box-shadow: 0 10px 20px rgba(120, 145, 180, 0.12);
-    }
-
-    .badge-info { background: linear-gradient(180deg, #6ea8ff, #4f83ff); }
-    .badge-warning { background: linear-gradient(180deg, #f7b955, #f59e0b); }
-    .badge-success { background: linear-gradient(180deg, #34d399, #10b981); }
-
-    .vacancy-apply-btn {
-      padding: 0.82rem 1.45rem;
-      background: linear-gradient(180deg, #ffffff, #f3f7ff);
-      border: 1px solid rgba(170, 196, 231, 0.38);
-      border-radius: 12px;
-      color: var(--primary);
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.12);
-      white-space: nowrap;
-    }
-
-    .vacancy-apply-btn:hover {
-      color: var(--accent-strong);
-    }
-
-    .error-message {
-      background: rgba(255, 235, 238, 0.82);
-      border: 1px solid rgba(239, 68, 68, 0.18);
-      border-radius: 12px;
-      padding: 1rem 1.1rem;
-      text-align: center;
-      color: #c2414c;
-      box-shadow: 0 12px 26px rgba(120, 145, 180, 0.08);
-    }
-
-    .loader-container {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: var(--secondary);
-    }
-
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid rgba(160,184,218,0.22);
-      border-left-color: #6ea8ff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .no-skills {
-      color: var(--secondary);
-      font-style: italic;
-      text-align: center;
-      padding: 1rem;
-    }
-
-    @keyframes orb-pulse {
-      0%, 100% { transform: scale(0.98); opacity: 0.92; }
-      50% { transform: scale(1.02); opacity: 1; }
-    }
-
-    @keyframes orb-glow {
-      0%, 100% { transform: scale(0.98); opacity: 0.72; }
-      50% { transform: scale(1.03); opacity: 1; }
-    }
-
-    @media (max-width: 768px) {
-      .header {
-        flex-direction: column;
-        gap: 1rem;
-        padding: 1rem;
-        text-align: center;
-      }
-
-      .header-left,
-      .user-info {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .main-container {
-        padding: 1.5rem 1rem 2rem;
-      }
-
-      .vacancy-card {
-        padding: 1.5rem;
-        border-radius: 24px;
-      }
-
-      .vacancy-details-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .vacancy-meta {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .vacancy-apply-btn,
-      .test-btn-white {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .vacancies-header h2 {
-        font-size: 1.65rem;
-      }
-    }
+    .loader-container { text-align: center; padding: 4rem; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(99, 102, 241, 0.1); border-left-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-left">
-    <a href="/personal-cabinet" class="cabinet-btn">
-      <span>👤</span> Личный кабинет
-    </a>
-  </div>
-  <div class="logo">
-    <div class="logo-icon">🚀</div>
-    <h1>Career Navigator</h1>
-  </div>
+  <a th:href="@{/personal-cabinet}" class="cabinet-btn" style="text-decoration:none; color:inherit;">👤 Кабинет</a>
+  <div class="logo"><h1>Career Navigator</h1></div>
   <div class="user-info">
-    <div class="user-email" id="userEmail">Загрузка...</div>
-    <a href="/logout" class="logout-btn">Выйти</a>
+    <span id="userEmail" class="user-email">Загрузка...</span>
+    <a th:href="@{/logout}" class="logout-btn">Выйти</a>
   </div>
 </div>
 
 <div class="main-container">
-  <a href="/choose-vacancy" class="back-btn">
-    ← Назад к выбору вакансии
-  </a>
+  <a th:href="@{/choose-vacancy}" class="back-btn">← К выбору профессии</a>
 
   <div class="vacancies-header">
-    <h2>Реальные вакансии</h2>
+    <h2 id="titleText">Реальные вакансии</h2>
     <p id="vacancyInfo"></p>
   </div>
 
-  <!-- Кнопка перехода к тесту - Белая красивая -->
-  <div class="test-button-wrapper">
-    <a th:href="@{'/quiz-view/' + ${session.userId}}" class="test-btn-white">
-      📝 Пройти тест на профориентацию
-    </a>
+  <div class="test-button-wrapper" style="text-align:center; margin-bottom: 2rem;">
+    <a th:href="@{'/quiz-view/' + ${session.userId}}" class="test-btn-white">📝 Пройти тест на профориентацию</a>
   </div>
 
   <div class="info-box">
-    <div class="info-box-icon">💼</div>
-    <div class="info-box-content">
-      <h4>Актуальные предложения рынка</h4>
-      <p>Это реальные вакансии с популярных платформ. Изучите требования и зарплатные ожидания для вашей целевой профессии.</p>
-      <p><small>📊 Источник: HeadHunter API | 🔄 Данные обновляются в реальном времени</small></p>
+    <div style="font-size: 1.5rem;">💡</div>
+    <div>
+      <h4>Анализ рынка</h4>
+      <p>Мы собрали предложения с HH.ru и Хабр Карьеры, чтобы вы видели полную картину.</p>
     </div>
   </div>
 
   <div id="vacancies-container">
     <div class="loader-container">
       <div class="spinner"></div>
-      <p>Загрузка реальных вакансий...</p>
+      <p>Ищем лучшие вакансии для вас...</p>
     </div>
   </div>
 </div>
 
 <script>
-  // Получаем выбранную вакансию из URL или sessionStorage
   const urlParams = new URLSearchParams(window.location.search);
-  let selectedVacancy = urlParams.get('vacancy') || sessionStorage.getItem('selectedVacancy');
-
-  if (!selectedVacancy) {
-    selectedVacancy = "Java Developer";
-  }
+  let selectedVacancy = urlParams.get('vacancy') || sessionStorage.getItem('selectedVacancy') || "Java Developer";
 
   document.getElementById('vacancyInfo').innerHTML = `По профессии: <strong>${selectedVacancy}</strong> <span class="vacancy-count" id="vacancyCount"></span>`;
   document.getElementById('userEmail').textContent = sessionStorage.getItem('userEmail') || 'Пользователь';
 
   async function loadRealVacancies() {
     const container = document.getElementById('vacancies-container');
-
     try {
       const response = await fetch(`/api/v1/vacancies?searchText=${encodeURIComponent(selectedVacancy)}&area=1&perPage=10`);
-
-      if (!response.ok) {
-        throw new Error('Ошибка загрузки вакансий');
-      }
+      if (!response.ok) throw new Error('Ошибка связи с сервером');
 
       const vacancies = await response.json();
-
-      const countSpan = document.getElementById('vacancyCount');
-      countSpan.textContent = vacancies.length;
+      document.getElementById('vacancyCount').textContent = vacancies.length;
 
       if (vacancies.length === 0) {
-        container.innerHTML = `
-          <div class="error-message">
-            Не удалось найти вакансии по запросу: ${selectedVacancy}<br>
-            Попробуйте изменить название вакансии или уточнить поисковый запрос.
-          </div>
-        `;
+        container.innerHTML = `<div style="text-align:center; padding: 2rem;">Вакансии временно недоступны. Попробуйте позже.</div>`;
         return;
       }
 
-      container.innerHTML = vacancies.map(v => `
-        <div class="vacancy-card">
-          <div class="vacancy-title">${escapeHtml(v.nameOfVacancy || 'Название не указано')}</div>
-          <div class="vacancy-salary">💰 ${v.salary || 'Зарплата не указана'}</div>
-          <div class="vacancy-details-grid">
-            <div class="detail-item">
-              <span class="detail-label">🏢 Компания</span>
-              <span class="detail-value company">${escapeHtml(v.employer || 'Не указана')}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">📈 Требуемый опыт</span>
-              <span class="detail-value experience">${escapeHtml(v.experience || 'Не указан')}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">🎂 Возраст</span>
-              <span class="detail-value age">${escapeHtml(v.age || 'Не указано')}</span>
-            </div>
-          </div>
-          <div class="requirements-title">🔧 Ключевые навыки и требования</div>
-          ${renderSkills(v.vacancyRequirements)}
-          <div class="vacancy-meta">
-            <div class="company-info">
-              <span class="badge badge-info">HH.ru</span>
-              ${v.experience ? `<span class="badge badge-warning">${escapeHtml(v.experience)}</span>` : ''}
-              ${v.age ? `<span class="badge badge-success">${escapeHtml(v.age)}</span>` : ''}
-            </div>
-            <button class="vacancy-apply-btn" onclick="applyToVacancy('${escapeHtml(v.nameOfVacancy)}')">
-              📝 Откликнуться
-            </button>
-          </div>
-        </div>
-      `).join('');
+      container.innerHTML = vacancies.map(v => {
+        // Определяем источник по тексту в названии, который мы добавили в ParserService
+        const isHabr = v.nameOfVacancy.includes('[Habr]');
+        const isMock = v.nameOfVacancy.includes('(Резервный)');
 
+        const sourceLabel = isHabr ? 'Habr Career' : (isMock ? 'Локальный поиск' : 'HH.ru');
+        const badgeClass = isHabr ? 'badge-habr' : 'badge-hh';
+
+        // Убираем технические пометки из заголовка для красоты
+        const displayTitle = v.nameOfVacancy.replace(/\[Habr\]|\[HH\.ru\]|\(Резервный канал\)/g, '').trim();
+
+        return `
+          <div class="vacancy-card">
+            <div class="vacancy-title">${escapeHtml(displayTitle)}</div>
+            <div class="vacancy-salary">💰 ${v.salary || 'Зарплата по договоренности'}</div>
+
+            <div class="vacancy-details-grid">
+              <div class="detail-item">
+                <span class="detail-label">Компания</span>
+                <span class="detail-value">${escapeHtml(v.employer || 'Не указана')}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Опыт</span>
+                <span class="detail-value">${escapeHtml(v.experience || 'Не указан')}</span>
+              </div>
+            </div>
+
+            <div class="requirements-title" style="margin-top: 1rem; font-weight: 700; font-size: 0.9rem;">Навыки:</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;">
+              ${renderSkills(v.vacancyRequirements)}
+            </div>
+
+            <div class="vacancy-meta">
+              <div class="company-info">
+                <span class="badge ${badgeClass}">${sourceLabel}</span>
+              </div>
+              <button class="apply-btn" onclick="applyToVacancy('${escapeHtml(displayTitle)}')">Откликнуться</button>
+            </div>
+          </div>
+        `;
+      }).join('');
     } catch (error) {
-      console.error('Error:', error);
-      container.innerHTML = `
-        <div class="error-message">
-          Ошибка при загрузке вакансий: ${error.message}
-        </div>
-      `;
+      container.innerHTML = `<div style="color:red; text-align:center;">Ошибка: ${error.message}</div>`;
     }
   }
 
   function renderSkills(skills) {
-    if (!skills || skills.length === 0) {
-      return '<div class="no-skills">Навыки не указаны в данной вакансии</div>';
-    }
-    return skills.map((skill, idx) => `
-      <div class="requirement-item">
-        <span class="badge badge-primary" style="background: #667eea; margin-right: 8px;">${idx + 1}</span>
-        ${escapeHtml(skill)}
-      </div>
-    `).join('');
+    if (!skills || skills.length === 0) return '<span style="font-size: 0.8rem; color: #94a3b8;">Уточняйте в описании</span>';
+    return skills.map(s => `<span style="background: rgba(99, 102, 241, 0.1); color: #4f46e5; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">${escapeHtml(s)}</span>`).join('');
   }
 
   function escapeHtml(text) {
-    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
-  function applyToVacancy(vacancyName) {
-    if (confirm(`Вы хотите откликнуться на вакансию "${vacancyName}"?\n\nВ реальной системе здесь будет переход на страницу вакансии на HH.ru`)) {
-      alert(`В реальной системе вы будете перенаправлены на страницу вакансии "${vacancyName}" на HeadHunter.ru`);
-    }
+  function applyToVacancy(name) {
+    alert(`Переход к вакансии "${name}"...`);
   }
 
   loadRealVacancies();
 </script>
-
 </body>
 </html>
